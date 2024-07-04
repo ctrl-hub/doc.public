@@ -188,6 +188,50 @@ paths:
                               value:
                                 type: integer
                                 example: 245
+  "/v3/orgs/{orgId}/data-capture/forms/meta/distinct":
+    get:
+      description: Returns all of the distinct values for a specific field
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+        - $ref: "#/components/parameters/field"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/dataCaptureMetaDistinct"
+        "404":
+          $ref: "#/components/responses/notfound"
+        "429":
+          $ref: "#/components/responses/throttled"
+  "/v3/orgs/{orgId}/data-capture/submissions/meta/distinct":
+    get:
+      description: Returns all of the distinct values for a specific field
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+        - $ref: "#/components/parameters/field"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/dataCaptureMetaDistinct"
+        "404":
+          $ref: "#/components/responses/notfound"
+        "429":
+          $ref: "#/components/responses/throttled"
   "/v3/orgs/{orgId}/data-capture/form-categories":
     get:
       description: Returns all form categories for an organisation
@@ -337,6 +381,13 @@ components:
         type: string
         default: created_at
       required: false
+    field:
+      name: field
+      in: query
+      description: The name of the field you want to get distinct data for
+      schema:
+        type: string
+      required: true
   requestBodies:
     organisationCreate:
       description: ""
@@ -706,6 +757,21 @@ components:
           format: uuid
           example: b60e2af5-6a84-0eb0-feaa-84384a94
           description: The ID of the form category
+    dataCaptureMetaDistinct:
+      properties:
+        type:
+          type: string
+          example: distinct
+          enum:
+            - distinct
+          description: The resource type
+        attributes:
+          type: object
+          properties:
+            value:
+              type: string
+              example: published
+              description: The value of the requested field
     userRelationships:
       type: object
       properties:

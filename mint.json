@@ -77,7 +77,8 @@
           "pages": [
             "api-reference/data-capture/forms/model",
             "api-reference/data-capture/forms/get",
-            "api-reference/data-capture/forms/stats"
+            "api-reference/data-capture/forms/stats",
+            "api-reference/data-capture/forms/meta/distinct"
           ]
         },
         {
@@ -85,6 +86,12 @@
           "pages": [
             "api-reference/data-capture/form-categories/model",
             "api-reference/data-capture/form-categories/get"
+          ]
+        },
+        {
+          "group": "Submissions",
+          "pages": [
+            "api-reference/data-capture/submissions/meta/distinct"
           ]
         }
       ]
