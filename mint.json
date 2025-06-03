@@ -28,12 +28,12 @@
   },
   "tabs": [
     {
-      "name": "API Reference",
-      "url": "api-reference"
-    },
-    {
       "name": "Projects",
       "url": "projects"
+    },
+    {
+      "name": "Data Capture",
+      "url": "data-capture"
     }
   ],
   "anchors": [],
@@ -147,6 +147,58 @@
                 "projects/api/operation-templates/update"
               ]
             }
+          ]
+        }
+      ]
+    },
+    {
+      "group": "Concepts",
+      "pages": [
+        "data-capture/concepts/introduction",
+        "data-capture/concepts/submissions",
+        "data-capture/concepts/schemes"
+      ]
+    },
+    {
+      "group": "API",
+      "pages": [
+        {
+          "group": "Forms",
+          "pages": [
+            "data-capture/api/forms/list",
+            "data-capture/api/forms/get",
+            "data-capture/api/forms/create"
+          ]
+        },
+        {
+          "group": "Schemas",
+          "pages": [
+            "data-capture/api/schemas/list",
+            "data-capture/api/schemas/get",
+            "data-capture/api/schemas/create"
+          ]
+        },
+        {
+          "group": "Submissions",
+          "pages": [
+            "data-capture/api/submissions/list",
+            "data-capture/api/submissions/get",
+            "data-capture/api/submissions/create"
+          ]
+        },
+        {
+          "group": "Versions",
+          "pages": [
+            "data-capture/api/versions/list",
+            "data-capture/api/versions/get"
+          ]
+        },
+        {
+          "group": "Categories",
+          "pages": [
+            "data-capture/api/categories/list",
+            "data-capture/api/categories/get",
+            "data-capture/api/categories/create"
           ]
         }
       ]

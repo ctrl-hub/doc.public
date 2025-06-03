@@ -1,10 +1,15 @@
 ---
-title: 'Submissions'
-description: 'Working with Submissions'
-icon: 'file'
-mode: "wide"
+title: 'Submissions & Versions'
 ---
 
-![title](/images/data-capture/hero.svg)
+<Panel>
+    <img height="200" noZoom src="/images/data-capture/hero.svg" />
+</Panel>
 
-Submissions are completed forms that are sent to Ctrl Hub.
+Submissions are single instances of a form submission that is either in progress or completed.
+
+A submission can have many versions, each representing a different state of the form data. Think of the versions like a timeline of changes made to the form data.
+
+For example, let's say you have a form called "Time Off Request". Bob and Alice both use it to request time off from work. Each time they make a request, they create a submission. If they each submit a request, there are two submissions. If Bob returns to his and changes the dates, a new version is created. There are still two submissions, but now Bob has two versions of his submission, whilst Alice has one.
+
+Each time a version is created, it receives an `iteration` which is a monotically increasing number (1, 2, 3, etc).
