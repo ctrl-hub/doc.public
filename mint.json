@@ -32,12 +32,8 @@
       "url": "api-reference"
     },
     {
-      "name": "SDKs",
-      "url": "sdk"
-    },
-    {
-      "name": "Changelog",
-      "url": "changelog"
+      "name": "Projects",
+      "url": "projects"
     }
   ],
   "anchors": [],
@@ -49,81 +45,108 @@
     {
       "group": "Concepts",
       "pages": [
-        "concepts/about",
-        {
-          "group": "Data Capture",
-          "pages": [
-            "concepts/data-capture/forms",
-            "concepts/data-capture/submissions",
-            "concepts/data-capture/processors"
-          ]
-        },
-        {
-          "group": "Operations",
-          "pages": ["concepts/operations/reinstatements"]
-        },
-        {
-          "group": "Governance",
-          "pages": [
-            "concepts/governance/index",
-            "concepts/governance/schemes",
-            "concepts/governance/properties-and-streets"
-          ]
-        }
+        "projects/concepts/introduction",
+        "projects/concepts/dates",
+        "projects/concepts/templates"
       ]
     },
     {
-      "group": "API Documentation",
-      "pages": [
-        "api-reference/introduction",
-        "api-reference/useful",
-        "api-reference/features",
-        "api-reference/auth"
-      ]
-    },
-    {
-      "group": "Changelog",
-      "pages": ["changelog/v2", "changelog/v3"]
-    },
-    {
-      "group": "SDKs",
-      "pages": [
-        "sdk/introduction",
-        {
-          "group": "TypeScript",
-          "pages": ["sdk/ts/installation", "sdk/ts/usage"]
-        },
-        {
-          "group": "Swift",
-          "pages": ["sdk/swift/installation", "sdk/swift/usage"]
-        }
-      ]
-    },
-    {
-      "group": "Projects",
+      "group": "API",
       "pages": [
         {
           "group": "Schemes",
           "pages": [
-            "api-reference/projects/schemes/list",
-            "api-reference/projects/schemes/get",
-            "api-reference/projects/schemes/create"
+            "projects/api/schemes/list",
+            "projects/api/schemes/get",
+            "projects/api/schemes/create"
           ]
         },
         {
           "group": "Work Orders",
           "pages": [
-            "api-reference/projects/work-orders/list",
-            "api-reference/projects/work-orders/get",
-            "api-reference/projects/work-orders/create"
+            "projects/api/work-orders/list",
+            "projects/api/work-orders/get",
+            "projects/api/work-orders/create"
           ]
         },
         {
           "group": "Operations",
           "pages": [
-            "api-reference/projects/operations/list",
-            "api-reference/projects/operations/get",
-            "api-reference/projects/operations/create"
+            "projects/api/operations/list",
+            "projects/api/operations/get",
+            "projects/api/operations/create",
+            {
+              "group": "Assignees",
+              "pages": [
+                "projects/api/operations/relationships/assignees/add",
+                "projects/api/operations/relationships/assignees/remove",
+                "projects/api/operations/relationships/assignees/replace"
+              ]
+            },
+            {
+              "group": "Permits",
+              "pages": [
+                "projects/api/operations/relationships/permits/add",
+                "projects/api/operations/relationships/permits/remove",
+                "projects/api/operations/relationships/permits/replace"
+              ]
+            },
+            {
+              "group": "Properties",
+              "pages": [
+                "projects/api/operations/relationships/properties/add",
+                "projects/api/operations/relationships/properties/remove",
+                "projects/api/operations/relationships/properties/replace"
+              ]
+            },
+            {
+              "group": "Streets",
+              "pages": [
+                "projects/api/operations/relationships/streets/add",
+                "projects/api/operations/relationships/streets/remove",
+                "projects/api/operations/relationships/streets/replace"
+              ]
+            },
+            {
+              "group": "Teams",
+              "pages": [
+                "projects/api/operations/relationships/teams/add",
+                "projects/api/operations/relationships/teams/remove",
+                "projects/api/operations/relationships/teams/replace"
+              ]
+            }
+          ]
+        },
+        {
+          "group": "Templates",
+          "pages": [
+            {
+              "group": "Schemes",
+              "pages": [
+                "projects/api/scheme-templates/list",
+                "projects/api/scheme-templates/get",
+                "projects/api/scheme-templates/create",
+                "projects/api/scheme-templates/update"
+              ]
+            },
+            {
+              "group": "Work Orders",
+              "pages": [
+                "projects/api/work-order-templates/list",
+                "projects/api/work-order-templates/get",
+                "projects/api/work-order-templates/create",
+                "projects/api/work-order-templates/update"
+              ]
+            },
+            {
+              "group": "Operations",
+              "pages": [
+                "projects/api/operation-templates/list",
+                "projects/api/operation-templates/get",
+                "projects/api/operation-templates/create",
+                "projects/api/operation-templates/update"
+              ]
+            }
           ]
         }
       ]

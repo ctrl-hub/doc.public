@@ -9,6 +9,10 @@ info:
 servers:
   - url: "https://api.ctrl-hub.com"
     description: Production
+  - url: "https://api.ctrl-hub.dev"
+    description: Staging
+  - url: "https://api.ctrl-hub.run"
+    description: Development
 tags:
   - name: Specifications
     description: |

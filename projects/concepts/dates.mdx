@@ -1,0 +1,17 @@
+---
+title: 'Anticipated / Scheduled Dates'
+---
+
+Within projects, we have two types of dates: _anticipated_ and _scheduled_.
+
+Schemes and Work Orders can have an "anticipated" start and end date. It is anticipated because it has not yet been _scheduled_.
+
+Operations do not have anticipated dates, they have scheduled dates.
+
+When an operation's scheduled date is changed, that change propagates to the work order and scheme - if the start date of the operation you are changing is before any of the other operations in the work order, the work order's start date will be updated.
+
+Likewise, if the end date of the operation you are changing is after any of the other operations in the work order, the work order's end date will be updated.
+
+This also propagates to the scheme, but the scheme considers the start and end date of all the work orders in it and their operations.
+
+You can edit the anticipated dates of the work order and scheme, but you cannot edit the scheduled dates - to edit the scheduled dates, you must edit the operation's scheduled dates.
