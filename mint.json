@@ -38,6 +38,10 @@
     {
       "name": "Media",
       "url": "media"
+    },
+    {
+      "name": "Geo",
+      "url": "geo"
     }
   ],
   "anchors": [],
@@ -222,6 +226,23 @@
             "media/api/images/create",
             "media/api/images/proxy"
           ]
+        }
+      ]
+    },
+    {
+      "group": "Concepts",
+      "pages": ["geo/concepts/introduction"]
+    },
+    {
+      "group": "API",
+      "pages": [
+        {
+          "group": "Properties",
+          "pages": ["geo/api/properties/list", "geo/api/properties/get"]
+        },
+        {
+          "group": "Streets",
+          "pages": ["geo/api/streets/list", "geo/api/streets/get"]
         }
       ]
     }
