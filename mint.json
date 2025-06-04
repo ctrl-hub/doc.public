@@ -34,6 +34,10 @@
     {
       "name": "Data Capture",
       "url": "data-capture"
+    },
+    {
+      "name": "Media",
+      "url": "media"
     }
   ],
   "anchors": [],
@@ -199,6 +203,24 @@
             "data-capture/api/categories/list",
             "data-capture/api/categories/get",
             "data-capture/api/categories/create"
+          ]
+        }
+      ]
+    },
+    {
+      "group": "Concepts",
+      "pages": ["media/concepts/introduction"]
+    },
+    {
+      "group": "API",
+      "pages": [
+        {
+          "group": "Images",
+          "pages": [
+            "media/api/images/list",
+            "media/api/images/get",
+            "media/api/images/create",
+            "media/api/images/proxy"
           ]
         }
       ]
