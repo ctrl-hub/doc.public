@@ -17,7 +17,67 @@
       {
         "tab": "Guides",
         "icon": "square-terminal",
-        "pages": ["guides/one"]
+        "groups": [
+          {
+            "group": "Getting started",
+            "pages": [
+              "quickstart",
+              "guides/template",
+              {
+                "group": "Editing",
+                "expanded": false,
+                "pages": [
+                  "getting-started/accessing-ctrl-hub",
+                  "getting-started/enrolling-users"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Qualifications and Competence Management",
+            "tag": "NEW",
+            "pages": [          
+              "guides/data-capture/index",
+              "guides/data-capture/start-a-new-submission",
+              "guides/project-governance",
+              "guides/competence",
+              "guides/document-management"
+            ]
+          },          
+          {
+            "group": "Project Governance",
+            "tag": "NEW",
+            "pages": [          
+              "guides/data-capture/index",
+              "guides/data-capture/start-a-new-submission",
+              "guides/project-governance",
+              "guides/competence",
+              "guides/document-management"
+            ]
+          },          
+          {
+            "group": "Data Capture",
+            "tag": "NEW",
+            "pages": [          
+              "guides/data-capture/index",
+              "guides/data-capture/start-a-new-submission",
+              "guides/project-governance",
+              "guides/competence",
+              "guides/document-management"
+            ]
+          },
+          {
+            "group": "Document Management",
+            "tag": "NEW",
+            "pages": [          
+              "guides/data-capture/index",
+              "guides/data-capture/start-a-new-submission",
+              "guides/project-governance",
+              "guides/competence",
+              "guides/document-management"
+            ]
+          }          
+        ]
       },
       {
         "tab": "API Guide",
