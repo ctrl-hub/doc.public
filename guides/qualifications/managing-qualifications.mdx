@@ -1,0 +1,280 @@
+---
+title: "Managing qualifications"
+description: "Learn how to manage qualifications, assign them to users, award certificates, track assessments, and monitor risk thresholds."
+---
+
+<Info>**Target Personas:** HR Manager, Qualifications Manager, Compliance Officer, Training Administrator</Info>
+
+## Overview
+
+This guide explains how to manage qualifications in your organisation. You'll learn how to assign qualifications to users, award certificates, set expiry dates, upload supporting documents, record assessments, and monitor qualification risk status.
+
+---
+
+## What You'll Accomplish
+
+Following this guide, you'll be able to:
+
+- Assign job role requirement matrices to users
+- Assign qualifications to people in your organisation
+- Set expiry and renewal dates for qualifications
+- Award qualifications with certificate files
+- Update and correct qualification award information
+- Upload and manage certificate files
+- Record CAS assessments for required qualifications
+- Monitor and filter qualifications by risk status
+- View qualification history and renewal records
+- Verify holders' qualification certificates and audit evidence
+- Understand how risk thresholds trigger notifications
+
+---
+
+## Prerequisites
+
+- You have system administrator or qualifications manager access
+- Qualifications have been created and are available in your system
+- You understand your organisation's qualification and risk management requirements
+- You have certificate files or documents to upload when awarding qualifications
+- Users exist in your system to whom you can assign qualifications
+- Job roles have been created with qualification requirements if you plan to use the job role assignment feature
+- You understand how renewal periods and expiry dates are calculated in your system
+- You understand risk thresholds and how they categorise qualification status
+- You are familiar with your organisation's assessment requirements (such as CAS) before recording assessments
+- For verification: You understand your organisation's qualification verification and compliance requirements
+- For bulk operations: You have identified all users who need qualification assignments or updates
+
+## Step-by-Step guide
+
+### Assign a Job Role Requirement Matrix to Users
+
+1. Navigate to **People > Job Roles**
+2. Select the Job Role that contains the qualification requirements you want to assign
+3. Select **Assign Users**
+4. Choose one or more users to assign this Job Role to
+5. Select **Assign Users** to finish
+6. The selected users will now be listed on the Job Role view page
+7. All qualifications in the Job Role's requirement matrix will be automatically added to each user's assigned qualifications
+
+### Assign a Qualification to a Person
+
+1. Navigate to **People > Qualifications** and select the **Qualifications** tab
+2. Find the qualification you want to assign and select **Award**
+3. In the 'Assign or award a qualification to someone' window, select **Assign**
+4. In the **To** field, select the person to whom you're assigning this qualification
+5. Leave the **Due Date** empty (you'll set this later if needed)
+6. Leave the **Documents** field empty
+7. Select **Assign** to finish
+8. The person is now listed as a Holder of this qualification with a status of "No Risk"
+
+### Set a Future Due Date for a Qualification
+
+1. Navigate to **People > Qualifications** and select the **Qualifications** tab
+2. Select the qualification you want to update
+3. Find the assigned holder and select **Edit** from the Award dropdown button
+4. Enter a future date in the **Due Date** field (this might represent when their training is scheduled)
+5. Select **Update Assignment**
+6. The holder's Expires date in the qualification list will be updated to reflect the Due Date you entered
+
+### Award a Qualification with a Certificate
+
+1. Navigate to **People > Qualifications** and select the **Awards** tab
+2. Find the qualification and holder you want to award
+3. Select the **Award** button
+4. In the file upload panel, select **Choose** and browse to locate a certificate file on your device
+5. Select your file and confirm the selection
+6. Select **Upload** and wait for the file to upload to Ctrl Hub
+7. Select **Award** to finish
+8. The holder's qualification will be updated with the Awarded date and an Expiry date calculated from the qualification's renewal period
+
+### Set or Update an Awarded Date
+
+1. Navigate to **People > Qualifications** and select the **Awards** tab
+2. Find the qualification and holder you want to update
+3. Select **Update** to open the award window
+4. Set the 'start date of this award' to the appropriate date (this can be a past date if backdating an award)
+5. Select **Update Award**
+6. The Awarded date will be set to your specified date
+7. The Expires date will be automatically calculated based on the qualification's renewal period from the awarded date
+8. For example, if awarding a 5-year qualification on 1 December 2025, the Expires date will be 30 November 2030
+
+### Upload Certificate Files
+
+1. Navigate to **People > Qualifications** and select the **Awards** tab
+2. Find the qualification and holder for which you need to upload a certificate
+3. Select **Update** to open the award window
+4. In the file upload panel, select **Choose** and browse for the certificate file
+5. Select the file and confirm your selection
+6. Select **Upload** and wait for the file to upload to Ctrl Hub
+7. Repeat this process to upload additional certificate files (multiple certificates can be attached)
+8. Close the window by selecting **Cancel** or the **X** button to finish
+9. The certificate files are now associated with that holder's qualification record
+
+### Edit a Qualification Award
+
+1. Navigate to **People > Qualifications** and select the **Awards** tab
+2. Find the qualification and holder you need to correct
+3. Select **Update** to open the award window
+4. Modify the information as needed (such as the awarded date, due date, or uploaded documents)
+5. Select **Update Award** to save your changes
+6. The holder's qualification Awarded and Expires dates will be recalculated based on your changes
+
+### Record a CAS Assessment
+
+1. Navigate to **People > Qualifications** and select the **Awards** tab
+2. Find the qualification and holder that requires an assessment
+3. Select **Update** to open the award window
+4. In the **Assessments** panel, set the assessment date and time
+5. Leave the **Result** as **Passed** (or select the appropriate result)
+6. Select **Save** to record the assessment
+7. The assessment will now appear in the qualification record with the date, time, and name of the person who recorded it
+8. The qualification holder's status may change from "Awarded, not yet passed assessment" to "Valid" once a passed assessment is recorded
+
+### Manage Risk Status and Filter Qualifications
+
+1. Navigate to **People > Qualifications** and select the **Awards** tab
+2. In the **Filters** panel, select a Risk Status category: **Low**, **Medium**, **High**, or **Critical**
+3. The qualification list will filter to show only holders whose qualifications match the selected risk status
+4. This allows you to quickly identify which qualifications need attention
+5. Risk status is calculated automatically based on the days remaining until expiry and the risk thresholds set on the qualification
+6. When risk thresholds are passed, the qualification holder receives an email notification
+
+### View Qualification History
+
+1. Navigate to **People > Qualifications** and select the **Awards** tab
+2. Find a holder who has had their qualification renewed
+3. Select the **Renew** option from the dropdown menu for that award
+4. In the Renew Award window, set a renewal date
+5. Expand the qualification record using the **>** symbol on the left side
+6. The expanded view shows both the current award and any previous awards
+7. Select **View History** to see the complete Award History for that holder's qualification, showing all awards, dates, and status changes
+
+### Edit the Renewal Period and Recalculate Expiry Dates
+
+1. Navigate to **People > Qualifications** and select the **Qualifications** tab
+2. Select the qualification you want to update
+3. Select **Edit** to open the qualification settings
+4. Navigate to the Renewal settings section
+5. Update the renewal period (in days) as needed
+6. Select **Update** to save the changes
+7. For all existing awards of this qualification, the Expiry dates will be automatically recalculated based on the new renewal period
+8. For example, if you change a qualification from annual (365 days) to 3-year (1095 days) renewal, all existing holders' expiry dates will be extended by 2 additional years
+
+### Verify a Holder's Qualification Certificate
+
+1. Navigate to **People > Qualifications** and select the **Awards** tab
+2. Find the holder's qualification you want to verify and select the dropdown arrow next to the **Update** button, then select **Verify**
+3. If there is an uploaded certificate, in the **Evidence** panel, select **Download** to access a copy of the certificate to view
+4. In the **Verify this award** panel, select **Valid**, then select **Add your verification** to finish
+5. The verification is recorded with your name and timestamp
+6. The verification appears in the **Previous Verifications** panel for the holder's qualification record
+7. Other managers with access can view your verification and the supporting evidence you reviewed
+
+### Expected Results
+
+After following these steps, you should have:
+
+- Job roles assigned to users with all associated qualifications
+- Qualifications assigned to people with proper tracking
+- Expiry dates and renewal schedules set appropriately
+- Certificates uploaded and filed with qualification records
+- Risk status actively monitored across your qualification population
+- Assessments recorded and tracked for compliance
+- Historical records maintained for audit and renewal purposes
+- Certificate verification completed with auditable records
+- Previous verification records accessible for compliance and historical review
+- Notification emails sent to holders when risk thresholds are reached
+
+---
+
+## Tips & Best Practices
+
+<Tip>Assign job role requirement matrices to ensure users automatically receive all necessary qualifications. This reduces manual entry and ensures consistency across your organisation.</Tip>
+
+<Tip>Set Due Dates in advance (before awarding) if you know when training will occur. This helps managers track upcoming training schedules.</Tip>
+
+<Tip>When awarding qualifications, always upload the certificate file as proof of completion. This provides an audit trail and supports compliance requirements.</Tip>
+
+<Tip>Monitor the **High** and **Critical** risk status filters regularly. Qualifications in these categories require immediate attention to schedule renewal training.</Tip>
+
+<Tip>Use the Qualification History view to understand renewal patterns and ensure holders are meeting their renewal obligations on time.</Tip>
+
+<Tip>Always download and review the certificate evidence before verifying a holder's qualification. This ensures you've personally reviewed the supporting documentation.</Tip>
+
+<Tip>Record verification promptly after reviewing certificates. The verification timestamp provides an audit trail for compliance purposes.</Tip>
+
+<Tip>When assigning users to job roles, do this in bulk if possible. Selecting multiple users at once reduces the number of steps needed and improves consistency.</Tip>
+
+<Tip>Before bulk-updating qualification expiry dates or renewal periods, document your changes and plan for any downstream impacts (e.g., staff notification, training scheduling).</Tip>
+
+<Tip>Review the Qualification History regularly to identify renewal patterns and upcoming expirations. Use this information to proactively schedule training before risk thresholds are crossed.</Tip>
+
+<Tip>For qualifications with assessment requirements, always record the assessment immediately after it's completed. This ensures the holder's status accurately reflects their compliance state.</Tip>
+
+<Tip>Use the certificate file naming convention consistently (e.g., "SURNAME_FIRSTNAME_CERT_DATE") to make it easy to locate and verify evidence during audits.</Tip>
+
+<Warning>
+  If a qualification requires a CAS assessment, the holder's status will show "Awarded, not yet passed assessment" until a passed assessment is recorded. Do not assume the qualification is valid until
+  an assessment is recorded.
+</Warning>
+
+<Warning>
+  Changing the renewal period of a qualification affects all existing awards. Ensure you understand the impact before modifying renewal periods, especially for qualifications with many holders.
+</Warning>
+
+<Warning>
+  Risk threshold notifications are sent automatically when expiry dates cross risk thresholds. Ensure your organisation monitors these emails and responds with appropriate renewal training scheduling.
+</Warning>
+
+---
+
+## Troubleshooting
+
+| Issue                                                            | Solution                                                                                                                                                |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Qualification doesn't appear in the list                         | Ensure the qualification has been created. Filter or search for the qualification name.                                                                 |
+| Cannot find a holder in the assignment list                      | Verify the person exists in your system. Check spelling of their name or use the people search function.                                                |
+| Award button is disabled                                         | Ensure you have the appropriate permissions. Contact your administrator if needed.                                                                      |
+| Certificate file upload fails                                    | Check file size and format. Ensure the file isn't corrupted and your internet connection is stable.                                                     |
+| Expiry date didn't update after changing awarded date            | Refresh the page. If still incorrect, edit the award again and verify the date was saved correctly.                                                     |
+| Assessment status shows "not yet passed" after recording         | Ensure you saved the assessment correctly. Check that the Result was set to "Passed".                                                                   |
+| Risk status filter shows no results                              | No qualifications currently match that risk status. Check other risk categories or verify qualification expiry dates.                                   |
+| Risk notification email not received                             | Verify the holder's email is correctly configured in their user profile. Check spam/junk folders.                                                       |
+| Cannot see renewal option                                        | The qualification may not be renewable. Check the qualification settings to confirm it has a renewal period configured.                                 |
+| History doesn't show previous awards                             | Ensure you're expanding the correct qualification record using the **>** symbol.                                                                        |
+| Expiry date calculation seems wrong                              | Verify the qualification's renewal period (in days). Confirm your calculation: 365 = 1 year, 1095 = 3 years, 1825 = 5 years.                            |
+| Verify button not visible in dropdown menu                       | Ensure you have verification permissions and the award has been properly created. Contact your administrator if the option is missing.                  |
+| Certificate download fails                                       | The certificate file may be corrupted or the upload was incomplete. Contact the person who uploaded the certificate to verify it was properly saved.    |
+| Cannot see Previous Verifications panel                          | Refresh the page after adding your verification. Ensure you're viewing the correct holder's qualification record.                                       |
+| Verification doesn't save after clicking Add                     | Ensure you selected **Valid** in the Verify this award panel before adding your verification. The status must be set before saving.                     |
+| Permission denied when trying to verify                          | Verification is typically restricted to administrators or designated managers. Contact your administrator to request verification access.               |
+| Multiple verifications showing for same holder                   | This is normal - the Previous Verifications panel shows all verification history. Each verification is timestamped to show who verified and when.       |
+| Timestamp appears incorrect on verification                      | Verify your system time is set correctly. The verification timestamp is generated from your system's local time.                                        |
+| Job role assignment to users doesn't appear to work              | Ensure the job role exists and has qualifications assigned to it. Verify you've selected users and clicked **Assign Users**. Refresh to verify changes. |
+| Qualifications not automatically added after job role assignment | Qualifications should add automatically after job role assignment. Refresh the user's profile page. Contact your administrator if issues persist.       |
+| User doesn't appear in the job role assignment list              | Ensure the user is enrolled in your system. Verify the spelling of their name or search using the user search function.                                 |
+| Due Date field won't accept the date I enter                     | Ensure the date is in the correct format for your system (typically DD/MM/YYYY or MM/DD/YYYY). Use the date picker if available.                        |
+| Certificate file format not accepted during upload               | Supported formats typically include PDF, JPG, and PNG. Verify the file extension matches the actual file format.                                        |
+| Large certificate file fails to upload                           | File size limits typically range from 5-20MB depending on your system. Try compressing the file or splitting multiple pages into separate files.        |
+| Awarded Date is in the future but should be past date            | When setting or updating the awarded date, ensure you select a past date (or today). Future dates may not be accepted or may cause calculation errors.  |
+| Assessment result dropdown has no "Passed" option                | The result options depend on your system configuration. Contact your administrator if standard assessment statuses are missing.                         |
+| Risk status not updating after changing expiry date              | Refresh the Qualifications page. Risk status is calculated based on days remaining to expiry. Allow a few moments for the system to recalculate.        |
+| Holder status still shows "not yet passed" after assessment      | Ensure the assessment Result was set to **Passed** and the assessment was saved. Refresh the page to confirm the status update.                         |
+| Cannot renew a qualification because Renew button is missing     | Only qualifications with a renewal period configured can be renewed. Check the qualification settings to confirm renewal is enabled.                    |
+| Expiry dates didn't recalculate after updating renewal period    | Changes to renewal periods apply to future awards, not existing ones. To recalculate existing awards, edit each award individually or contact admin.    |
+| Verify function not available in dropdown menu                   | The Verify option may not be available if the award state doesn't permit verification. Ensure the award is properly created and has evidence.           |
+
+---
+
+## Related Documentation
+
+- [Custom Qualifications](/guides/qualifications/custom-qualifications.mdx)
+- [Assigning Qualifications to Users](/guides/qualifications/assigning-qualifications-to-users.mdx)
+- [Qualification Expiry and Renewal](/guides/qualifications/qualification-expiry-and-renewal.mdx)
+- [Qualification History](/guides/qualifications/qualification-history.mdx)
+- [Job Roles](/guides/qualifications/job-roles.mdx)
+
+---
+
+<Card title="Need Help?" icon="question" href="mailto:support@ctrl-hub.com">
+  Can't find what you're looking for? Contact our support team.
+</Card>

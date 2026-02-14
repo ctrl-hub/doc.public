@@ -1,0 +1,123 @@
+---
+title: "Creating a project"
+description: "Learn how to create a new scheme (project) in Ctrl Hub, add work orders, and set up operations for contractor access."
+---
+
+<Info>**Target Personas:** Project Manager, System Administrator, Scheme Owner</Info>
+
+## Overview
+
+This guide walks you through the process of creating a new scheme (project) in Ctrl Hub and setting it up for operations and contractor access. You'll learn how to create a scheme, add work orders, populate them with operations, and share the project with contractor organisations.
+
+---
+
+## Requirement Set
+
+**Requirement ID:** TS-0001
+
+**Requirement Summary:** Create a new scheme (project) and add an initial work order with a descriptive name and code.
+
+**Acceptance Criteria:**
+
+- A new scheme is successfully created with a descriptive name
+- A work order is created within the scheme
+- The work order has a valid name and code assigned
+- The scheme page displays the created work order
+
+---
+
+## User Instructions
+
+### Prerequisites
+
+- You have access to Ctrl Hub with appropriate permissions to create schemes
+- You understand the naming convention for your organisation
+
+### Step-by-Step Guide
+
+<Steps>
+  <Step title="Create a New Scheme">
+    1. Navigate to **Governance > Schemes**
+    2. Select **Create a new Scheme**
+    3. In the Create Scheme window, enter a name for your scheme, for example: "SGN GD3 - Your Name" (we recommend appending your name or initials for easy identification during testing)
+    4. Select **Create** to proceed
+  </Step>
+  
+  <Step title="Create a Work Order">
+    1. Once the Scheme page opens, select **Create a new Work Order**
+    2. Enter a descriptive name, for example: "Balcolme Road, Horley, RH6 9AY [XX]" (including your initials helps with test tracking)
+    3. Enter a code for the work order, for example: "SEO9999-BL" (where BL represents your initials)
+    4. Select **Create** to finish
+  </Step>
+  
+  <Step title="Add Operations to Your Work Order">
+    1. On the Work Order page, select **create multiple operations** (the link below the map)
+    2. When the Property search page opens, enter a full postcode and select **Search** (wait a moment for results to load)
+    3. From the available properties, select one or more properties and select **Next**
+    4. When prompted, in the Template field, select **SGN Service Card**
+    5. Select **Finish** to create your operations
+  </Step>
+
+  <Step title="Share the Scheme with a Contractor Organisation">
+    1. Go to **Governance > Schemes** and select the scheme you created
+    2. Select the **Share** button in the top right of the page
+    3. If the scheme is available to share, select **Share** next to the contractor organisation name (e.g., "WCB Utilities Sandbox")
+    4. Select **Create Share** to confirm the sharing
+  </Step>
+</Steps>
+
+### Expected Results
+
+After completing these steps, you should have:
+
+- A new scheme visible in your Governance > Schemes list
+- At least one work order within the scheme with a valid name and code
+- Operations created from available properties in the work order
+- The scheme shared with the selected contractor organisation, giving them access to view and work on the operations
+
+---
+
+## Tips & Best Practices
+
+<Tip>
+  When creating schemes and work orders, include identifiable information (such as your name or initials) in the naming convention. This makes it easier to track and locate your items when multiple
+  users are testing or managing projects in the system.
+</Tip>
+
+<Tip>Use meaningful location references in work order names (e.g., street name and postcode) to make them easily identifiable and searchable within the system.</Tip>
+
+<Warning>
+  When adding operations, the available properties are filtered based on your system access. If you don't see expected properties in the search results, verify that you have the correct postcode and
+  appropriate permissions to access those properties.
+</Warning>
+
+<Warning>
+  Before sharing a scheme with a contractor organisation, ensure that the organisation is active in your Ctrl Hub instance and that you have the appropriate permissions to manage shares. If a scheme
+  has already been shared with all available organisations, you'll need to create a new scheme.
+</Warning>
+
+---
+
+## Troubleshooting
+
+| Issue                                      | Solution                                                                                                                                                           |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Property search returns no results         | Ensure you've entered a valid full postcode. Wait a moment for the search to complete. Check that you have permissions to access properties in that postcode area. |
+| Cannot see Share button or option          | Verify that you have the appropriate permissions to manage scheme shares. Contact your system administrator if necessary.                                          |
+| Work Order creation fails                  | Ensure the scheme has been fully created and the Scheme page has loaded. Check that you have valid permissions to create work orders within this scheme.           |
+| Template field is empty or missing options | The available templates depend on your system configuration. Ensure the "SGN Service Card" template is available in your instance, or contact your administrator.  |
+
+---
+
+## Related Documentation
+
+- [Governance Concepts](/concepts/governance/)
+- [Managing Schemes](/guides/project-governance/)
+- [Working with Operations](/concepts/operations/)
+- [Understanding Schemes](/concepts/governance/schemes.mdx)
+
+---
+
+<Card title="Need Help?" icon="question" href="mailto:support@ctrl-hub.com">
+  Can't find what you're looking for? Contact our support team.
+</Card>

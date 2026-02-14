@@ -22,6 +22,7 @@
             "group": "Getting started",
             "pages": [
               "guides/what-is-ctrl-hub",
+              "guides/getting-started/logging-in",
               {
                 "group": "Accessing Ctrl Hub",
                 "hidden": true,
@@ -46,6 +47,7 @@
                 "hidden": true,
                 "expanded": false,
                 "pages": [
+                  "guides/getting-started/logging-in",
                   "guides/getting-started/sso",
                   "guides/getting-started/username_and_password"
                 ]
@@ -73,13 +75,15 @@
             "group": "Qualifications and Competence Management",
             "tag": "NEW",
             "pages": [
+              "guides/qualifications/creating-qualifications",
+              "guides/qualifications/managing-qualifications",
               {
                 "group": "Qualification library",
                 "hidden": true,
                 "expanded": false,
                 "pages": [
-                  "guides/qualifications/shared-qualifications",
-                  "guides/qualifications/custom-qualifications",
+                  "guides/qualifications/creating-qualifications",
+                  "guides/qualifications/managing-qualifications",
                   "guides/qualifications/renewable-qualifications"
                 ]
               },
@@ -139,17 +143,19 @@
                 ]
               }
             ]
-          },          
+          },
           {
             "group": "Project Governance",
             "tag": "NEW",
             "pages": [
+              "guides/project-governance/creating-a-project--ug",
               {
                 "group": "Projects and work orders",
                 "hidden": true,
                 "expanded": false,
                 "pages": [
-                  "guides/project-governance/creating-a-project",
+                  "guides/project-governance/creating-a-project--ug",
+                  "guides/project-governance/creating-a-project--ts",
                   "guides/project-governance/creating-work-orders",
                   "guides/project-governance/sharing-a-project",
                   "guides/project-governance/accessing-shared-projects"
@@ -166,14 +172,15 @@
                 ]
               }
             ]
-          }, 
+          },
           {
             "group": "Document Management",
-            "hidden": true,
             "tag": "NEW",
             "pages": [
+              "guides/document-management/creating-folders",
               {
                 "group": "Projects folders",
+                "hidden": true,
                 "expanded": false,
                 "pages": [
                   "guides/document-management/creating-folders",
@@ -189,7 +196,7 @@
                 "pages": [
                   "guides/document-management/uploading-document-files",
                   "guides/document-management/renaming-documents",
-                  "guides/document-management/moving-documents", 
+                  "guides/document-management/moving-documents",
                   "guides/document-management/deleting-documents"
                 ]
               },
@@ -209,7 +216,7 @@
                   "guides/document-management/new-document-versions",
                   "guides/document-management/downloading-a-document"
                 ]
-               },
+              },
               {
                 "group": "Review and approval",
                 "hidden": true,
@@ -229,7 +236,7 @@
                 "pages": [
                   "guides/document-management/document-notifications"
                 ]
-               },
+              },
               {
                 "group": "Audit logs",
                 "hidden": true,
@@ -240,11 +247,12 @@
                 ]
               }
             ]
-          },                   
+          },
           {
             "group": "Data Capture",
             "tag": "NEW",
             "pages": [
+              "guides/data-capture/finding-my-operations",
               {
                 "group": "Forms",
                 "hidden": true,
@@ -286,9 +294,9 @@
                   "guides/data-capture/finding-ad-hoc-submissions",
                   "guides/data-capture/updating-published-submissions"
                 ]
-              }              
+              }
             ]
-          }         
+          }
         ]
       },
       {

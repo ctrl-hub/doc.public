@@ -1,0 +1,204 @@
+---
+title: "Creating qualifications"
+description: "Learn how to create custom qualifications in Ctrl Hub with renewal periods, risk thresholds, and assessment requirements."
+---
+
+<Info>**Target Personas:** System Administrator, Qualifications Manager, HR Manager</Info>
+
+## Overview
+
+This guide explains how to create custom qualifications within your Ctrl Hub system. You'll learn how to select from available qualification types, set renewal periods, configure risk thresholds, and establish assessment requirements for your organisational needs.
+
+---
+
+## What You'll Accomplish
+
+Following this guide, you'll be able to:
+
+- Access the pre-populated qualification type list
+- Create a new custom qualification with a descriptive name
+- Set renewal periods for qualifications (e.g., annual, 3-year, 5-year cycles)
+- Configure risk thresholds for qualification levels
+- Enable and configure assessment requirements
+- Link qualifications to industry-standard assessments (such as CAS)
+- Understand how qualification settings affect user qualification management
+- Create job roles with mandatory and non-mandatory qualification requirements
+
+---
+
+## Prerequisites
+
+- You have system administrator or qualifications manager access
+- You understand your organisation's qualification and renewal requirements
+- You are familiar with qualification types relevant to your industry
+- You have any assessment references (such as CAS) readily available
+- You have access to your organisation's industry standards documentation (such as SGN's SHE76) for qualification type reference
+- You understand the concept of renewal periods and how they affect qualification lifecycle management
+- You have identified which qualifications need assessment requirements before starting
+- For job role creation: You understand the roles in your organisation and their qualification needs
+- For job role creation: You have already created the qualifications you want to assign to the job role
+
+## Step-by-Step Guide
+
+### Access the Qualifications Section
+
+1. Navigate to **People > Qualifications**
+2. Select the **Qualifications** tab
+3. You'll see a list of existing qualifications in your system
+4. Select **Create a new qualification** to begin creating a custom qualification
+
+### Select a Qualification Type
+
+1. On the Create Qualification page, click the **Qualification Type** dropdown list
+2. You'll see a pre-populated list of available qualification types from your industry standards (for example, from SGN's SHE76 document)
+3. Select the qualification type that best matches the qualification you're creating
+4. When you select a qualification type, the **Name** field will automatically populate with the standard name
+
+### Configure Basic Qualification Details
+
+1. Review the auto-populated **Name** field - you can modify it if needed
+2. Optionally, enter a **Description** to provide additional context about this qualification (for example: "Height Safety Training - Required for all site supervisors")
+3. The description helps users understand the purpose and relevance of the qualification
+4. Select **Next** to continue to the renewal settings
+
+### Set Up Renewal Period
+
+1. On the renewal configuration page, select **Renewable** to enable renewal cycles for this qualification
+2. Enter the renewal duration in **days**:
+   - For annual renewal: enter **365**
+   - For 3-year renewal: enter **1095**
+   - For 5-year renewal: enter **1825**
+3. The system will use this duration to calculate when qualifications expire and renewals are due
+4. Select **Next** to configure risk thresholds
+
+### Configure Risk Thresholds
+
+1. You'll see fields for **Low**, **Medium**, and **High** Risk thresholds
+2. Leave the default values unless your organisation has specific risk assessment requirements
+3. These thresholds determine how the system categorises qualification status based on time remaining until expiry
+4. Select **Next** to proceed to assessment requirements
+
+### Enable Assessment Requirements (Optional)
+
+1. On the assessment page, you'll see the option **Requires assessment**
+2. If this qualification requires an assessment (such as a CAS assessment), select **Yes**
+3. In the **Reference** field, enter the assessment reference code (for example: "DN-14" for a specific CAS assessment)
+4. Add any relevant notes, such as "1st job assessment" or other applicability criteria
+5. These details help track which assessments are required for users holding this qualification
+
+### Create the Qualification
+
+1. Review all the settings you've configured
+2. Select **Create Qualification**
+3. The system will create your new custom qualification and return you to the Qualifications list
+4. Your newly created qualification will appear in the Qualifications tab and is now available to assign to users
+
+### Create a Job Role with Mandatory and Non-Mandatory Qualifications
+
+1. Navigate to **People > Job Roles**
+2. Select **Create Job Role**
+3. In the "Create a new job role" window, select a **Type** from the dropdown (the **Name** field will auto-populate based on the selected type)
+4. Optionally, enter a **Description** to clarify the purpose and responsibilities of this job role
+5. In the **Mandatory Qualifications** section, select one or more qualifications that are required for this role
+6. In the **Non-mandatory Qualifications** section, select one or more qualifications that are optional or beneficial for this role
+7. Select **Create Job Role** to finish
+8. The new job role will be created and will appear in the Job Roles list
+
+## Expected Results
+
+After following these steps, you should have:
+
+- Successfully accessed the pre-populated qualification type list
+- Created a new custom qualification with a descriptive name
+- Configured renewal periods appropriate for your organisation
+- Set risk thresholds for qualification status tracking
+- Optionally enabled assessment requirements with relevant references
+- Your new qualification now appears in the Qualifications list
+- The qualification is available for assignment to users in your system
+- A new job role created with mandatory and non-mandatory qualifications configured
+- The job role is listed on the Job Roles page and accessible for user assignment
+
+---
+
+## Tips & Best Practices
+
+<Tip>Qualification types are pre-populated from industry standards (such as SGN's SHE76 document). Use these standard types when possible to ensure consistency across your organisation.</Tip>
+
+<Tip>
+  When setting renewal periods, consider your operating requirements. Annual renewal (365 days) is suitable for frequently changing competencies, while 3-year or 5-year cycles work better for stable
+  certifications.
+</Tip>
+
+<Tip>Use the Description field to clarify the purpose and scope of the qualification. This helps users understand relevance and managers track compliance more effectively.</Tip>
+
+<Tip>
+  If assessment requirements exist (such as CAS assessments), always enable the assessment requirement and include the reference code. This ensures proper tracking and makes it clear what validation
+  is needed.
+</Tip>
+
+<Tip>
+  When creating job roles, clearly distinguish between mandatory qualifications (essential for the role) and non-mandatory qualifications (beneficial or for future development). This helps HR and
+  managers make informed assignment decisions.
+</Tip>
+
+<Tip>Use descriptive names for job roles and qualifications. Include role levels (e.g., \"Site Supervisor\", \"Senior Operative\") or specialisations to make the system self-documenting.</Tip>
+
+<Tip>Create related qualifications together to maintain consistency in naming, renewal periods, and description style across your qualification suite.</Tip>
+
+<Tip>Plan your qualification structure before creating qualifications in bulk. Document your organisation's qualification framework and renewal strategy to guide the creation process.</Tip>
+
+<Tip>
+  Test the assignment workflow (assigning the new qualification to a test user) before rolling out the qualification widely. This helps you verify that renewal periods, risk thresholds, and assessment
+  requirements are configured correctly.
+</Tip>
+
+<Tip>When setting renewal periods, consider your business cycle and staff availability. For example, if your busiest period is summer, avoid renewal deadlines during peak work times.</Tip>
+
+<Warning>Renewal periods are permanent after creation. Plan your renewal duration carefully before creating the qualification, as changes may require creating a new qualification.</Warning>
+
+<Warning>
+  Leave risk thresholds at their default values unless your organisation has specific risk categorisation requirements. Customising without understanding the impact may cause qualification status to
+  be misinterpreted.
+</Warning>
+
+---
+
+## Troubleshooting
+
+| Issue                                                                 | Solution                                                                                                                                                |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Qualification Type dropdown is empty                                  | The qualification types should be pre-populated from your system's data source. Contact your administrator if the list is missing.                      |
+| Name field doesn't auto-populate after selecting type                 | Refresh the page or try selecting the qualification type again. Some types may require the form to process before populating the name.                  |
+| Cannot modify the Name field                                          | Some qualification types may have locked names. Try creating a new type or contact your administrator for custom implementations.                       |
+| Renewal period seems incorrect                                        | Verify your calculation: 365 days = 1 year, 1095 = 3 years, 1825 = 5 years. Enter the total number of days, not years.                                  |
+| Assessment reference code not recognised                              | Ensure the reference code is correct and matches your organisation's assessment system. Contact your assessments administrator to confirm valid codes.  |
+| Cannot create qualification                                           | Verify you have system administrator permissions. Contact your manager if access is missing.                                                            |
+| New qualification doesn't appear in the list                          | Refresh the Qualifications page in your browser. The new qualification may take a moment to appear.                                                     |
+| Cannot access Job Roles section                                       | Verify you have system administrator permissions. Job Roles is typically restricted to administrators.                                                  |
+| Job Role Type dropdown is empty                                       | Job role types should be pre-populated from your system configuration. Contact your administrator if the list is missing.                               |
+| Cannot select qualifications when creating job role                   | Ensure qualifications exist in the system before creating job roles. Create the required qualifications first in the Qualifications section.            |
+| Job role with same name already exists                                | Job role names must be unique in the system. Select a different name or modify the description to differentiate similar roles.                          |
+| New job role doesn't appear in list                                   | Refresh the Job Roles page in your browser. The role may take a moment to appear after creation.                                                        |
+| Form takes a long time to load or submit                              | Large qualification or job role lists may slow form loading. Try again after a few moments, or contact your administrator if timeouts persist.          |
+| Cannot proceed past qualification type selection                      | Ensure you've selected a valid qualification type from the dropdown. Try selecting again if the form appears stuck.                                     |
+| Description field has character limit issues                          | Some text fields have limits (typically 255-500 characters). Keep descriptions concise and remove any special characters if saving fails.               |
+| Risk threshold values appear as decimals or percentages               | Risk thresholds are typically stored as days remaining (integers). Verify you've entered whole numbers, not percentages or decimal values.              |
+| Created qualification not available for job role assignment           | Refresh the Job Roles page or try creating the job role again. New qualifications may take a moment to appear in the assignment interface.              |
+| Cannot select both mandatory and non-mandatory qualifications at once | Select mandatory qualifications first, then non-mandatory in separate sections. The system has separate fields for each type.                           |
+| Job role created but qualifications aren't linked                     | Verify you selected qualifications from both mandatory and non-mandatory sections before clicking Create Job Role. Refresh the page to confirm linkage. |
+
+---
+
+## Related Documentation
+
+- [Qualifications Overview](/guides/qualifications/)
+- [Assigning Qualifications to Users](/guides/qualifications/assigning-qualifications-to-users.mdx)
+- [Qualification Expiry and Renewal](/guides/qualifications/qualification-expiry-and-renewal.mdx)
+- [Renewable Qualifications](/guides/qualifications/renewable-qualifications.mdx)
+- [Training Dates](/guides/qualifications/training-dates.mdx)
+
+---
+
+<Card title="Need Help?" icon="question" href="mailto:support@ctrl-hub.com">
+  Can't find what you're looking for? Contact our support team.
+</Card>
