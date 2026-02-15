@@ -19,27 +19,31 @@
         "icon": "square-terminal",
         "groups": [
           {
+            "group": "Introduction",
+            "pages": [
+              "guides/what-is-ctrl-hub"
+            ]
+          },
+          {
             "group": "Getting started",
             "pages": [
-              "guides/what-is-ctrl-hub",
-              "guides/getting-started/logging-in",
+              "guides/getting-started/accessing-ctrl-hub",
+              "guides/getting-started/enrolling-users",
+              "guides/getting-started/accepting-an-enrolment-invitation",
+              "guides/getting-started/managing-your-password",
+              "guides/getting-started/sharing-between-organisations",
               {
                 "group": "Accessing Ctrl Hub",
                 "hidden": true,
                 "expanded": false,
-                "pages": [
-                  "guides/getting-started/web-console",
-                  "guides/getting-started/mobile-apps"
-                ]
+                "pages": []
               },
               {
                 "group": "Enrolling users",
                 "hidden": true,
                 "expanded": false,
                 "pages": [
-                  "guides/getting-started/finding-users",
-                  "guides/getting-started/enrolling-users",
-                  "guides/getting-started/accepting-an-enrolment-invitation"
+                  "guides/getting-started/finding-users"
                 ]
               },
               {
@@ -49,7 +53,7 @@
                 "pages": [
                   "guides/getting-started/logging-in",
                   "guides/getting-started/sso",
-                  "guides/getting-started/username_and_password"
+                  "guides/getting-started/username-and-password"
                 ]
               },
               {
@@ -76,7 +80,15 @@
             "tag": "NEW",
             "pages": [
               "guides/qualifications/creating-qualifications",
-              "guides/qualifications/managing-qualifications",
+              "guides/qualifications/job-role-matrices",
+              "guides/qualifications/assigning-qualifications",
+              "guides/qualifications/awarding-qualifications",
+              "guides/qualifications/uploading-certificates",
+              "guides/qualifications/recording-assessments",
+              "guides/qualifications/verifying-qualifications",
+              "guides/qualifications/managing-risk-status",
+              "guides/qualifications/qualification-expiry-and-renewal",
+              "guides/qualifications/non-compliance-reporting",
               {
                 "group": "Qualification library",
                 "hidden": true,
@@ -148,14 +160,17 @@
             "group": "Project Governance",
             "tag": "NEW",
             "pages": [
-              "guides/project-governance/creating-a-project--ug",
+              "guides/project-governance/creating-projects",
+              "guides/project-governance/sharing-projects",
+              "guides/project-governance/finding-projects",
+              "guides/project-governance/assigning-operations",
+              "guides/project-governance/managing-progress",
               {
                 "group": "Projects and work orders",
                 "hidden": true,
                 "expanded": false,
                 "pages": [
-                  "guides/project-governance/creating-a-project--ug",
-                  "guides/project-governance/creating-a-project--ts",
+                  "guides/project-governance/creating-a-project",
                   "guides/project-governance/creating-work-orders",
                   "guides/project-governance/sharing-a-project",
                   "guides/project-governance/accessing-shared-projects"
@@ -177,7 +192,12 @@
             "group": "Document Management",
             "tag": "NEW",
             "pages": [
-              "guides/document-management/creating-folders",
+              "guides/document-management/managing-files-and-folders",
+              "guides/document-management/document-expiry",
+              "guides/document-management/document-versioning",
+              "guides/document-management/document-review-and-approval",
+              "guides/document-management/field-access-to-documents",
+              "guides/document-management/document-notifications",
               {
                 "group": "Projects folders",
                 "hidden": true,
@@ -245,7 +265,8 @@
                   "guides/document-management/file-change-history",
                   "guides/document-management/document-approval-history"
                 ]
-              }
+              },
+              "guides/document-management/field-access-to-documents"
             ]
           },
           {
@@ -253,6 +274,11 @@
             "tag": "NEW",
             "pages": [
               "guides/data-capture/finding-my-operations",
+              "guides/data-capture/starting-a-submission",
+              "guides/data-capture/working-offline",
+              "guides/data-capture/submitting-your-completed-form",
+              "guides/data-capture/updating-published-submissions",
+              "guides/data-capture/submission-workflows",
               {
                 "group": "Forms",
                 "hidden": true,
@@ -296,6 +322,39 @@
                 ]
               }
             ]
+          },
+          {
+            "group": "Customers",
+            "tag": "NEW",
+            "pages": [
+              "guides/customers/accounts",
+              "guides/customers/interactions",
+              "guides/customers/appointments",
+              {
+                "group": "Accounts",
+                "hidden": true,
+                "expanded": false,
+                "pages": [
+                  "guides/customers/accounts"
+                ]
+              },
+              {
+                "group": "Interactions",
+                "hidden": true,
+                "expanded": false,
+                "pages": [
+                  "guides/customers/interactions"
+                ]
+              },
+              {
+                "group": "Appointments",
+                "hidden": true,
+                "expanded": false,
+                "pages": [
+                  "guides/customers/appointments"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -313,6 +372,15 @@
         "tab": "API Reference",
         "icon": "square-terminal",
         "openapi": "api-reference/openapi.yaml"
+      },
+      {
+        "tab": "What's Next",
+        "icon": "square-terminal",
+        "pages": [
+          "roadmap/whats-next",
+          "roadmap/release-notes",
+          "roadmap/on-the-radar"
+        ]
       }
     ]
   }
