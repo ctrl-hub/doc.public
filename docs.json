@@ -31,53 +31,11 @@
               "guides/getting-started/enrolling-users",
               "guides/getting-started/accepting-an-enrolment-invitation",
               "guides/getting-started/managing-your-password",
-              "guides/getting-started/sharing-between-organisations",
-              {
-                "group": "Accessing Ctrl Hub",
-                "hidden": true,
-                "expanded": false,
-                "pages": []
-              },
-              {
-                "group": "Enrolling users",
-                "hidden": true,
-                "expanded": false,
-                "pages": [
-                  "guides/getting-started/finding-users"
-                ]
-              },
-              {
-                "group": "Logging in",
-                "hidden": true,
-                "expanded": false,
-                "pages": [
-                  "guides/getting-started/logging-in",
-                  "guides/getting-started/sso",
-                  "guides/getting-started/username-and-password"
-                ]
-              },
-              {
-                "group": "Password management",
-                "hidden": true,
-                "expanded": false,
-                "pages": [
-                  "guides/getting-started/changing-my-password",
-                  "guides/getting-started/forgotten-password"
-                ]
-              },
-              {
-                "group": "Sharing between organisations",
-                "hidden": true,
-                "expanded": false,
-                "pages": [
-                  "guides/getting-started/creating-bridges"
-                ]
-              }
+              "guides/getting-started/sharing-between-organisations"
             ]
           },
           {
             "group": "Qualifications and Competence Management",
-            "tag": "NEW",
             "pages": [
               "guides/qualifications/creating-qualifications",
               "guides/qualifications/job-role-matrices",
@@ -88,272 +46,48 @@
               "guides/qualifications/verifying-qualifications",
               "guides/qualifications/managing-risk-status",
               "guides/qualifications/qualification-expiry-and-renewal",
-              "guides/qualifications/non-compliance-reporting",
-              {
-                "group": "Qualification library",
-                "hidden": true,
-                "expanded": false,
-                "pages": [
-                  "guides/qualifications/creating-qualifications",
-                  "guides/qualifications/managing-qualifications",
-                  "guides/qualifications/renewable-qualifications"
-                ]
-              },
-              {
-                "group": "Qualification matrices",
-                "hidden": true,
-                "expanded": false,
-                "pages": [
-                  "guides/qualifications/job-roles"
-                ]
-              },
-              {
-                "group": "Qualification assignments",
-                "hidden": true,
-                "expanded": false,
-                "pages": [
-                  "guides/qualifications/assigning-qualifications-to-users",
-                  "guides/qualifications/training-dates"
-                ]
-              },
-              {
-                "group": "Awarding certificates",
-                "hidden": true,
-                "expanded": false,
-                "pages": [
-                  "guides/qualifications/setting-an-awarded-date",
-                  "guides/qualifications/uploading-certificates",
-                  "guides/qualifications/viewing-certificates",
-                  "guides/qualifications/risk-status",
-                  "guides/qualifications/qualification-expiry-and-renewal",
-                  "guides/qualifications/qualification-history"
-                ]
-              },
-              {
-                "group": "Competence assessments",
-                "hidden": true,
-                "expanded": false,
-                "pages": [
-                  "guides/qualifications/assessment-requirements",
-                  "guides/qualifications/recording-successful-assessments"
-                ]
-              },
-              {
-                "group": "Qualification verification",
-                "hidden": true,
-                "expanded": false,
-                "pages": [
-                  "guides/qualifications/verifying-a-holders-qualifications"
-                ]
-              },
-              {
-                "group": "Competence gaps",
-                "hidden": true,
-                "expanded": false,
-                "pages": [
-                  "guides/qualifications/non-compliance-reporting"
-                ]
-              }
+              "guides/qualifications/non-compliance-reporting"
             ]
           },
           {
             "group": "Project Governance",
-            "tag": "NEW",
             "pages": [
               "guides/project-governance/creating-projects",
               "guides/project-governance/sharing-projects",
               "guides/project-governance/finding-projects",
               "guides/project-governance/assigning-operations",
-              "guides/project-governance/managing-progress",
-              {
-                "group": "Projects and work orders",
-                "hidden": true,
-                "expanded": false,
-                "pages": [
-                  "guides/project-governance/creating-a-project",
-                  "guides/project-governance/creating-work-orders",
-                  "guides/project-governance/sharing-a-project",
-                  "guides/project-governance/accessing-shared-projects"
-                ]
-              },
-              {
-                "group": "Operations",
-                "hidden": true,
-                "expanded": false,
-                "pages": [
-                  "guides/project-governance/creating-operations",
-                  "guides/project-governance/assigning-operations-to-operatives",
-                  "guides/project-governance/updating-work-progress"
-                ]
-              }
+              "guides/project-governance/managing-progress"
             ]
           },
           {
             "group": "Document Management",
-            "tag": "NEW",
             "pages": [
               "guides/document-management/managing-files-and-folders",
               "guides/document-management/document-expiry",
               "guides/document-management/document-versioning",
               "guides/document-management/document-review-and-approval",
               "guides/document-management/field-access-to-documents",
-              "guides/document-management/document-notifications",
-              {
-                "group": "Projects folders",
-                "hidden": true,
-                "expanded": false,
-                "pages": [
-                  "guides/document-management/creating-folders",
-                  "guides/document-management/renaming-folders",
-                  "guides/document-management/moving-folders",
-                  "guides/document-management/deleting-folders"
-                ]
-              },
-              {
-                "group": "File management",
-                "hidden": true,
-                "expanded": false,
-                "pages": [
-                  "guides/document-management/uploading-document-files",
-                  "guides/document-management/renaming-documents",
-                  "guides/document-management/moving-documents",
-                  "guides/document-management/deleting-documents"
-                ]
-              },
-              {
-                "group": "Document expiry",
-                "hidden": true,
-                "expanded": false,
-                "pages": [
-                  "guides/document-management/setting-an-expiry-date"
-                ]
-              },
-              {
-                "group": "Version control",
-                "hidden": true,
-                "expanded": false,
-                "pages": [
-                  "guides/document-management/new-document-versions",
-                  "guides/document-management/downloading-a-document"
-                ]
-              },
-              {
-                "group": "Review and approval",
-                "hidden": true,
-                "expanded": false,
-                "pages": [
-                  "guides/document-management/requesting-comments",
-                  "guides/document-management/requesting-approval",
-                  "guides/document-management/setting-a-deadline",
-                  "guides/document-management/approving-a-document",
-                  "guides/document-management/additional-approvers"
-                ]
-              },
-              {
-                "group": "Notifications",
-                "hidden": true,
-                "expanded": false,
-                "pages": [
-                  "guides/document-management/document-notifications"
-                ]
-              },
-              {
-                "group": "Audit logs",
-                "hidden": true,
-                "expanded": false,
-                "pages": [
-                  "guides/document-management/file-change-history",
-                  "guides/document-management/document-approval-history"
-                ]
-              },
-              "guides/document-management/field-access-to-documents"
+              "guides/document-management/document-notifications"
             ]
           },
           {
             "group": "Data Capture",
-            "tag": "NEW",
             "pages": [
               "guides/data-capture/finding-my-operations",
               "guides/data-capture/starting-a-submission",
               "guides/data-capture/working-offline",
               "guides/data-capture/submitting-your-completed-form",
               "guides/data-capture/updating-published-submissions",
-              "guides/data-capture/submission-workflows",
-              {
-                "group": "Forms",
-                "hidden": true,
-                "expanded": false,
-                "pages": [
-                  "guides/data-capture/building-a-form",
-                  "guides/data-capture/form-structure",
-                  "guides/data-capture/form-fields",
-                  "guides/data-capture/validation-and-constraints"
-                ]
-              },
-              {
-                "group": "Submissions",
-                "hidden": true,
-                "expanded": false,
-                "pages": [
-                  "guides/data-capture/finding-my-operations",
-                  "guides/data-capture/creating-a-submission",
-                  "guides/data-capture/publishing-a-submission",
-                  "guides/data-capture/working-offline",
-                  "guides/data-capture/mobile-submission-statuses"
-                ]
-              },
-              {
-                "group": "Workflows",
-                "hidden": true,
-                "expanded": false,
-                "pages": [
-                  "guides/data-capture/steps-and-transitions",
-                  "guides/data-capture/username_and_password"
-                ]
-              },
-              {
-                "group": "Managing published submissions",
-                "hidden": true,
-                "expanded": false,
-                "pages": [
-                  "guides/data-capture/finding-project-submissions",
-                  "guides/data-capture/finding-ad-hoc-submissions",
-                  "guides/data-capture/updating-published-submissions"
-                ]
-              }
+              "guides/data-capture/submission-workflows"
             ]
           },
           {
             "group": "Customers",
-            "tag": "NEW",
+            "hidden": true,
             "pages": [
               "guides/customers/accounts",
               "guides/customers/interactions",
-              "guides/customers/appointments",
-              {
-                "group": "Accounts",
-                "hidden": true,
-                "expanded": false,
-                "pages": [
-                  "guides/customers/accounts"
-                ]
-              },
-              {
-                "group": "Interactions",
-                "hidden": true,
-                "expanded": false,
-                "pages": [
-                  "guides/customers/interactions"
-                ]
-              },
-              {
-                "group": "Appointments",
-                "hidden": true,
-                "expanded": false,
-                "pages": [
-                  "guides/customers/appointments"
-                ]
-              }
+              "guides/customers/appointments"
             ]
           }
         ]
@@ -375,6 +109,7 @@
       },
       {
         "tab": "What's Next",
+        "hidden": true,
         "icon": "square-terminal",
         "pages": [
           "roadmap/whats-next",

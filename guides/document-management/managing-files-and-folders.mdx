@@ -1,54 +1,9 @@
 ---
 title: "Managing files and folders"
-description: "Learn how to create, organise, rename, and manage document folders in your Ctrl Hub schemes."
+description: "Learn how to create, organise, rename, and manage document files and folders in your Ctrl Hub schemes."
 ---
 
 <Info>**Target Personas:** Project Manager, Document Administrator, Scheme Owner</Info>
-
-## Overview
-
-This guide explains how to organise your documents within a scheme by creating and managing folders. You'll learn how to create new folders, rename them, upload documents, ensure file name uniqueness, and delete folders when no longer needed.
-
----
-
-## What You'll Accomplish
-
-Following this guide, you'll be able to:
-
-- Create new folders to organise documents within a scheme
-- Rename folders to better reflect their contents
-- Upload and manage documents within folders
-- Understand how Ctrl Hub handles duplicate file names
-- Delete empty folders when they're no longer needed
-- Set expiry dates for files to manage document lifecycle
-- Move files between folders
-- Upload new versions of existing files
-- Access and view different versions of a file
-- Request reviews from approvers with approval deadlines
-- View document review and approval status
-- Access document review history and approval logs
-- Download files to your local device
-- Access shared schemes and documents as a contractor
-- View the download history and audit log for files
-
----
-
-## Prerequisites
-
-- You have access to Ctrl Hub with appropriate permissions to manage documents
-- You have at least one scheme created in your Governance area
-- You understand the folder structure needed for your documents
-- You understand which users have permission to create, modify, and delete documents in your schemes
-- You are familiar with file formats you plan to upload (PDF, Word, Excel, images, etc.)
-- You understand your organisation's file naming conventions and standards
-- You have identified who will be approvers in document review workflows before requesting reviews
-- Approvers and reviewers you plan to assign have valid email addresses in the system
-- You understand document expiry and how it affects access to expired documents
-- You understand the document versioning system and how multiple versions are stored
-- You are familiar with your organisation's document retention and lifecycle policies
-- For contractor access: You understand which schemes will be shared with you and what documents you can access
-
----
 
 ## Step-by-Step Guide
 
@@ -82,7 +37,7 @@ Following this guide, you'll be able to:
 
 1. When uploading a file that already exists in the folder, Ctrl Hub automatically appends a number to create a unique name
 2. For example, if you upload "ProjectPlan.pdf" again to a folder that already contains a file with that name, the new file becomes "ProjectPlan (1).pdf"
-3. This ensures both versions are preserved with distinct, searchable names
+3. This ensures both versions are preserved with distinct names
 
 ### Move a File to Another Folder
 
@@ -97,121 +52,6 @@ Following this guide, you'll be able to:
 2. Select **Delete** from the context menu
 3. When prompted, confirm the deletion
 4. The folder will be removed from your scheme
-
-## Expected Results
-
-After following these steps, you should have:
-
-- A new folder visible in your scheme's Documents tab
-- Successfully renamed folders that reflect their contents
-- Documents uploaded and organised within the appropriate folders
-- An understanding of how duplicate file names are handled in Ctrl Hub
-- The ability to clean up your folder structure by removing empty folders
-- Files with expiry dates that display as expired when the date has passed
-- The ability to move files between folders, with automatic file name uniqueness handling if a file with the same name exists in the destination
-- Multiple versions of files uploaded and stored, with notifications sent to approvers and previous downloaders
-- Access to view file version history and select different versions to review their details
-- Documents with pending review status and approval deadlines clearly visible
-- Review status accessible and showing the current approval state (Pending, Approved, Rejected)
-- Complete review history and approval log with approver decisions, comments, and timestamps
-- The ability to download any file to your local device using your browser's Open or Save dialog
-- Access to shared schemes and documents from other organisations, with appropriate visibility based on your contractor role
-- Complete download history and audit log for each file, showing who downloaded it, when, and which version was accessed
-
----
-
-## Tips & Best Practices
-
-<Tip>Create a consistent folder structure that reflects your document workflow. For example, organise by project phase (Design, Approval, Execution) or document type (Contracts, Reports, Forms).</Tip>
-
-<Tip>Use descriptive folder names that are easily searchable. Avoid generic names like "Documents" or "Files" to make navigation clearer for all users.</Tip>
-
-<Tip>
-  When uploading multiple versions of a file, establish a consistent naming convention (such as including dates or version numbers in the file name) to make it easy to identify which version is which.
-</Tip>
-
-<Tip>Use the Move feature to reorganise your documents across folders rather than creating duplicates. This keeps your document library clean and avoids confusion with multiple copies.</Tip>
-
-<Tip>
-  When requesting document reviews, set realistic approval deadlines to give approvers sufficient time to review and comment. Include a message with context or specific instructions to help reviewers
-  understand what they're approving.
-</Tip>
-
-<Tip>Regularly check the Document Review Requests panel to track approval progress. This helps you follow up with approvers who haven't yet provided their decision.</Tip>
-
-<Tip>If you're a contractor, check the available organisation tabs in Governance > Schemes to see which networks have shared their projects with you. Each tab represents a different organisation's shared schemes.</Tip>
-
-<Tip>Establish clear folder structure standards and document them for your team. Share this structure with all users so everyone organises documents consistently.</Tip>
-
-<Tip>Before requesting document reviews, verify that all approvers have valid email addresses in the system. Approvers won't receive notification emails if their email is missing or incorrect.</Tip>
-
-<Tip>When setting expiry dates, consider your document retention policies and compliance requirements. Set dates well in advance so users have time to archive or replace expiring documents.</Tip>
-
-<Tip>Use file naming conventions that include dates or version numbers (e.g., "ProjectPlan_v2_2026-02-14.pdf"). This makes it easy to identify and manage multiple file versions.</Tip>
-
-<Tip>Before uploading large files, check your internet connection stability. Large file uploads may take several minutes. Don't close your browser until the upload completes.</Tip>
-
-<Tip>Include clear context and instructions when requesting document reviews. Use the message field to explain what approvers should focus on and the deadline importance.</Tip>
-
-<Tip>Regularly archive or clean up old document versions to keep your folder structure manageable. Use the Download History to identify which versions are actively used.</Tip>
-
-<Tip>When multiple users need to edit a document, coordinate who will upload the next version to avoid conflicting changes. Use version control discipline with meaningful file names.</Tip>
-
-<Warning>You can only delete empty folders. If a folder contains documents, you must move or delete the documents first before you can remove the folder.</Warning>
-
-<Warning>When uploading multiple versions of the same file, pay attention to the automatic numbering (1), (2), etc. to ensure you're working with the correct version.</Warning>
-
----
-
-## Troubleshooting
-
-| Issue                                                  | Solution                                                                                                                                                                            |
-| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Cannot find the Documents tab                          | Ensure you have selected a scheme first. The Documents tab appears in the scheme detail view.                                                                                       |
-| Delete button is disabled                              | The folder must be empty before it can be deleted. Move or delete all documents within the folder first.                                                                            |
-| Upload appears to take a long time                     | Large files or multiple files may take longer to upload. Ensure your internet connection is stable and wait for the upload progress to complete.                                    |
-| File names look different after upload                 | If you uploaded a file that already existed, Ctrl Hub appended a number to make it unique. This is normal behavior.                                                                 |
-| Cannot rename a folder                                 | Verify you have appropriate permissions to modify documents in this scheme. Contact your system administrator if needed.                                                            |
-| Move to folder option is greyed out                    | Ensure the file is not locked for editing and that you have appropriate permissions to move documents. Only files inside folders can be moved.                                      |
-| History button not appearing for a file                | The file must have multiple versions before the History option appears. Upload a new version first using "Add new version".                                                         |
-| New file version doesn't appear in list                | Wait a moment for the upload to complete. Refresh the page to see the newly uploaded version in the history list.                                                                   |
-| Approvers didn't receive version notification email    | Verify that approvers are assigned to the document and have valid email addresses in the system. Check their email spam/junk folders.                                               |
-| Approvers didn't receive review request email          | Ensure all approvers have valid email addresses in the system. Check spam/junk folders. Verify approvers were successfully added in the Request Review dialog.                      |
-| Cannot find or open Document Review Requests panel     | Make sure the document has an active review request. Right-click the document and select \"View review requests\" alternatively, click the Review Status text next to the document. |
-| Review Status shows as blank or not updating           | Refresh the page to see updated approval statuses. Ensure the document has an active review request in progress.                                                                    |
-| Approver name not available when adding approvers      | The approver list contains users with appropriate permissions in this scheme. Ensure the person has been enrolled in the system and has access to the scheme.                       |
-| Cannot download a file                                 | Verify you have appropriate permissions to download documents from this scheme. The file may be archived or expired. Contact the scheme administrator if needed.                    |
-| Cannot see shared schemes tab in Governance            | Shared schemes appear as separate tabs if you have contractor access. You may not have any shared schemes available yet. Check with the project manager to request scheme sharing.  |
-| Cannot access documents in a shared scheme             | Verify you have been granted access to the documents within that shared scheme. Your permissions are determined by the project manager who shared the scheme.                       |
-| Cannot find or open Download History panel             | Right-click the document and select \"Downloads\" option. The Downloads button may not appear for newly uploaded files without download activity.                                   |
-| Download History shows no entries                      | The document may not have been downloaded yet. The download history will populate once files are downloaded by users.                                                               |                                                     | File upload fails or error message appears | Check file size (ensure within limits), file format (verify compatibility), and internet connection stability. Try uploading a smaller file first to test. |
-| Uploaded file appears corrupted or won't open          | Verify the file wasn't corrupted before upload. Download the file and try opening it. If problem persists, re-upload the file.                                                      |
-| Cannot set expiry date to a past date                  | Some systems allow past dates to immediately mark files as expired. If blocked, contact your administrator about enabling backdated expiry.                                         |
-| File with same name already exists in destination      | When moving a file to a folder that already contains a file with the same name, Ctrl Hub automatically renames it with a number suffix (e.g., filename (1).pdf).                    |
-| Cannot add or modify documents due to permission error | Verify you have document management permissions in this scheme. Contact your scheme administrator to request appropriate access rights.                                             |
-| Approver permissions prevent them from accessing docs  | Ensure approvers have access to the scheme and its documents. They may need to be added to the scheme with appropriate permissions before assigning them as approvers.              |
-| Review request email not sent to approvers             | Verify approvers have valid email addresses. Check their email spam/junk folders. Confirm approvers were successfully saved in the Request Review dialog.                           |
-| Review Status shows "Pending" but deadline has passed  | Late approvals are still tracked. The status will update when approvers complete their review. Send a follow-up message to pending approvers.                                       |
-| Cannot compare versions of a file side-by-side         | Use the History option to select different versions and view their details individually. External tools may be needed for detailed version comparison.                              |
-| Folder doesn't appear after creation                   | Refresh the Documents tab. New folders may take a moment to appear. Verify folder creation completed successfully.                                                                  |
-| File size too large error during upload                | File size limits vary by system configuration. Contact your administrator for limits. Consider splitting large files or compressing them before uploading.                          |
-| Right-click context menu not appearing                 | Ensure you clicked directly on the folder or file (not the background). Try refreshing the page. Some browsers may have menu conflicts - try a different browser.                   |
-| Cannot move a file to a specific folder                | Verify the destination folder exists and you have permissions to move files. Ensure the file itself isn't locked or in use by another user.                                         |
-| Expiry date not displaying on files                    | Refresh the page. Expiry dates may take a moment to display. Verify the expiry date was successfully saved in the Set Expiry Date dialog.                                           |
-| Shared scheme tab missing for contractor organisation  | Schemes must be explicitly shared with your organisation. Contact the project manager or scheme owner to request scheme sharing.                                                    |
-| Cannot edit documents in a shared scheme               | Contractor access is typically read-only. Contact the scheme owner if you need editing permissions. Permissions are managed by the scheme owner.                                    |
-| File locked by another user error                      | Another user may be actively editing the file. Wait for that user to complete their edits and release the file lock before attempting to upload a new version.                      |
-| Multiple approvers not all receiving notification      | Verify all approvers have valid email addresses. Some may be added but not saved in the dialog. Reopen the Request Review dialog to confirm all approvers were saved.               |
-| Folder names with special characters causing issues    | Use alphanumeric characters, spaces, and hyphens for folder names. Avoid special characters like / \                                                                                | : \* ? < > as these may conflict with file systems. |
-
----
-
-## Related Documentation
-
-- [Document Management Overview](/guides/document-management/)
-- [Uploading Documents](/guides/document-management/uploading-document-files.mdx)
-- [Moving Documents](/guides/document-management/moving-documents.mdx)
-- [Deleting Documents](/guides/document-management/deleting-documents.mdx)
 
 ---
 
