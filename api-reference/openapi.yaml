@@ -2523,6 +2523,7 @@ components:
             schemes: "#/components/schemas/Scheme"
             users: "#/components/schemas/User"
             work-orders: "#/components/schemas/WorkOrder"
+            scheme-shares: "#/components/schemas/SchemeShare"
         oneOf:
           - $ref: "#/components/schemas/Form"
           - $ref: "#/components/schemas/FormSchema"
@@ -2534,6 +2535,7 @@ components:
           - $ref: "#/components/schemas/Scheme"
           - $ref: "#/components/schemas/User"
           - $ref: "#/components/schemas/WorkOrder"
+          - $ref: "#/components/schemas/SchemeShare"
     FormSubmissionVersionAttributes:
       type: object
       description: Attributes for a form submission version
@@ -2711,6 +2713,15 @@ components:
           properties:
             data:
               $ref: "#/components/schemas/FormRelationship"
+        scheme_shares:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/SchemeShareRelationship"
     ImageRelationship:
       type: object
       description: Represents a relationship to an image
@@ -2725,6 +2736,20 @@ components:
         type:
           type: string
           const: images
+    SchemeShareRelationship:
+      type: object
+      description: Represents a relationship to a scheme share
+      required:
+        - id
+        - type
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: The unique identifier of the scheme share
+        type:
+          type: string
+          const: scheme-shares
     FormSubmission:
       type: object
       description: A form submission
@@ -2862,6 +2887,29 @@ components:
           $ref: "#/components/schemas/WorkOrderMeta"
         relationships:
           $ref: "#/components/schemas/WorkOrderRelationships"
+    SchemeShare:
+      type: object
+      description: A scheme share
+      required:
+        - id
+        - type
+        - attributes
+        - relationships
+        - meta
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: The unique identifier of the scheme share.
+        type:
+          type: string
+          const: scheme-shares
+        attributes:
+          $ref: "#/components/schemas/SchemeShareAttributes"
+        relationships:
+          $ref: "#/components/schemas/SchemeShareRelationships"
+        meta:
+          $ref: "#/components/schemas/SchemeShareMeta"
     FormSubmissionMeta:
       type: object
       description: Metadata for a form submission
@@ -2869,6 +2917,7 @@ components:
         - created_at
         - modified_at
         - counts
+        - workflow
       properties:
         created_at:
           type: string
@@ -2893,6 +2942,31 @@ components:
               format: int64
               minimum: 0
               default: 1
+        workflow:
+          type: object
+          properties:
+            current_step:
+              type: object
+              required:
+                - id
+                - name
+                - type
+              properties:
+                id:
+                  type: string
+                  description: The step ID
+                name:
+                  type: string
+                  description: The step name
+                type:
+                  type: string
+                  description: The step type
+                  enum:
+                    - initial
+                    - intermediate
+                    - completed
+                    - rejected
+                    - cancelled
     FormSubmissionRelationships:
       type: object
       description: Relationships for a form submission
@@ -2911,6 +2985,42 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/FormSubmissionVersionRelationship"
+        scheme_shares:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/SchemeShareRelationship"
+        workflow:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/WorkflowDefinitionRelationship"
+        workflow_version:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/WorkflowDefinitionVersionRelationship"
+        workflow_instance:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/WorkflowInstanceRelationship"
     FormSubmissionVersionRelationship:
       type: object
       description: Represents a relationship to a form submission version
@@ -2925,6 +3035,34 @@ components:
         type:
           type: string
           const: form-submission-versions
+    WorkflowDefinitionVersionRelationship:
+      type: object
+      description: Represents a relationship to a workflow definition instance
+      required:
+        - id
+        - type
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: The unique identifier of the workflow definition instance
+        type:
+          type: string
+          const: workflow-instances
+    WorkflowInstanceRelationship:
+      type: object
+      description: Represents a relationship to a workflow definition
+      required:
+        - id
+        - type
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: The unique identifier of the workflow definition
+        type:
+          type: string
+          const: workflow-definitions
     ImageAttributes:
       type: object
       description: Attributes for an image
@@ -3259,8 +3397,7 @@ components:
       type: object
       description: Attributes for a property
       required:
-        - location
-        - uprn
+        - address
       properties:
         address:
           type: object
@@ -3287,20 +3424,36 @@ components:
               type: string
             country:
               type: string
+        uprn:
+          type: number
+        psr:
+          description: Deprecated. Use the psrs relationship instead.
+          type: object
+          properties:
+            indicator:
+              type: boolean
+            priority:
+              type:
+                - integer
+                - "null"
+            notes:
+              type:
+                - string
+                - "null"
+            contact:
+              type:
+                - string
+                - "null"
         meters:
+          description: Deprecated. Use the meters relationship instead.
           type: array
           items:
             type: object
             properties:
               type:
                 type: string
-                enum:
-                  - mpan
-                  - mprn
               number:
-                type: number
-        uprn:
-          type: number
+                type: integer
         location:
           type: object
           properties:
@@ -3308,34 +3461,24 @@ components:
               type:
                 - object
                 - "null"
+              properties:
+                easting:
+                  type: number
+                  format: double
+                northing:
+                  type: number
+                  format: double
             lat_long:
               type:
                 - object
                 - "null"
-            psr:
-              type: object
               properties:
                 latitude:
                   type: number
+                  format: double
                 longitude:
                   type: number
-        psr:
-          type: object
-          properties:
-            indicator:
-              type: boolean
-            priority:
-              type:
-                - object
-                - "null"
-            notes:
-              type:
-                - object
-                - "null"
-            contact:
-              type:
-                - object
-                - "null"
+                  format: double
     PropertyMeta:
       type: object
       description: Metadata for a property
@@ -3362,6 +3505,52 @@ components:
           properties:
             data:
               $ref: "#/components/schemas/StreetRelationship"
+        meters:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/MeterRelationship"
+        psrs:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/PSRRelationship"
+    MeterRelationship:
+      type: object
+      description: Represents a relationship to a meter
+      required:
+        - id
+        - type
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: The unique identifier of the meter
+        type:
+          type: string
+          const: meters
+    PSRRelationship:
+      type: object
+      description: Represents a relationship to a PSR record
+      required:
+        - id
+        - type
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: The unique identifier of the PSR record
+        type:
+          type: string
+          const: psrs
     SchemeAttributes:
       type: object
       description: Attributes for a scheme
@@ -4122,6 +4311,92 @@ components:
         type:
           type: string
           const: work-order-templates
+    SchemeShareAttributes:
+      type: object
+      description: Attributes for a scheme share
+      required:
+        - permissions
+        - read_only
+      properties:
+        permissions:
+          type: array
+          items:
+            type: string
+        read_only:
+          type: boolean
+          description: Indicates whether the scheme share is read-only
+    SchemeShareRelationships:
+      type: object
+      required:
+        - organisation_bridge
+        - owner
+        - shared_by
+        - shared_with
+        - scheme
+      description: Relationships for a scheme share
+      properties:
+        organisation_bridge:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/OrganisationBridgeRelationship"
+        owner:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/OrganisationRelationship"
+        shared_by:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/OrganisationRelationship"
+        shared_with:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/OrganisationRelationship"
+        scheme:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/SchemeRelationship"
+    SchemeShareMeta:
+      type: object
+      description: Metadata for a scheme
+      required:
+        - start
+        - end
+      properties:
+        start:
+          type: string
+          format: date-time
+        end:
+          type: string
+          format: date-time
+    OrganisationBridgeRelationship:
+      type: object
+      description: Represents a relationship to an organisation bridge
+      required:
+        - id
+        - type
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: The unique identifier of the organisation bridge
+        type:
+          type: string
+          const: organisation-bridges
     FormSubmissionIncludes:
       type: array
       description: Related resources that can be included when a form submission is returned
@@ -4133,11 +4408,13 @@ components:
             forms: "#/components/schemas/Form"
             organisations: "#/components/schemas/Organisation"
             form-submission-versions: "#/components/schemas/FormSubmissionVersion"
+            scheme-shares: "#/components/schemas/SchemeShare"
         oneOf:
           - $ref: "#/components/schemas/User"
           - $ref: "#/components/schemas/Form"
           - $ref: "#/components/schemas/Organisation"
           - $ref: "#/components/schemas/FormSubmissionVersion"
+          - $ref: "#/components/schemas/SchemeShare"
     FormIncludes:
       type: array
       description: Related resources that can be included when a form is returned
@@ -4154,9 +4431,6 @@ components:
           - $ref: "#/components/schemas/FormSchema"
           - $ref: "#/components/schemas/Organisation"
           - $ref: "#/components/schemas/User"
-    PropertyIncludes:
-      type: array
-      description: Related resources that can be included when a property is returned
     Street:
       type: object
       description: A street
@@ -4483,20 +4757,6 @@ components:
         type:
           type: string
           const: role_groups
-    SchemeShareRelationship:
-      type: object
-      description: Represents a relationship to a scheme share
-      required:
-        - id
-        - type
-      properties:
-        id:
-          type: string
-          format: uuid
-          description: The unique identifier of the scheme share
-        type:
-          type: string
-          const: scheme-shares
     RoleGroup:
       type: object
       description: A role group
@@ -4537,29 +4797,6 @@ components:
           $ref: "#/components/schemas/ServiceAccountMeta"
         relationships:
           $ref: "#/components/schemas/ServiceAccountRelationships"
-    SchemeShare:
-      type: object
-      description: A scheme share
-      required:
-        - id
-        - type
-        - attributes
-        - relationships
-        - meta
-      properties:
-        id:
-          type: string
-          format: uuid
-          description: The unique identifier of the scheme share.
-        type:
-          type: string
-          const: scheme-shares
-        attributes:
-          $ref: "#/components/schemas/SchemeShareAttributes"
-        relationships:
-          $ref: "#/components/schemas/SchemeShareRelationships"
-        meta:
-          $ref: "#/components/schemas/SchemeShareMeta"
     Team:
       type: object
       description: A team
@@ -4706,92 +4943,6 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/OrganisationRelationship"
-    SchemeShareAttributes:
-      type: object
-      description: Attributes for a scheme share
-      required:
-        - permissions
-        - read_only
-      properties:
-        permissions:
-          type: array
-          items:
-            type: string
-        read_only:
-          type: boolean
-          description: Indicates whether the scheme share is read-only
-    SchemeShareRelationships:
-      type: object
-      required:
-        - organisation_bridge
-        - owner
-        - shared_by
-        - shared_with
-        - scheme
-      description: Relationships for a scheme share
-      properties:
-        organisation_bridge:
-          type: object
-          required:
-            - data
-          properties:
-            data:
-              $ref: "#/components/schemas/OrganisationBridgeRelationship"
-        owner:
-          type: object
-          required:
-            - data
-          properties:
-            data:
-              $ref: "#/components/schemas/OrganisationRelationship"
-        shared_by:
-          type: object
-          required:
-            - data
-          properties:
-            data:
-              $ref: "#/components/schemas/OrganisationRelationship"
-        shared_with:
-          type: object
-          required:
-            - data
-          properties:
-            data:
-              $ref: "#/components/schemas/OrganisationRelationship"
-        scheme:
-          type: object
-          required:
-            - data
-          properties:
-            data:
-              $ref: "#/components/schemas/SchemeRelationship"
-    SchemeShareMeta:
-      type: object
-      description: Metadata for a scheme
-      required:
-        - start
-        - end
-      properties:
-        start:
-          type: string
-          format: date-time
-        end:
-          type: string
-          format: date-time
-    OrganisationBridgeRelationship:
-      type: object
-      description: Represents a relationship to an organisation bridge
-      required:
-        - id
-        - type
-      properties:
-        id:
-          type: string
-          format: uuid
-          description: The unique identifier of the organisation bridge
-        type:
-          type: string
-          const: organisation-bridges
     TeamAttributes:
       type: object
       description: Attributes for a team
@@ -5060,6 +5211,237 @@ components:
             organisations: "#/components/schemas/Organisation"
         oneOf:
           - $ref: "#/components/schemas/Organisation"
+    Meter:
+      type: object
+      description: A meter
+      required:
+        - id
+        - type
+        - attributes
+        - meta
+        - relationships
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: The unique identifier of the meter.
+        type:
+          type: string
+          const: meters
+        attributes:
+          $ref: "#/components/schemas/MeterAttributes"
+        meta:
+          $ref: "#/components/schemas/MeterMeta"
+        relationships:
+          $ref: "#/components/schemas/MeterRelationships"
+    MeterIncludes:
+      type: array
+      description: Related resources that can be included when a meter is returned
+      items:
+        discriminator:
+          propertyName: type
+          mapping:
+            organisations: "#/components/schemas/Organisation"
+            properties: "#/components/schemas/Property"
+            psrs: "#/components/schemas/PSR"
+        oneOf:
+          - $ref: "#/components/schemas/Organisation"
+          - $ref: "#/components/schemas/Property"
+          - $ref: "#/components/schemas/PSR"
+    MeterAttributes:
+      type: object
+      description: Attributes for a meter
+      required:
+        - supply_identifier
+        - supply_type
+        - serial_number
+      properties:
+        supply_identifier:
+          type: string
+          description: The supply identifier for the meter.
+        supply_type:
+          type: string
+          description: The type of supply.
+          enum:
+            - MPAN
+            - MPRN
+        serial_number:
+          type: string
+          description: The Meter Serial Number.
+        extra_info:
+          type: array
+          description: Additional information about the meter.
+          items:
+            type: object
+            required:
+              - display_name
+              - field
+              - value
+            properties:
+              display_name:
+                type: string
+                description: The display name of the extra info field.
+              field:
+                type: string
+                description: The field identifier.
+              value:
+                type: string
+                description: The value of the field.
+    MeterMeta:
+      type: object
+      description: Metadata for a meter
+      required:
+        - created_at
+        - updated_at
+        - uprn
+      properties:
+        created_at:
+          type: string
+          format: date-time
+          description: The date and time when the meter was created.
+        updated_at:
+          type: string
+          format: date-time
+          description: The date and time when the meter was last updated.
+        uprn:
+          type: integer
+          format: int64
+          description: The Unique Property Reference Number.
+    MeterRelationships:
+      type: object
+      description: Relationships for a meter
+      required:
+        - organisation
+        - property
+      properties:
+        organisation:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/OrganisationRelationship"
+        property:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/PropertyRelationship"
+        psrs:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/PSRRelationship"
+    PSR:
+      type: object
+      description: A Priority Services Register record
+      required:
+        - id
+        - type
+        - attributes
+        - meta
+        - relationships
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: The unique identifier of the PSR record.
+        type:
+          type: string
+          const: psrs
+        attributes:
+          $ref: "#/components/schemas/PSRAttributes"
+        meta:
+          $ref: "#/components/schemas/PSRMeta"
+        relationships:
+          $ref: "#/components/schemas/PSRRelationships"
+    PSRAttributes:
+      type: object
+      description: Attributes for a PSR record
+      required:
+        - priority
+      properties:
+        priority:
+          type: integer
+          format: int64
+          description: The priority level of the PSR record.
+        extra_info:
+          type: array
+          description: Additional information about the PSR record.
+          items:
+            type: object
+            required:
+              - display_name
+              - field
+              - value
+            properties:
+              display_name:
+                type: string
+                description: The display name of the extra info field.
+              field:
+                type: string
+                description: The field identifier.
+              value:
+                type: string
+                description: The value of the field.
+    PSRMeta:
+      type: object
+      description: Metadata for a PSR record
+      required:
+        - created_at
+        - updated_at
+        - uprn
+        - meter_supply_identifier
+      properties:
+        created_at:
+          type: string
+          format: date-time
+          description: The date and time when the PSR record was created.
+        updated_at:
+          type: string
+          format: date-time
+          description: The date and time when the PSR record was last updated.
+        uprn:
+          type: integer
+          format: int64
+          description: The Unique Property Reference Number.
+        meter_supply_identifier:
+          type: string
+          description: The supply identifier of the associated meter.
+    PSRRelationships:
+      type: object
+      description: Relationships for a PSR record
+      required:
+        - organisation
+        - property
+        - meter
+      properties:
+        organisation:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/OrganisationRelationship"
+        property:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/PropertyRelationship"
+        meter:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/MeterRelationship"
     OperationIncludes:
       type: array
       description: Related resources that can be included when an operation is returned
@@ -7247,6 +7629,97 @@ components:
         type:
           type: string
           const: permissions
+    PropertyIncludes:
+      type: array
+      description: Related resources that can be included when a property is returned
+      items:
+        discriminator:
+          propertyName: type
+          mapping:
+            meters: "#/components/schemas/Meter"
+            psrs: "#/components/schemas/PSR"
+        oneOf:
+          - $ref: "#/components/schemas/Meter"
+          - $ref: "#/components/schemas/PSR"
+    PropertySearchResult:
+      type: object
+      description: A property search result
+      required:
+        - id
+        - type
+        - attributes
+        - meta
+      properties:
+        id:
+          type: string
+          description: The unique identifier of the result.
+        type:
+          type: string
+          const: property-search-results
+        attributes:
+          $ref: "#/components/schemas/PropertySearchResultAttributes"
+        meta:
+          $ref: "#/components/schemas/PropertySearchResultMeta"
+    PropertySearchResultAttributes:
+      type: object
+      description: Attributes for a property
+      required:
+        - address
+      properties:
+        uprn:
+          type: number
+        address:
+          type: object
+          properties:
+            description:
+              type: string
+            department:
+              type: string
+            organisation:
+              type: string
+            number:
+              type: string
+            name:
+              type: string
+            thoroughfare:
+              type: string
+            dependent_thoroughfare:
+              type: string
+            post_town:
+              type: string
+            postcode:
+              type: string
+            po_box:
+              type: string
+            country:
+              type: string
+    PropertySearchResultMeta:
+      type: object
+      description: Metadata for a property
+      required:
+        - created_at
+        - updated_at
+      properties:
+        relevenance:
+          type: number
+          description: The relevance score of the property
+        score:
+          type: number
+          description: The score of the property
+    PSRIncludes:
+      type: array
+      description: Related resources that can be included when a PSR record is returned
+      items:
+        discriminator:
+          propertyName: type
+          mapping:
+            organisations: "#/components/schemas/Organisation"
+            properties: "#/components/schemas/Property"
+            meters: "#/components/schemas/Meter"
+        oneOf:
+          - $ref: "#/components/schemas/Organisation"
+          - $ref: "#/components/schemas/Property"
+          - $ref: "#/components/schemas/Meter"
     QualificationAwardAssessment:
       type: object
       description: A qualification award assessment
@@ -8048,6 +8521,7 @@ components:
         - id
         - type
         - attributes
+        - relationships
         - meta
       properties:
         id:
@@ -8059,8 +8533,20 @@ components:
           const: sso-providers
         attributes:
           $ref: "#/components/schemas/SSOProviderAttributes"
+        relationships:
+          $ref: "#/components/schemas/SSOProviderRelationships"
         meta:
           $ref: "#/components/schemas/SSOProviderMeta"
+    SSOProviderIncludes:
+      type: array
+      description: Related resources that can be included when an SSOProvider is returned
+      items:
+        discriminator:
+          propertyName: type
+          mapping:
+            organisations: "#/components/schemas/Organisation"
+        oneOf:
+          - $ref: "#/components/schemas/Organisation"
     SSOProviderAttributes:
       type: object
       description: Attributes of an SSO provider
@@ -8085,11 +8571,25 @@ components:
         enforce:
           type: boolean
           description: When true, all members of the organisation this provider is for must sign in via SSO
+    SSOProviderRelationships:
+      type: object
+      description: Relationships for an SSO Provider
+      required:
+        - organisation
+      properties:
+        organisation:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/OrganisationRelationship"
     SSOProviderMeta:
       type: object
       description: Metadata for an SSO provider
       required:
         - created_at
+        - oidc_identifier
       properties:
         created_at:
           type: string
@@ -8099,6 +8599,9 @@ components:
           type: string
           format: date-time
           description: The date and time the SSO provider was last updated
+        oidc_identifier:
+          type: string
+          description: The identifier of the OIDC provider to use
     StreetManagerPermitVersion:
       type: object
       description: A street manager permit version
@@ -8706,6 +9209,126 @@ components:
           properties:
             data:
               $ref: "#/components/schemas/OrganisationRelationship"
+    WorkflowTransitionRecord:
+      type: object
+      description: A workflow transition record resource.
+      required:
+        - id
+        - type
+        - attributes
+        - meta
+        - relationships
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: The unique identifier of the workflow transition record.
+        type:
+          type: string
+          const: workflow-transition-records
+        attributes:
+          $ref: "#/components/schemas/WorkflowTransitionRecordAttributes"
+        meta:
+          $ref: "#/components/schemas/WorkflowTransitionRecordMeta"
+        relationships:
+          $ref: "#/components/schemas/WorkflowTransitionRecordRelationships"
+    WorkflowTransitionRecordIncludes:
+      type: array
+      description: Related resources that can be included when a workflow transition record is returned
+      items:
+        discriminator:
+          propertyName: type
+          mapping:
+            organisations: "#/components/schemas/Organisation"
+        oneOf:
+          - $ref: "#/components/schemas/Organisation"
+    WorkflowTransitionRecordAttributes:
+      type: object
+      description: Attributes for a workflow transition record
+      required:
+        - note
+        - from
+        - to
+      properties:
+        note:
+          type: string
+        from:
+          type: string
+        to:
+          type: string
+    WorkflowTransitionRecordMeta:
+      type: object
+      description: Metadata for a workflow transition record
+      required:
+        - created_at
+      properties:
+        duration:
+          type: int
+          description: The (rounded up) number of minutes since the last transition (or since the start of the workflow)
+        created_at:
+          type: string
+          format: date-time
+          description: The date and time when the workflow transition record was created
+        from:
+          type: object
+          properties:
+            name:
+              type: string
+              description: The name of the previous step
+        to:
+          type: object
+          properties:
+            name:
+              type: string
+              description: The name of the new step
+    WorkflowTransitionRecordRelationships:
+      type: object
+      description: Relationships for a workflow transition record
+      required:
+        - organisation
+      properties:
+        organisation:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/OrganisationRelationship"
+        definition:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/WorkflowDefinitionRelationship"
+        definition_version:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/WorkflowDefinitionVersionRelationship"
+        instance:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/WorkflowInstanceRelationship"
+        submission:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/FormSubmissionRelationship"
+        user:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/UserRelationship"
   responses:
     json:
       description: The json spec
@@ -9562,54 +10185,6 @@ components:
                   included:
                     $ref: "#/components/schemas/FormIncludes"
               - $ref: "#/components/schemas/JSONAPI"
-    ListProperties:
-      description: Get a list of properties.
-      headers:
-        Content-Type:
-          $ref: "#/components/headers/content-type"
-        Content-Length:
-          $ref: "#/components/headers/content-length"
-        X-Request-ID:
-          $ref: "#/components/headers/x-request-id"
-      content:
-        application/vnd.api+json:
-          schema:
-            allOf:
-              - type: object
-                required:
-                  - data
-                properties:
-                  data:
-                    title: A list of properties
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/Property"
-                  included:
-                    $ref: "#/components/schemas/PropertyIncludes"
-              - $ref: "#/components/schemas/DocumentMeta"
-              - $ref: "#/components/schemas/JSONAPI"
-    GetProperty:
-      description: Get a property.
-      headers:
-        Content-Type:
-          $ref: "#/components/headers/content-type"
-        Content-Length:
-          $ref: "#/components/headers/content-length"
-        X-Request-ID:
-          $ref: "#/components/headers/x-request-id"
-      content:
-        application/vnd.api+json:
-          schema:
-            allOf:
-              - type: object
-                required:
-                  - data
-                properties:
-                  data:
-                    $ref: "#/components/schemas/Property"
-                  included:
-                    $ref: "#/components/schemas/PropertyIncludes"
-              - $ref: "#/components/schemas/JSONAPI"
     ListStreets:
       description: Get a list of streets.
       headers:
@@ -9925,6 +10500,53 @@ components:
                     $ref: "#/components/schemas/JobRole"
                   included:
                     $ref: "#/components/schemas/JobRoleIncludes"
+              - $ref: "#/components/schemas/JSONAPI"
+    ListMeters:
+      description: Get a list of meters.
+      headers:
+        Content-Type:
+          $ref: "#/components/headers/content-type"
+        Content-Length:
+          $ref: "#/components/headers/content-length"
+        X-Request-ID:
+          $ref: "#/components/headers/x-request-id"
+      content:
+        application/vnd.api+json:
+          schema:
+            allOf:
+              - type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Meter"
+                  included:
+                    $ref: "#/components/schemas/MeterIncludes"
+              - $ref: "#/components/schemas/DocumentMeta"
+              - $ref: "#/components/schemas/JSONAPI"
+    GetMeter:
+      description: Get a meter.
+      headers:
+        Content-Type:
+          $ref: "#/components/headers/content-type"
+        Content-Length:
+          $ref: "#/components/headers/content-length"
+        X-Request-ID:
+          $ref: "#/components/headers/x-request-id"
+      content:
+        application/vnd.api+json:
+          schema:
+            allOf:
+              - type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Meter"
+                  included:
+                    $ref: "#/components/schemas/MeterIncludes"
               - $ref: "#/components/schemas/JSONAPI"
     ListOperations:
       description: List of operations.
@@ -11541,6 +12163,125 @@ components:
                   data:
                     $ref: "#/components/schemas/Permission"
               - $ref: "#/components/schemas/JSONAPI"
+    ListProperties:
+      description: Get a list of properties.
+      headers:
+        Content-Type:
+          $ref: "#/components/headers/content-type"
+        Content-Length:
+          $ref: "#/components/headers/content-length"
+        X-Request-ID:
+          $ref: "#/components/headers/x-request-id"
+      content:
+        application/vnd.api+json:
+          schema:
+            allOf:
+              - type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    title: A list of properties
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Property"
+                  included:
+                    $ref: "#/components/schemas/PropertyIncludes"
+              - $ref: "#/components/schemas/DocumentMeta"
+              - $ref: "#/components/schemas/JSONAPI"
+    GetProperty:
+      description: Get a property.
+      headers:
+        Content-Type:
+          $ref: "#/components/headers/content-type"
+        Content-Length:
+          $ref: "#/components/headers/content-length"
+        X-Request-ID:
+          $ref: "#/components/headers/x-request-id"
+      content:
+        application/vnd.api+json:
+          schema:
+            allOf:
+              - type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Property"
+                  included:
+                    $ref: "#/components/schemas/PropertyIncludes"
+              - $ref: "#/components/schemas/JSONAPI"
+    ListPropertySearchResults:
+      description: Get a list of results.
+      headers:
+        Content-Type:
+          $ref: "#/components/headers/content-type"
+        Content-Length:
+          $ref: "#/components/headers/content-length"
+        X-Request-ID:
+          $ref: "#/components/headers/x-request-id"
+      content:
+        application/vnd.api+json:
+          schema:
+            allOf:
+              - type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    title: A list of results
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PropertySearchResult"
+              - $ref: "#/components/schemas/DocumentMeta"
+              - $ref: "#/components/schemas/JSONAPI"
+    ListPSR:
+      description: Get a list of PSR records.
+      headers:
+        Content-Type:
+          $ref: "#/components/headers/content-type"
+        Content-Length:
+          $ref: "#/components/headers/content-length"
+        X-Request-ID:
+          $ref: "#/components/headers/x-request-id"
+      content:
+        application/vnd.api+json:
+          schema:
+            allOf:
+              - type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PSR"
+                  included:
+                    $ref: "#/components/schemas/PSRIncludes"
+              - $ref: "#/components/schemas/DocumentMeta"
+              - $ref: "#/components/schemas/JSONAPI"
+    GetPSR:
+      description: Get a PSR record.
+      headers:
+        Content-Type:
+          $ref: "#/components/headers/content-type"
+        Content-Length:
+          $ref: "#/components/headers/content-length"
+        X-Request-ID:
+          $ref: "#/components/headers/x-request-id"
+      content:
+        application/vnd.api+json:
+          schema:
+            allOf:
+              - type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: "#/components/schemas/PSR"
+                  included:
+                    $ref: "#/components/schemas/PSRIncludes"
+              - $ref: "#/components/schemas/JSONAPI"
     ListQualificationAwardAssessments:
       description: Get a list of Qualification Awards Assessments.
       headers:
@@ -11861,6 +12602,8 @@ components:
                     type: array
                     items:
                       $ref: "#/components/schemas/SSOProvider"
+                  included:
+                    $ref: "#/components/schemas/SSOProviderIncludes"
               - $ref: "#/components/schemas/DocumentMeta"
               - $ref: "#/components/schemas/JSONAPI"
     GetSSOProvider:
@@ -12138,6 +12881,52 @@ components:
                 properties:
                   data:
                     $ref: "#/components/schemas/WorkflowDefinition"
+              - $ref: "#/components/schemas/JSONAPI"
+    ListWorkflowTransitionRecords:
+      description: Get a list of workflow transition records
+      headers:
+        Content-Type:
+          $ref: "#/components/headers/content-type"
+        Content-Length:
+          $ref: "#/components/headers/content-length"
+        X-Request-ID:
+          $ref: "#/components/headers/x-request-id"
+      content:
+        application/vnd.api+json:
+          schema:
+            allOf:
+              - type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    title: A list of workflow transition records
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/WorkflowTransitionRecord"
+                  included:
+                    $ref: "#/components/schemas/WorkflowTransitionRecordIncludes"
+              - $ref: "#/components/schemas/JSONAPI"
+              - $ref: "#/components/schemas/DocumentMeta"
+    GetWorkflowTransitionRecord:
+      description: Get a workflow transition record.
+      headers:
+        Content-Type:
+          $ref: "#/components/headers/content-type"
+        Content-Length:
+          $ref: "#/components/headers/content-length"
+        X-Request-ID:
+          $ref: "#/components/headers/x-request-id"
+      content:
+        application/vnd.api+json:
+          schema:
+            allOf:
+              - type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: "#/components/schemas/WorkflowTransitionRecord"
               - $ref: "#/components/schemas/JSONAPI"
   parameters:
     limit:
@@ -12549,7 +13338,7 @@ components:
           enum:
             - forms
             - organisation
-    flat_form_category_filter:
+    form_category_filter:
       name: filter
       in: query
       description: |
@@ -12590,7 +13379,7 @@ components:
             - form
             - organisation
             - x-sources
-    flat_form_schema_filter:
+    form_schema_filter:
       name: filter
       in: query
       description: |
@@ -12637,6 +13426,7 @@ components:
             - payload_operations
             - payload_properties
             - payload_users
+            - scheme_shares
     submission_version_filter:
       name: filter
       in: query
@@ -12668,7 +13458,7 @@ components:
         type: string
         format: uuid
       example: c057d12d-b44b-44c6-a353-45c13f338655
-    submissions_include:
+    form_submissions_include:
       name: include
       in: query
       description: A comma separated list of related resources to include.
@@ -12685,6 +13475,10 @@ components:
             - form
             - organisation
             - versions
+            - scheme_shares
+            - workflow
+            - workflow_instance
+            - workflow_version
     submission_filter:
       name: filter
       in: query
@@ -12744,7 +13538,7 @@ components:
             - latest_schema
             - schemas
             - workflow
-    flat_form_filter:
+    form_filter:
       name: filter
       in: query
       description: |
@@ -12771,47 +13565,6 @@ components:
         type: string
         format: uuid
       example: 9dde7329-59ee-45f3-affa-6f18a857b27a
-    properties_include:
-      name: include
-      in: query
-      description: A comma separated list of related resources to include.
-      required: false
-      style: form
-      explode: false
-      schema:
-        type: array
-        items:
-          type: string
-          enum:
-            - pressure_tests
-    property_filter:
-      name: filter
-      in: query
-      description: |
-        Filters the response data based on the value provided.
-
-        Available filters:
-
-        - `mprn_in`: Filter by MPRN(s) (Meter Point Reference Number)
-        - `uprn_in`: Filter by UPRN(s) (Unique Property Reference Number)
-        - `on_psr`: Filter for properties on the Priority Services Register
-        - `postcode_in`: Filter by postcode(s)
-        - `number_in`: Filter by property number(s)
-        - `thoroughfare_in`: Filter by thoroughfare name(s)
-
-        For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
-      required: false
-      schema:
-        type: string
-        default: ""
-    property_id:
-      name: property_id
-      in: path
-      required: true
-      description: A unique identifier for a Property. Either a UUID or UPRN.
-      schema:
-        type: string
-      example: 10096555955
     street_filter:
       name: filter
       in: query
@@ -13034,6 +13787,55 @@ components:
         type: string
         format: uuid
       example: 541bc3a4-1ffd-4be9-a5a0-6a19fbdc3040
+    meters_include:
+      name: include
+      in: query
+      description: A comma separated list of related resources to include.
+      required: false
+      style: form
+      explode: false
+      schema:
+        type: array
+        items:
+          type: string
+          enum:
+            - organisation
+            - property
+            - psrs
+    meter_filter:
+      name: filter
+      in: query
+      description: |
+        Filters the response data based on the value provided.
+
+        Available filters:
+
+        - `id`: Filter by ID
+        - `organisation`: Filter by organisation
+        - `property`: Filter by property ID
+        - `uprn`: Filter by UPRN
+        - `psrs`: Filter by PSR ID
+        - `supply_identifier`: Filter by meter supply identifier
+        - `supply_type`: Filter by supply type
+        - `serial_number`: Filter by meter serial number
+        - `extra_info.display_name`: Filter by display name
+        - `extra_info.field`: Filter by extra info field
+        - `extra_info.value`: Filter by extra info value
+
+        For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
+      required: false
+      schema:
+        type: string
+        default: ""
+    meter_id:
+      name: meter_id
+      in: path
+      required: true
+      description: The unique identifier for the meter.
+      schema:
+        type: string
+        format: uuid
+      example: f56e034c-11e9-491a-b975-1d753b746a20
     operations_include:
       name: include
       in: query
@@ -13793,6 +14595,115 @@ components:
       schema:
         type: string
       example: schemes:update
+    properties_include:
+      name: include
+      in: query
+      description: A comma separated list of related resources to include.
+      required: false
+      style: form
+      explode: false
+      schema:
+        type: array
+        items:
+          type: string
+          enum:
+            - psrs
+            - meters
+    property_filter:
+      name: filter
+      in: query
+      description: |
+        Filters the response data based on the value provided.
+
+        Available filters:
+
+        - `id`: Filter by ID
+        - `uprn`: Filter by UPRN
+        - `address.description`: Filter by address description
+        - `address.department`: Filter by address department
+        - `address.organisation`: Filter by address organisation
+        - `address.number`: Filter by address number
+        - `address.name`: Filter by address name
+        - `address.thoroughfare`: Filter by address thoroughfare
+        - `address.dependent_thoroughfare`: Filter by address dependent thoroughfare
+        - `address.post_town`: Filter by address post town
+        - `address.postcode`: Filter by address postcode
+        - `address.po_box`: Filter by address PO box
+        - `address.country`: Filter by address country
+
+        For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
+      required: false
+      schema:
+        type: string
+        default: ""
+    property_id:
+      name: property_id
+      in: path
+      required: true
+      description: The unique identifier for the property.
+      schema:
+        type: string
+        format: uuid
+      example: f56e034c-11e9-491a-b975-1d753b746a20
+    property_search_results_filter:
+      name: filter
+      in: query
+      description: |
+        Filters the response data based on the value provided.
+
+        For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
+      required: false
+      schema:
+        type: string
+        default: ""
+    psrs_include:
+      name: include
+      in: query
+      description: A comma separated list of related resources to include.
+      required: false
+      style: form
+      explode: false
+      schema:
+        type: array
+        items:
+          type: string
+          enum:
+            - organisation
+            - property
+            - meter
+    psr_filter:
+      name: filter
+      in: query
+      description: |
+        Filters the response data based on the value provided.
+
+        Available filters:
+
+        - `id`: Filter by ID
+        - `organisation`: Filter by organisation
+        - `property`: Filter by property ID
+        - `uprn`: Filter by UPRN
+        - `meter`: Filter by meter ID
+        - `meter_supply_identifier`: Filter by meter supply identifier
+        - `priority`: Filter by priority
+        - `extra_info.display_name`: Filter by display name
+        - `extra_info.field`: Filter by extra info field
+        - `extra_info.value`: Filter by extra info value
+
+        For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
+      required: false
+      schema:
+        type: string
+        default: ""
+    psr_id:
+      name: psr_id
+      in: path
+      required: true
+      description: The unique identifier for the PSR record.
+      schema:
+        type: string
+        format: uuid
+      example: f56e034c-11e9-491a-b975-1d753b746a20
     qualification_award_assessments_include:
       name: include
       in: query
@@ -13874,6 +14785,24 @@ components:
       schema:
         type: string
         default: ""
+    qualification_award_verifications_sort:
+      in: query
+      name: sort
+      description: A comma separated list of fields to sort by.
+      required: false
+      style: form
+      explode: false
+      schema:
+        type: array
+        items:
+          type: string
+          enum:
+            - status
+            - -status
+            - verification_date
+            - -verification_date
+            - created_at
+            - -created_at
     qualification_award_verification_id:
       name: qualification_award_verification_id
       in: path
@@ -13967,6 +14896,20 @@ components:
       schema:
         type: string
         default: ""
+    qualifications_sort:
+      in: query
+      name: sort
+      description: A comma separated list of fields to sort by.
+      required: false
+      style: form
+      explode: false
+      schema:
+        type: array
+        items:
+          type: string
+          enum:
+            - name
+            - -name
     role_id:
       name: role_id
       in: path
@@ -14235,6 +15178,49 @@ components:
         type: string
         format: uuid
       example: 02a41ff2-1436-42df-b168-900153e2d993
+    workflow_transition_records_include:
+      name: include
+      in: query
+      description: A comma separated list of related resources to include.
+      required: false
+      style: form
+      explode: false
+      schema:
+        type: array
+        items:
+          type: string
+          enum:
+            - organisation
+            - user
+            - definition
+            - definition_version
+            - instance
+            - submission
+    workflow_transition_records_filter:
+      name: filter
+      in: query
+      description: |
+        Filters the response data based on the value provided.
+
+        Available filters:
+
+        - `id`: Filter by ID
+        - `organisation`: Filter by organisation
+
+        For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
+      required: false
+      schema:
+        type: string
+        default: ""
+    workflow_transition_record_id:
+      name: workflow_transition_record_id
+      in: path
+      required: true
+      description: The unique identifier for the workflow transition record.
+      schema:
+        type: string
+        format: uuid
+      example: 5e3b1861-9476-45b5-8b9d-68372fc2b426
   requestBodies:
     UpdateDocumentReviewDecision:
       required: true
@@ -15087,6 +16073,21 @@ components:
                               id:
                                 type: string
                                 format: uuid
+                      submitting_organisation:
+                        type: object
+                        properties:
+                          data:
+                            type: object
+                            required:
+                              - type
+                              - id
+                            properties:
+                              type:
+                                type: string
+                                const: organisations
+                              id:
+                                type: string
+                                format: uuid
     CreateForm:
       required: true
       description: The form to create.
@@ -15157,7 +16158,9 @@ components:
                         type: object
                         properties:
                           data:
-                            $ref: "#/components/schemas/WorkflowDefinitionRelationship"
+                            oneOf:
+                              - $ref: "#/components/schemas/WorkflowDefinitionRelationship"
+                              - type: "null"
     UpdateForm:
       required: true
       description: The form to update.
@@ -15206,6 +16209,18 @@ components:
                         description: The status of the form
                         examples:
                           - "active"
+                  relationships:
+                    type: object
+                    required:
+                      - workflow
+                    properties:
+                      workflow:
+                        type: object
+                        properties:
+                          data:
+                            oneOf:
+                              - $ref: "#/components/schemas/WorkflowDefinitionRelationship"
+                              - type: "null"
     CreateGrant:
       required: true
       description: The grant to create.
@@ -15677,6 +16692,157 @@ components:
                             description: Required qualifications for this job role. Each is a qualification_type from qualifications resource.
                             items:
                               type: string
+    CreateMeter:
+      required: true
+      description: The meter to create.
+      content:
+        application/vnd.api+json:
+          schema:
+            type: object
+            required:
+              - data
+            properties:
+              data:
+                type: object
+                required:
+                  - type
+                  - attributes
+                  - relationships
+                properties:
+                  type:
+                    type: string
+                    const: meters
+                  attributes:
+                    type: object
+                    required:
+                      - supply_identifier
+                      - supply_type
+                      - serial_number
+                    properties:
+                      supply_identifier:
+                        type: string
+                        description: The supply identifier for the meter.
+                      supply_type:
+                        type: string
+                        description: The type of supply.
+                        enum:
+                          - MPAN
+                          - MPRN
+                      serial_number:
+                        type: string
+                        description: The Meter Serial Number.
+                      extra_info:
+                        type: array
+                        description: Additional information about the meter.
+                        items:
+                          type: object
+                          required:
+                            - display_name
+                            - field
+                            - value
+                          properties:
+                            display_name:
+                              type: string
+                              description: The display name of the extra info field.
+                            field:
+                              type: string
+                              description: The field identifier.
+                            value:
+                              type: string
+                              description: The value of the field.
+                  relationships:
+                    type: object
+                    required:
+                      - organisation
+                      - property
+                    properties:
+                      organisation:
+                        type: object
+                        required:
+                          - data
+                        properties:
+                          data:
+                            type: object
+                            required:
+                              - type
+                              - id
+                            properties:
+                              type:
+                                type: string
+                                const: organisations
+                              id:
+                                type: string
+                                format: uuid
+                                description: The ID of the organisation.
+                      property:
+                        type: object
+                        required:
+                          - data
+                        properties:
+                          data:
+                            type: object
+                            required:
+                              - type
+                              - id
+                            properties:
+                              type:
+                                type: string
+                                const: properties
+                              id:
+                                type: string
+                                format: uuid
+                                description: The ID of the property.
+    UpdateMeter:
+      required: true
+      description: The meter to update.
+      content:
+        application/vnd.api+json:
+          schema:
+            type: object
+            required:
+              - data
+            properties:
+              data:
+                type: object
+                required:
+                  - id
+                  - type
+                  - attributes
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the meter.
+                  type:
+                    type: string
+                    const: meters
+                  attributes:
+                    type: object
+                    required:
+                      - serial_number
+                    properties:
+                      serial_number:
+                        type: string
+                        description: The Meter Serial Number.
+                      extra_info:
+                        type: array
+                        description: Additional information about the meter.
+                        items:
+                          type: object
+                          required:
+                            - display_name
+                            - field
+                            - value
+                          properties:
+                            display_name:
+                              type: string
+                              description: The display name of the extra info field.
+                            field:
+                              type: string
+                              description: The field identifier.
+                            value:
+                              type: string
+                              description: The value of the field.
     CreateOperationII:
       required: true
       description: The operation to create.
@@ -18443,6 +19609,129 @@ components:
                               required:
                                 - unit
                                 - thresholds
+    CreatePSR:
+      required: true
+      description: The PSR record to create.
+      content:
+        application/vnd.api+json:
+          schema:
+            type: object
+            required:
+              - data
+            properties:
+              data:
+                type: object
+                required:
+                  - type
+                  - attributes
+                  - relationships
+                properties:
+                  type:
+                    type: string
+                    const: psrs
+                  attributes:
+                    type: object
+                    required:
+                      - priority
+                    properties:
+                      priority:
+                        type: integer
+                        format: int64
+                        description: The priority level of the PSR record.
+                      extra_info:
+                        type: array
+                        description: Additional information about the PSR record.
+                        items:
+                          type: object
+                          required:
+                            - display_name
+                            - field
+                            - value
+                          properties:
+                            display_name:
+                              type: string
+                              description: The display name of the extra info field.
+                            field:
+                              type: string
+                              description: The field identifier.
+                            value:
+                              type: string
+                              description: The value of the field.
+                  relationships:
+                    type: object
+                    required:
+                      - meter
+                    properties:
+                      meter:
+                        type: object
+                        required:
+                          - data
+                        properties:
+                          data:
+                            type: object
+                            required:
+                              - type
+                              - id
+                            properties:
+                              type:
+                                type: string
+                                const: meters
+                              id:
+                                type: string
+                                format: uuid
+                                description: The ID of the meter.
+    UpdatePSR:
+      required: true
+      description: The PSR record to update.
+      content:
+        application/vnd.api+json:
+          schema:
+            type: object
+            required:
+              - data
+            properties:
+              data:
+                type: object
+                required:
+                  - id
+                  - type
+                  - attributes
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the PSR record.
+                  type:
+                    type: string
+                    const: psrs
+                  attributes:
+                    type: object
+                    required:
+                      - priority
+                    properties:
+                      priority:
+                        type: integer
+                        format: int64
+                        description: The priority level of the PSR record.
+                      extra_info:
+                        type: array
+                        description: Additional information about the PSR record.
+                        items:
+                          type: object
+                          required:
+                            - display_name
+                            - field
+                            - value
+                          properties:
+                            display_name:
+                              type: string
+                              description: The display name of the extra info field.
+                            field:
+                              type: string
+                              description: The field identifier.
+                            value:
+                              type: string
+                              description: The value of the field.
     CreateQualificationAwardAssessment:
       required: true
       description: The qualification award assessment to create.
@@ -19953,6 +21242,59 @@ components:
                       description:
                         type: string
                         description: The description of the workflow definition
+    CreateWorkflowTransitionRecord:
+      required: true
+      description: The workflow transition record to create.
+      content:
+        application/vnd.api+json:
+          schema:
+            type: object
+            required:
+              - data
+            properties:
+              data:
+                type: object
+                required:
+                  - type
+                  - attributes
+                  - relationships
+                properties:
+                  type:
+                    type: string
+                    const: workflow-transition-records
+                  attributes:
+                    type: object
+                    required:
+                      - to
+                    properties:
+                      note:
+                        type: string
+                        description: A note about the transition - if the step requires a note, requests will be rejected that do not have this
+                      to:
+                        type: string
+                  relationships:
+                    type: object
+                    required:
+                      - instance
+                    properties:
+                      instance:
+                        type: object
+                        required:
+                          - data
+                        properties:
+                          data:
+                            type: object
+                            required:
+                              - type
+                              - id
+                            properties:
+                              type:
+                                type: string
+                                const: workflow-instances
+                              id:
+                                type: string
+                                format: uuid
+                                description: The ID of the workflow instance.
   headers:
     content-length:
       description: The length of the response body in bytes
@@ -20955,10 +22297,10 @@ paths:
   /v3/form-categories:
     get:
       description: List all of the form categories in an organisation.
-      operationId: ListFormCategoriesFlat
+      operationId: ListFormCategories
       parameters:
         - $ref: "#/components/parameters/form_category_include"
-        - $ref: "#/components/parameters/flat_form_category_filter"
+        - $ref: "#/components/parameters/form_category_filter"
         - $ref: "#/components/parameters/limit"
         - $ref: "#/components/parameters/offset"
       responses:
@@ -20983,7 +22325,7 @@ paths:
           title: List form categories
     post:
       description: Create a new form category.
-      operationId: CreateFormCategoryFlat
+      operationId: CreateFormCategory
       requestBody:
         $ref: "#/components/requestBodies/CreateFormCategory"
       responses:
@@ -21012,7 +22354,7 @@ paths:
   /v3/form-categories/{form_category_id}:
     get:
       description: Get an individual form category by id.
-      operationId: GetFormCategoryFlat
+      operationId: GetFormCategory
       parameters:
         - $ref: "#/components/parameters/form_category_id"
         - $ref: "#/components/parameters/form_category_include"
@@ -21039,7 +22381,7 @@ paths:
   /v3/form-categories/{form_category_id}/relationships/forms:
     delete:
       description: Delete relationships from the form category to form(s)
-      operationId: DeleteFormCategoryRelationshipsToFormsFlat
+      operationId: DeleteFormCategoryRelationshipsToForms
       parameters:
         - $ref: "#/components/parameters/form_category_id"
       requestBody:
@@ -21076,7 +22418,7 @@ paths:
           title: Remove a form from a category
     patch:
       description: Replace existing relationships from the form category to the form
-      operationId: ReplaceFormCategoryRelationshipsToFormsFlat
+      operationId: ReplaceFormCategoryRelationshipsToForms
       parameters:
         - $ref: "#/components/parameters/form_category_id"
       requestBody:
@@ -21113,7 +22455,7 @@ paths:
           title: Update the category for a form
     post:
       description: Create new relationships from the form category to the form
-      operationId: CreateFormCategoryRelationshipsToFormsFlat
+      operationId: CreateFormCategoryRelationshipsToForms
       parameters:
         - $ref: "#/components/parameters/form_category_id"
       requestBody:
@@ -21151,10 +22493,10 @@ paths:
   /v3/form-schemas:
     get:
       description: List all of the form schemas for a specific form.
-      operationId: ListFormSchemasFlat
+      operationId: ListFormSchemas
       parameters:
         - $ref: "#/components/parameters/form_schemas_include"
-        - $ref: "#/components/parameters/flat_form_schema_filter"
+        - $ref: "#/components/parameters/form_schema_filter"
         - $ref: "#/components/parameters/limit"
         - $ref: "#/components/parameters/offset"
       responses:
@@ -21177,7 +22519,7 @@ paths:
           title: List form schemas
     post:
       description: Create a new form schema.
-      operationId: CreateFormSchemaFlat
+      operationId: CreateFormSchema
       requestBody:
         $ref: "#/components/requestBodies/CreateFormSchema"
       responses:
@@ -21204,7 +22546,7 @@ paths:
   /v3/form-schemas/{schema_id}:
     get:
       description: Get an individual form schema by version.
-      operationId: GetFormSchemaFlat
+      operationId: GetFormSchema
       parameters:
         - $ref: "#/components/parameters/schema_id"
         - $ref: "#/components/parameters/form_schemas_include"
@@ -21229,7 +22571,7 @@ paths:
   /v3/form-submission-versions:
     get:
       description: List all of the submission versions.
-      operationId: ListVersionsFlat
+      operationId: ListVersions
       parameters:
         - $ref: "#/components/parameters/form_submission_versions_include"
         - $ref: "#/components/parameters/submission_version_filter"
@@ -21258,7 +22600,7 @@ paths:
           title: Get all versions of form submissions
     post:
       description: Create a form submission
-      operationId: CreateSubmissionFlat
+      operationId: CreateSubmission
       requestBody:
         $ref: "#/components/requestBodies/CreateFormSubmissionVersion"
       responses:
@@ -21287,7 +22629,7 @@ paths:
   /v3/form-submission-versions/{version_id}:
     get:
       description: Get an individual form submission version.
-      operationId: GetVersionFlat
+      operationId: GetVersion
       parameters:
         - $ref: "#/components/parameters/submission_version_id"
         - $ref: "#/components/parameters/form_submission_versions_include"
@@ -21314,9 +22656,9 @@ paths:
   /v3/form-submissions:
     get:
       description: List all of the submissions in an organisation.
-      operationId: ListSubmissionsFlat
+      operationId: ListSubmissions
       parameters:
-        - $ref: "#/components/parameters/submissions_include"
+        - $ref: "#/components/parameters/form_submissions_include"
         - $ref: "#/components/parameters/submission_filter"
         - $ref: "#/components/parameters/limit"
         - $ref: "#/components/parameters/offset"
@@ -21344,10 +22686,10 @@ paths:
   /v3/form-submissions/{submission_id}:
     get:
       description: Get an individual submission by ID.
-      operationId: GetSubmissionFlat
+      operationId: GetSubmission
       parameters:
         - $ref: "#/components/parameters/submission_id"
-        - $ref: "#/components/parameters/submissions_include"
+        - $ref: "#/components/parameters/form_submissions_include"
       responses:
         "200":
           $ref: "#/components/responses/GetFormSubmission"
@@ -21371,10 +22713,10 @@ paths:
   /v3/forms:
     get:
       description: List all of the forms in an organisation.
-      operationId: ListFormsFlat
+      operationId: ListForms
       parameters:
         - $ref: "#/components/parameters/forms_include"
-        - $ref: "#/components/parameters/flat_form_filter"
+        - $ref: "#/components/parameters/form_filter"
         - $ref: "#/components/parameters/limit"
         - $ref: "#/components/parameters/offset"
       responses:
@@ -21399,7 +22741,7 @@ paths:
           title: List forms
     post:
       description: Create a new form with no schema.
-      operationId: CreateFormFlat
+      operationId: CreateForm
       requestBody:
         $ref: "#/components/requestBodies/CreateForm"
       responses:
@@ -21428,7 +22770,7 @@ paths:
   /v3/forms/{form_id}:
     get:
       description: Get an individual form by id.
-      operationId: GetFormFlat
+      operationId: GetForm
       parameters:
         - $ref: "#/components/parameters/form_id"
         - $ref: "#/components/parameters/forms_include"
@@ -21454,7 +22796,7 @@ paths:
           title: Get a form
     put:
       description: Update an existing form
-      operationId: UpdateFormFlat
+      operationId: UpdateForm
       parameters:
         - $ref: "#/components/parameters/form_id"
       requestBody:
@@ -21480,57 +22822,6 @@ paths:
       x-mint:
         metadata:
           title: Update a form
-  /v3/geo/properties:
-    get:
-      description: Retrieve a list of properties.
-      operationId: ListProperties
-      parameters:
-        - $ref: "#/components/parameters/properties_include"
-        - $ref: "#/components/parameters/property_filter"
-        - $ref: "#/components/parameters/limit"
-        - $ref: "#/components/parameters/offset"
-      responses:
-        "200":
-          $ref: "#/components/responses/ListProperties"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorised"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
-      security:
-        - Session: []
-        - OAuth2: []
-        - Cookie: []
-      tags:
-        - Properties
-      x-mint:
-        metadata:
-          title: List properties
-  /v3/geo/properties/{property_id}:
-    get:
-      description: Retrieve an individual property by its ID or UPRN.
-      operationId: GetProperty
-      parameters:
-        - $ref: "#/components/parameters/property_id"
-      responses:
-        "200":
-          $ref: "#/components/responses/GetProperty"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorised"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
-      security:
-        - Session: []
-        - OAuth2: []
-        - Cookie: []
-      tags:
-        - Properties
-      x-mint:
-        metadata:
-          title: Get a property
   /v3/geo/streets:
     get:
       description: Retrieve a list of streets.
@@ -22123,6 +23414,146 @@ paths:
       x-mint:
         metadata:
           title: Update a job role
+  /v3/meters:
+    get:
+      description: Retrieve a list of meters.
+      operationId: ListMeters
+      parameters:
+        - $ref: "#/components/parameters/meters_include"
+        - $ref: "#/components/parameters/meter_filter"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200":
+          $ref: "#/components/responses/ListMeters"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorised"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      security:
+        - Session: []
+        - OAuth2: []
+        - Cookie: []
+      tags:
+        - Properties
+      x-ctrl-hub:
+        domain: geo
+      x-mint:
+        metadata:
+          title: List meters
+    post:
+      description: Create a meter
+      operationId: CreateMeter
+      requestBody:
+        $ref: "#/components/requestBodies/CreateMeter"
+      responses:
+        "201":
+          $ref: "#/components/responses/GetMeter"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorised"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      security:
+        - Session: []
+        - OAuth2: []
+        - Cookie: []
+      summary: Create a meter
+      tags:
+        - Properties
+      x-ctrl-hub:
+        domain: geo
+      x-mint:
+        metadata:
+          title: Create a meter
+  /v3/meters/{meter_id}:
+    delete:
+      description: Delete a meter
+      operationId: DeleteMeter
+      parameters:
+        - $ref: "#/components/parameters/meter_id"
+      responses:
+        "204":
+          description: Meter deleted successfully.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorised"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      security:
+        - Session: []
+        - OAuth2: []
+        - Cookie: []
+      summary: Delete a meter
+      tags:
+        - Properties
+      x-ctrl-hub:
+        domain: geo
+      x-mint:
+        metadata:
+          title: Delete a meter
+    get:
+      description: Retrieve an individual meter by its ID.
+      operationId: GetMeter
+      parameters:
+        - $ref: "#/components/parameters/meters_include"
+        - $ref: "#/components/parameters/meter_id"
+      responses:
+        "200":
+          $ref: "#/components/responses/GetMeter"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorised"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      security:
+        - Session: []
+        - OAuth2: []
+        - Cookie: []
+      tags:
+        - Properties
+      x-ctrl-hub:
+        domain: geo
+      x-mint:
+        metadata:
+          title: Get a meter
+    put:
+      description: Update an existing meter
+      operationId: UpdateMeter
+      parameters:
+        - $ref: "#/components/parameters/meter_id"
+      requestBody:
+        $ref: "#/components/requestBodies/UpdateMeter"
+      responses:
+        "200":
+          $ref: "#/components/responses/GetMeter"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorised"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      security:
+        - Session: []
+        - OAuth2: []
+        - Cookie: []
+      summary: Update an existing meter
+      tags:
+        - Properties
+      x-ctrl-hub:
+        domain: geo
+      x-mint:
+        metadata:
+          title: Update a meter
   /v3/operations:
     get:
       description: List all of the operations in an organisation.
@@ -26425,6 +27856,230 @@ paths:
       x-mint:
         metadata:
           title: Get a permission
+  /v3/properties:
+    get:
+      description: Retrieve a list of properties.
+      operationId: ListProperties
+      parameters:
+        - $ref: "#/components/parameters/properties_include"
+        - $ref: "#/components/parameters/property_filter"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200":
+          $ref: "#/components/responses/ListProperties"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorised"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      security:
+        - Session: []
+        - OAuth2: []
+        - Cookie: []
+      tags:
+        - Properties
+      x-ctrl-hub:
+        domain: geo
+      x-mint:
+        metadata:
+          title: List properties
+  /v3/properties/{property_id}:
+    get:
+      description: Retrieve an individual property by its ID or UPRN.
+      operationId: GetProperty
+      parameters:
+        - $ref: "#/components/parameters/properties_include"
+        - $ref: "#/components/parameters/property_id"
+      responses:
+        "200":
+          $ref: "#/components/responses/GetProperty"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorised"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      security:
+        - Session: []
+        - OAuth2: []
+        - Cookie: []
+      tags:
+        - Properties
+      x-ctrl-hub:
+        domain: geo
+      x-mint:
+        metadata:
+          title: Get a property
+  /v3/property-search-results:
+    get:
+      description: Search for properties.
+      operationId: ListPropertySearchResults
+      parameters:
+        - $ref: "#/components/parameters/property_search_results_filter"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200":
+          $ref: "#/components/responses/ListPropertySearchResults"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorised"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      security:
+        - Session: []
+        - OAuth2: []
+        - Cookie: []
+      tags:
+        - Properties
+      x-ctrl-hub:
+        domain: geo
+      x-mint:
+        metadata:
+          title: Search for properties
+  /v3/psrs:
+    get:
+      description: Retrieve a list of PSR records.
+      operationId: ListPSR
+      parameters:
+        - $ref: "#/components/parameters/psrs_include"
+        - $ref: "#/components/parameters/psr_filter"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200":
+          $ref: "#/components/responses/ListPSR"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorised"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      security:
+        - Session: []
+        - OAuth2: []
+        - Cookie: []
+      tags:
+        - Properties
+      x-ctrl-hub:
+        domain: geo
+      x-mint:
+        metadata:
+          title: List PSR records
+    post:
+      description: Create a PSR record
+      operationId: CreatePSR
+      requestBody:
+        $ref: "#/components/requestBodies/CreatePSR"
+      responses:
+        "201":
+          $ref: "#/components/responses/GetPSR"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorised"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      security:
+        - Session: []
+        - OAuth2: []
+        - Cookie: []
+      summary: Create a PSR record
+      tags:
+        - Properties
+      x-ctrl-hub:
+        domain: geo
+      x-mint:
+        metadata:
+          title: Create a PSR record
+  /v3/psrs/{psr_id}:
+    delete:
+      description: Delete a PSR record
+      operationId: DeletePSR
+      parameters:
+        - $ref: "#/components/parameters/psr_id"
+      responses:
+        "204":
+          description: PSR record deleted successfully.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorised"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      security:
+        - Session: []
+        - OAuth2: []
+        - Cookie: []
+      summary: Delete a PSR record
+      tags:
+        - Properties
+      x-ctrl-hub:
+        domain: geo
+      x-mint:
+        metadata:
+          title: Delete a PSR record
+    get:
+      description: Retrieve an individual PSR record by its ID.
+      operationId: GetPSR
+      parameters:
+        - $ref: "#/components/parameters/psrs_include"
+        - $ref: "#/components/parameters/psr_id"
+      responses:
+        "200":
+          $ref: "#/components/responses/GetPSR"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorised"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      security:
+        - Session: []
+        - OAuth2: []
+        - Cookie: []
+      tags:
+        - Properties
+      x-ctrl-hub:
+        domain: geo
+      x-mint:
+        metadata:
+          title: Get a PSR record
+    put:
+      description: Update an existing PSR record
+      operationId: UpdatePSR
+      parameters:
+        - $ref: "#/components/parameters/psr_id"
+      requestBody:
+        $ref: "#/components/requestBodies/UpdatePSR"
+      responses:
+        "200":
+          $ref: "#/components/responses/GetPSR"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorised"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      security:
+        - Session: []
+        - OAuth2: []
+        - Cookie: []
+      summary: Update an existing PSR record
+      tags:
+        - Properties
+      x-ctrl-hub:
+        domain: geo
+      x-mint:
+        metadata:
+          title: Update a PSR record
   /v3/qualification-award-assessments:
     get:
       description: Retrieve a list of qualification award assessments for the given organisation.
@@ -26512,6 +28167,7 @@ paths:
         - $ref: "#/components/parameters/offset"
         - $ref: "#/components/parameters/qualification_award_verifications_include"
         - $ref: "#/components/parameters/qualification_award_verifications_filter"
+        - $ref: "#/components/parameters/qualification_award_verifications_sort"
       responses:
         "200":
           $ref: "#/components/responses/ListQualificationAwardVerifications"
@@ -26768,6 +28424,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/qualifications_include"
         - $ref: "#/components/parameters/qualifications_filter"
+        - $ref: "#/components/parameters/qualifications_sort"
         - $ref: "#/components/parameters/limit"
         - $ref: "#/components/parameters/offset"
       responses:
@@ -28064,6 +29721,87 @@ paths:
       x-mint:
         metadata:
           title: Update a workflow
+  /v3/workflow-transition-records:
+    get:
+      description: List workflow transition records
+      operationId: ListWorkflowTransitionRecords
+      parameters:
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+        - $ref: "#/components/parameters/workflow_transition_records_include"
+        - $ref: "#/components/parameters/workflow_transition_records_filter"
+      responses:
+        "200":
+          $ref: "#/components/responses/ListWorkflowTransitionRecords"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorised"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      security:
+        - Session: []
+        - OAuth2: []
+        - Cookie: []
+      tags:
+        - Workflows
+      x-ctrl-hub:
+        domain: dataCapture
+      x-mint:
+        metadata:
+          title: List workflow transition records
+    post:
+      description: Create a new workflow transition record.
+      operationId: CreateWorkflowTransitionRecord
+      requestBody:
+        $ref: "#/components/requestBodies/CreateWorkflowTransitionRecord"
+      responses:
+        "200":
+          $ref: "#/components/responses/GetWorkflowTransitionRecord"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorised"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      security:
+        - Session: []
+        - OAuth2: []
+        - Cookie: []
+      tags:
+        - Workflows
+      x-ctrl-hub:
+        domain: dataCapture
+      x-mint:
+        metadata:
+          title: Create a workflow transition record
+  /v3/workflow-transition-records/{workflow_transition_record_id}:
+    get:
+      description: Get an individual workflow transition record by its ID.
+      operationId: GetWorkflowTransitionRecord
+      parameters:
+        - $ref: "#/components/parameters/workflow_transition_record_id"
+        - $ref: "#/components/parameters/workflow_transition_records_include"
+      responses:
+        "200":
+          $ref: "#/components/responses/GetWorkflowTransitionRecord"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorised"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      security:
+        - Session: []
+        - OAuth2: []
+        - Cookie: []
+      tags:
+        - Workflows
+      x-ctrl-hub:
+        domain: dataCapture
+      x-mint:
+        metadata:
+          title: Get a workflow transition record
 servers:
   - description: Production
     url: https://api.ctrl-hub.com
