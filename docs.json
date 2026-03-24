@@ -6,7 +6,7 @@
     "light": "/logo/light.svg"
   },
   "favicon": "/favicon.svg",
-  "theme": "willow",
+  "theme": "mint",
   "colors": {
     "primary": "#051737",
     "light": "#2B66FF",
@@ -20,9 +20,7 @@
         "groups": [
           {
             "group": "Introduction",
-            "pages": [
-              "guides/what-is-ctrl-hub"
-            ]
+            "pages": ["guides/what-is-ctrl-hub"]
           },
           {
             "group": "Getting started",
