@@ -50,6 +50,7 @@
           {
             "group": "Project Governance",
             "pages": [
+              "guides/project-governance/importing-property-data",
               "guides/project-governance/creating-projects",
               "guides/project-governance/sharing-projects",
               "guides/project-governance/finding-projects",
@@ -76,7 +77,8 @@
               "guides/data-capture/working-offline",
               "guides/data-capture/submitting-your-completed-form",
               "guides/data-capture/updating-published-submissions",
-              "guides/data-capture/submission-workflows"
+              "guides/data-capture/submission-workflows",
+              "guides/data-capture/field-engineer-guide"
             ]
           },
           {
