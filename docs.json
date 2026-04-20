@@ -117,6 +117,14 @@
           "roadmap/release-notes",
           "roadmap/on-the-radar"
         ]
+      },
+      {
+        "tab": "Changelog",
+        "hidden": false,
+        "icon": "square-terminal",
+        "pages": [
+          "changelog/v2"
+        ]
       }
     ]
   }
