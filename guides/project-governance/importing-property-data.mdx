@@ -1,0 +1,116 @@
+---
+title: "Importing property meter and PSR data"
+description: "Learn how to import property meter and PSR information, using CSV files, through the Geo Importer tool."
+---
+
+<Info>**Target Personas:** Project Administrator, Data Manager</Info>
+
+## Prerequisites
+
+Before importing property data, ensure you have:
+
+- A pre-populated CSV file using a **predefined Ctrl Hub import template**
+- All required property data fields completed in the template
+
+<Warning>
+If you need guidance on which CSV import template to use or how to structure your data, contact Ctrl Hub support before proceeding with your import.
+</Warning>
+
+## Step-by-Step Guide
+
+### Upload a Property CSV File
+
+1. Navigate to **Geo > Importer**
+2. On the Upload page, select **Browse** to locate your pre-populated CSV file
+3. Select your CSV file to upload it
+
+<Check>
+Sample rows from the CSV file and the matching import template should be displayed. If the template does not match, stop and contact Ctrl Hub support as the CSV format may not be as expected.
+</Check>
+
+### Process the Uploaded Property Data
+
+1. With your CSV file successfully imported, select **Next** to start processing
+2. Wait for the matching process to complete until 100% progress is shown
+3. When complete, select **Review**
+
+<Check>
+The 'Matching properties' progress indicator should reach 100% completion.
+</Check>
+
+### Review and Edit Properties
+
+#### Skip a Property
+
+1. On the Review page, select **Edit** for one of the properties listed
+2. In the **Search by address** input field, enter the address and postcode from your CSV file (shown as the CSV input in the 'Edit row' window)
+3. Select **Search**
+4. Review the list of addresses found
+5. If there is no closely matching property in the results, do not select anything from the list
+6. Under **Meter action**, select **Skip**
+7. Select **Save**
+
+<Check>
+The Importer > Review page should show 'Skip' in the Meter column for the selected property.
+</Check>
+
+#### Edit a Property Before Import
+
+1. On the Review page, select **Edit** for a property with a closely matched address compared to your CSV file value
+2. In the **Search by address** input field, enter the address and postcode from your CSV file (shown as the CSV input in the 'Edit row' window)
+3. Select **Search**
+4. From the list of addresses found, select the closest match
+5. Verify the **Matched property** shows your selected property
+6. Select **Save**
+
+<Check>
+In the Importer > Review list, the address for the edited row should display the property you selected.
+</Check>
+
+### Skip Unmatched Properties
+
+1. Select the **Needs attention** filter to list all rows with no match or a low confidence match
+2. For each property listed that needs attention, select **Skip**
+
+<Check>
+All Meter and PSR values should show as Create, none, or Skip. The Skip count (in the filter row above the Property rows) should reflect the number of skipped rows.
+</Check>
+
+### Import Your Data
+
+1. Select the **Import** button to start the import process
+2. Wait for the import process to finish (progress will show 100%)
+
+<Check>
+Each Meter and Property should show Done, -, or Skipped status, with progress at 100%.
+</Check>
+
+### Extract Skipped Rows
+
+1. On the Importer > Importing page, select **View results**
+2. When prompted, select **Open** to view the CSV file containing all skipped and unmatched rows
+3. Review the skipped rows for properties that need correction
+
+<Note>
+The exported CSV file contains rows from your original CSV import that were not imported. These properties need to be updated in the CSV file to match available property data before attempting to import again.
+</Note>
+
+### Verify Imported Data
+
+1. Identify a property record that you successfully imported
+2. Navigate to **Geo > Properties**
+3. In the **Search by address** field, enter the address you want to verify
+4. Select the address from the list of properties offered
+5. When the property page opens, select the **Meter / PSR** tab
+6. Review the meter and PSR details
+
+<Check>
+- The MPRN (Supply Identifier) and Serial Number values should be displayed and match the values in your CSV file
+- Select the dropdown arrow to the left of the meter details rows to verify whether the property is on the PSR (Priority Service Register) list
+</Check>
+
+---
+
+<Card title="Need Help?" icon="question" href="mailto:support@ctrl-hub.com">
+  Can't find what you're looking for? Contact our support team.
+</Card>
