@@ -120,9 +120,10 @@
       },
       {
         "tab": "Changelog",
-        "hidden": false,
+        "hidden": true,
         "icon": "square-terminal",
         "pages": [
+          "changelog/v3",
           "changelog/v2"
         ]
       }
