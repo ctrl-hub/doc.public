@@ -33,21 +33,29 @@
             ]
           },
           {
+            "group": "_Qualifications and Competence Management",
+            "hidden": true,
+            "pages": [
+              "guides/_qualifications/creating-_qualifications",
+              "guides/_qualifications/job-role-matrices",
+              "guides/_qualifications/assigning-_qualifications",
+              "guides/_qualifications/awarding-_qualifications",
+              "guides/_qualifications/uploading-certificates",
+              "guides/_qualifications/recording-assessments",
+              "guides/_qualifications/verifying-_qualifications",
+              "guides/_qualifications/managing-risk-status",
+              "guides/_qualifications/qualification-expiry-and-renewal",
+              "guides/_qualifications/non-compliance-reporting"
+            ]
+          },
+          {
             "group": "Qualifications and Competence Management",
             "hidden": true,
             "pages": [
-              "guides/qualifications/creating-qualifications",
-              "guides/qualifications/job-role-matrices",
-              "guides/qualifications/assigning-qualifications",
-              "guides/qualifications/awarding-qualifications",
-              "guides/qualifications/uploading-certificates",
-              "guides/qualifications/recording-assessments",
-              "guides/qualifications/verifying-qualifications",
-              "guides/qualifications/managing-risk-status",
-              "guides/qualifications/qualification-expiry-and-renewal",
-              "guides/qualifications/non-compliance-reporting"
+              "guides/qualifications/competency-management",
+              "guides/qualifications/competency-overview"
             ]
-          },
+          },          
           {
             "group": "Project Governance",
             "pages": [
