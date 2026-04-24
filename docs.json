@@ -36,13 +36,13 @@
             "group": "_Qualifications and Competence Management",
             "hidden": true,
             "pages": [
-              "guides/_qualifications/creating-_qualifications",
+              "guides/_qualifications/creating-qualifications",
               "guides/_qualifications/job-role-matrices",
-              "guides/_qualifications/assigning-_qualifications",
-              "guides/_qualifications/awarding-_qualifications",
+              "guides/_qualifications/assigning-qualifications",
+              "guides/_qualifications/awarding-qualifications",
               "guides/_qualifications/uploading-certificates",
               "guides/_qualifications/recording-assessments",
-              "guides/_qualifications/verifying-_qualifications",
+              "guides/_qualifications/verifying-qualifications",
               "guides/_qualifications/managing-risk-status",
               "guides/_qualifications/qualification-expiry-and-renewal",
               "guides/_qualifications/non-compliance-reporting"
