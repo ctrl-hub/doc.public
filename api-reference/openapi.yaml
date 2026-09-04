@@ -152,6 +152,20 @@ components:
                 type:
                     type: string
                     const: users
+        LocationRelationship:
+            type: object
+            description: Represents a relationship to a location
+            required:
+                - id
+                - type
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the location
+                type:
+                    type: string
+                    const: locations
         PermitRelationship:
             type: object
             description: Represents a relationship to a permit
@@ -8599,20 +8613,6 @@ components:
                         - "null"
                     format: date-time
                     description: When the allocation should take effect.
-        LocationRelationship:
-            type: object
-            description: Represents a relationship to a location
-            required:
-                - id
-                - type
-            properties:
-                id:
-                    type: string
-                    format: uuid
-                    description: The unique identifier of the location
-                type:
-                    type: string
-                    const: locations
         EquipmentCertificationAttributes:
             type: object
             description: Attributes for an equipment certification
@@ -8994,9 +8994,12 @@ components:
             description: Attributes for a scheme
             required:
                 - name
+                - status
             properties:
                 name:
                     type: string
+                status:
+                    $ref: '#/components/schemas/LifecycleStatus'
                 code:
                     type: string
                 description:
@@ -9075,6 +9078,12 @@ components:
                         properties:
                             type: integer
                             description: The number of properties in this scheme (from all of the operations in all of the work orders).
+                            format: int64
+                            minimum: 0
+                            default: 0
+                        locations:
+                            type: integer
+                            description: The number of organisation-managed locations in this scheme (from all of the operations in all of the work orders)
                             format: int64
                             minimum: 0
                             default: 0
@@ -9326,6 +9335,40 @@ components:
                             type: array
                             items:
                                 $ref: '#/components/schemas/SchemeContractRelationship'
+                locations:
+                    type: object
+                    description: |
+                        The organisation-managed locations this scheme's work is against, aggregated
+                        from the operations beneath it. Read-only here: the relationship is owned by
+                        the operation.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            type: array
+                            items:
+                                $ref: '#/components/schemas/LocationRelationship'
+        LifecycleStatus:
+            type: string
+            description: |
+                The lifecycle status of a contract, scheme or work order.
+
+                - `in_planning`: work is being scoped and prepared; nothing is underway yet
+                - `in_progress`: work is actively underway
+                - `on_hold`: work has been paused and is expected to resume
+                - `complete`: all work has been finished
+
+                Any status may move to any other status; there are no restricted
+                transitions. Resources created before this field existed, and resources
+                created through the API, both start as `in_planning`.
+
+                This is distinct from the operation status rollups under `meta`, which are
+                derived from child operations and describe progress rather than intent.
+            enum:
+                - in_planning
+                - in_progress
+                - on_hold
+                - complete
         Label:
             type: object
             description: A label object
@@ -9375,12 +9418,15 @@ components:
             description: Attributes for a work order
             required:
                 - name
+                - status
             properties:
                 name:
                     type: string
                     description: The name of the work order
                     examples:
                         - Infrastructure Maintenance Work Order
+                status:
+                    $ref: '#/components/schemas/LifecycleStatus'
                 code:
                     type: string
                     description: The code of the work order
@@ -9471,6 +9517,7 @@ components:
                     required:
                         - operations
                         - properties
+                        - locations
                         - streets
                     properties:
                         operations:
@@ -9492,6 +9539,14 @@ components:
                         properties:
                             type: integer
                             description: The number of properties in this work order (from all of the operations in this work order)
+                            format: int64
+                            minimum: 0
+                            default: 0
+                            examples:
+                                - 1
+                        locations:
+                            type: integer
+                            description: The number of organisation-managed locations in this work order (from all of the operations in this work order)
                             format: int64
                             minimum: 0
                             default: 0
@@ -9774,6 +9829,19 @@ components:
                     properties:
                         data:
                             $ref: '#/components/schemas/FolderRelationship'
+                locations:
+                    type: object
+                    description: |
+                        The organisation-managed locations this work order's work is against, aggregated
+                        from the operations beneath it. Read-only here: the relationship is owned by
+                        the operation.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            type: array
+                            items:
+                                $ref: '#/components/schemas/LocationRelationship'
         WorkOrderTemplateRelationship:
             type: object
             description: Represents a relationship to a work order template
@@ -9867,6 +9935,13 @@ components:
                                 - "null"
                             format: date-time
                             description: The current MOT expiry date (latest MOT test), or null if unknown.
+                        due_at:
+                            type:
+                                - "string"
+                                - "null"
+                            format: date-time
+                            description: >-
+                                When the vehicle's first MOT falls due, for a vehicle DVSA has never tested. Null once the vehicle has MOT history (use expires_at then), and null when DVLA holds no details. Kept separate from expires_at so a not-yet-due date is never fed into the risk band.
                         risk:
                             type: string
                             enum:
@@ -10150,12 +10225,28 @@ components:
             type: object
             description: Attributes for a location
             properties:
+                reference:
+                    type: string
+                    description: |
+                        The organisation's own lookup key for the place, such as a pole number or
+                        an internal property reference. Unique within the organisation, and what
+                        identifies a location: it is the key a bulk import matches rows on.
+
+                        Required on create. Absent only on locations that predate the field, which
+                        is why it is not marked required here - the resource has to describe those
+                        as well as the ones written since.
                 name:
                     type: string
-                    description: The location name
+                    description: |
+                        What the place is called, where it is called anything. Optional: a place
+                        identified by its reference does not need a name invented for it.
                 description:
                     type: string
                     description: A description of the location
+                location:
+                    $ref: '#/components/schemas/GeoPoint'
+                address:
+                    $ref: '#/components/schemas/PostalAddress'
         LocationMeta:
             type: object
             description: Metadata for a location
@@ -10192,6 +10283,113 @@ components:
                             oneOf:
                                 - $ref: '#/components/schemas/LocationTypeRelationship'
                                 - type: "null"
+        GeoPoint:
+            type: object
+            description: |
+                A point on the ground, given in either British National Grid eastings and
+                northings or in latitude and longitude.
+
+                Supply one standard, not both. The platform stores what it is given and does
+                not convert between the two, so a point carries the standard it was entered in
+                and only that one is populated on read. Supplying both is rejected: choosing
+                one would silently discard the other.
+
+                Each coordinate must be complete. Half a coordinate locates nothing, and a
+                missing member would otherwise be read as a zero, putting a pole in the Gulf of
+                Guinea or off the Isles of Scilly.
+
+                The `oneOf` below is what makes that rule part of the contract rather than
+                only prose, so a generated client cannot construct a point the API refuses.
+                The third branch is the point that carries neither standard, which is how an
+                empty `{}` clears a coordinate.
+            properties:
+                british_national_grid:
+                    type:
+                        - object
+                        - "null"
+                    required:
+                        - easting
+                        - northing
+                    properties:
+                        easting:
+                            type: number
+                            format: double
+                        northing:
+                            type: number
+                            format: double
+                lat_long:
+                    type:
+                        - object
+                        - "null"
+                    required:
+                        - latitude
+                        - longitude
+                    properties:
+                        latitude:
+                            type: number
+                            format: double
+                        longitude:
+                            type: number
+                            format: double
+            oneOf:
+                - title: BritishNationalGridPoint
+                  description: A point given in British National Grid eastings and northings.
+                  required:
+                    - british_national_grid
+                  properties:
+                    british_national_grid:
+                        type: object
+                    lat_long:
+                        type: "null"
+                - title: LatLongPoint
+                  description: A point given in latitude and longitude.
+                  required:
+                    - lat_long
+                  properties:
+                    lat_long:
+                        type: object
+                    british_national_grid:
+                        type: "null"
+                - title: NoPoint
+                  description: |
+                    Neither standard carries a coordinate, which clears the point rather than
+                    storing one.
+                  properties:
+                    british_national_grid:
+                        type: "null"
+                    lat_long:
+                        type: "null"
+        PostalAddress:
+            type: object
+            description: |
+                A structured postal address.
+
+                Every field is optional: an address is often partial, and a place that has one
+                at all is better recorded incompletely than not at all.
+            properties:
+                description:
+                    type: string
+                    description: The address as a single line, as it would be written on an envelope.
+                department:
+                    type: string
+                organisation:
+                    type: string
+                number:
+                    type: string
+                name:
+                    type: string
+                thoroughfare:
+                    type: string
+                dependent_thoroughfare:
+                    type: string
+                post_town:
+                    type: string
+                postcode:
+                    type: string
+                po_box:
+                    type: string
+                country:
+                    type: string
         LocationTypeRelationship:
             type: object
             description: Represents a relationship to a location type
@@ -12076,6 +12274,7 @@ components:
                     required:
                         - streets
                         - properties
+                        - locations
                     properties:
                         streets:
                             type: integer
@@ -12086,6 +12285,12 @@ components:
                         properties:
                             type: integer
                             description: The number of properties in this operation
+                            format: int64
+                            minimum: 0
+                            default: 0
+                        locations:
+                            type: integer
+                            description: The number of organisation-managed locations in this operation
                             format: int64
                             minimum: 0
                             default: 0
@@ -12194,6 +12399,15 @@ components:
                             type: array
                             items:
                                 $ref: '#/components/schemas/PropertyRelationship'
+                locations:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            type: array
+                            items:
+                                $ref: '#/components/schemas/LocationRelationship'
                 streets:
                     type: object
                     required:
@@ -13711,6 +13925,297 @@ components:
                                         format: uuid
                                 - type: "null"
                             description: The comment that originated this learning. Null for manually created learnings.
+        LocationImport:
+            type: object
+            description: |
+                One bulk load of locations from an uploaded CSV, and what became of every row.
+
+                The record is the import's audit trail, and that is by design rather than by accident: the bulk
+                write path emits no per-row events, because a per-row event for a 30,000-row file would put 30,000
+                messages on the platform's bus for one upload. So this record answers "who loaded what, and what
+                did it do" on its own.
+            required:
+                - id
+                - type
+                - attributes
+                - meta
+                - relationships
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the location import.
+                type:
+                    type: string
+                    const: location-imports
+                attributes:
+                    $ref: '#/components/schemas/LocationImportAttributes'
+                meta:
+                    $ref: '#/components/schemas/LocationImportMeta'
+                relationships:
+                    $ref: '#/components/schemas/LocationImportRelationships'
+        LocationImportIncludes:
+            type: array
+            description: Related resources that can be included when a location import is returned.
+            items:
+                discriminator:
+                    propertyName: type
+                    mapping:
+                        organisations: "#/components/schemas/Organisation"
+                        users: "#/components/schemas/User"
+                        location-types: "#/components/schemas/LocationType"
+                oneOf:
+                    - $ref: '#/components/schemas/Organisation'
+                    - $ref: '#/components/schemas/User'
+                    - $ref: '#/components/schemas/LocationType'
+        LocationImportAttributes:
+            type: object
+            description: Attributes of a location import
+            required:
+                - status
+                - filename
+                - column_mapping
+                - progress
+                - results
+            properties:
+                status:
+                    $ref: '#/components/schemas/LocationImportStatus'
+                filename:
+                    type: string
+                    description: What the user called the file they uploaded.
+                    examples:
+                        - enwl-poles-2026-09.csv
+                column_mapping:
+                    $ref: '#/components/schemas/LocationImportColumnMapping'
+                progress:
+                    $ref: '#/components/schemas/LocationImportProgress'
+                results:
+                    $ref: '#/components/schemas/LocationImportResults'
+                row_errors:
+                    type: array
+                    description: |
+                        Why rows were skipped, capped so a file of entirely bad rows cannot make the record itself
+                        unwritable. `results.row_error_count` is the true total.
+                    items:
+                        $ref: '#/components/schemas/LocationImportRowError'
+                error:
+                    type:
+                        - string
+                        - "null"
+                    description: |
+                        Why a failed import failed. Null on an import that has not failed. Distinct from skipped rows:
+                        this is something that stopped the whole run, where a skipped row is one line of the file.
+        LocationImportMeta:
+            type: object
+            description: Metadata for a location import
+            required:
+                - requested_at
+            properties:
+                requested_at:
+                    type: string
+                    format: date-time
+                    description: When the file was uploaded and the import recorded.
+                completed_at:
+                    type:
+                        - string
+                        - "null"
+                    format: date-time
+                    description: |
+                        When the import finished or gave up. Null while it is still pending or processing, which is
+                        what a poll stops on together with the status.
+        LocationImportRelationships:
+            type: object
+            description: Relationships for a location import
+            required:
+                - organisation
+                - requester
+            properties:
+                organisation:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/OrganisationRelationship'
+                    description: The organisation whose locations the import wrote.
+                requester:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/UserRelationship'
+                    description: Who uploaded the file.
+                default_location_type:
+                    type: object
+                    description: |
+                        The type applied to every row the file gave no type for. Null when the import left untyped
+                        rows untyped.
+                    properties:
+                        data:
+                            oneOf:
+                                - $ref: '#/components/schemas/LocationTypeRelationship'
+                                - type: "null"
+        LocationImportStatus:
+            type: string
+            description: |
+                Where a location import has got to.
+
+                `pending` is validated and queued; `processing` is being written, and the only state in which the
+                progress counters move; `completed` finished, which a file with bad rows in it still does; `failed`
+                could not be run to the end, with the reason on `error`.
+            enum:
+                - pending
+                - processing
+                - completed
+                - failed
+            examples:
+                - processing
+        LocationImportColumnMapping:
+            type: object
+            description: |
+                Which column of the uploaded file supplied each location field.
+
+                Held as the column names the file used rather than positions, so the import still explains itself
+                after the fact: "the reference came from POLE_NO" survives, where "the reference came from column
+                3" does not. An omitted field means the file carried nothing for it.
+
+                `reference` is required. It is the identity a bulk import matches rows on, so a file without one
+                cannot be re-imported: every row would insert a second copy of a location that is already there.
+
+                Coordinates are two pairs rather than one, because a location's point is stored in whichever
+                standard it arrived in and the platform performs no projection. Map `latitude` and `longitude`, or
+                `easting` and `northing`, but not both standards, and never one half of a pair.
+            required:
+                - reference
+            properties:
+                name:
+                    type: string
+                    description: |
+                        What the place is called, where the file says. Left empty when it does not: a pole file is
+                        commonly a column of pole numbers and nothing else, and a location is identified and
+                        displayed by its reference.
+                    examples:
+                        - NAME
+                reference:
+                    type: string
+                    description: The organisation's own lookup key for the place, such as a pole number.
+                    examples:
+                        - POLE_NO
+                description:
+                    type: string
+                location_type:
+                    type: string
+                    description: |
+                        A column naming the row's location type. Matched against the organisation's own types by
+                        name, case-insensitively. A name the organisation has not defined skips the row rather than
+                        falling back to the default, because typing every such row as the default would classify
+                        locations as something nobody asked for.
+                    examples:
+                        - ASSET_TYPE
+                latitude:
+                    type: string
+                longitude:
+                    type: string
+                easting:
+                    type: string
+                northing:
+                    type: string
+                address_number:
+                    type: string
+                address_name:
+                    type: string
+                address_thoroughfare:
+                    type: string
+                address_post_town:
+                    type: string
+                address_postcode:
+                    type: string
+        LocationImportProgress:
+            type: object
+            description: |
+                How far through the file the import is. What a poll reads to draw a progress bar.
+
+                The counters advance per chunk rather than per row, so `processed_rows` moves in steps.
+            required:
+                - total_rows
+                - processed_rows
+            properties:
+                total_rows:
+                    type: integer
+                    description: |
+                        How many data rows the file had, excluding the header. Known before the import starts,
+                        because the file is read and validated when the import is requested.
+                    examples:
+                        - 30000
+                processed_rows:
+                    type: integer
+                    description: How many rows have been dealt with, written or skipped.
+                    examples:
+                        - 12500
+        LocationImportResults:
+            type: object
+            description: |
+                What became of the rows. `inserted`, `updated` and `skipped` sum to the processed count.
+
+                A row is inserted when its reference is new to the organisation and updated when the reference
+                already names a location, which is what makes re-importing the same file idempotent rather than
+                duplicating every row.
+            required:
+                - inserted
+                - updated
+                - skipped
+                - row_error_count
+            properties:
+                inserted:
+                    type: integer
+                    description: Rows whose reference was new, so a location was created.
+                    examples:
+                        - 29850
+                updated:
+                    type: integer
+                    description: Rows whose reference already named a location, which was updated in place.
+                    examples:
+                        - 146
+                skipped:
+                    type: integer
+                    description: Rows that were not written.
+                    examples:
+                        - 4
+                row_error_count:
+                    type: integer
+                    description: |
+                        How many rows were skipped with a reason, including any whose reason `row_errors` does not
+                        carry. Read it alongside the length of `row_errors` to tell whether the list is complete: a
+                        file with tens of thousands of bad rows would otherwise push the record past the database's
+                        document limit, so the reasons are capped and the count is not.
+                    examples:
+                        - 4
+        LocationImportRowError:
+            type: object
+            description: One row the import did not write, and why.
+            required:
+                - row
+                - reason
+            properties:
+                row:
+                    type: integer
+                    description: |
+                        The line in the uploaded file, counting the header as line 1, so it is the line number the
+                        user sees in their spreadsheet.
+                    examples:
+                        - 4512
+                reference:
+                    type: string
+                    description: |
+                        The row's reference, where it had one. Carried alongside the line number because somebody
+                        looking for the offending row searches for the reference.
+                    examples:
+                        - POLE-004512
+                reason:
+                    type: string
+                    examples:
+                        - the latitude "53.4o8" is not a number
         LocationType:
             type: object
             description: A location type
@@ -13772,6 +14277,18 @@ components:
                     properties:
                         data:
                             $ref: '#/components/schemas/OrganisationRelationship'
+        LocationIncludes:
+            type: array
+            description: Related resources that can be included when a location is returned.
+            items:
+                discriminator:
+                    propertyName: type
+                    mapping:
+                        organisations: "#/components/schemas/Organisation"
+                        location-types: "#/components/schemas/LocationType"
+                oneOf:
+                    - $ref: '#/components/schemas/Organisation'
+                    - $ref: '#/components/schemas/LocationType'
         Meter:
             type: object
             description: A meter
@@ -14340,6 +14857,7 @@ components:
                         operation-templates: "#/components/schemas/OperationTemplate"
                         operation-types: "#/components/schemas/OperationType"
                         organisations: "#/components/schemas/Organisation"
+                        locations: "#/components/schemas/Location"
                         properties: "#/components/schemas/Property"
                         schemes: "#/components/schemas/Scheme"
                         streets: "#/components/schemas/Street"
@@ -14352,6 +14870,7 @@ components:
                     - $ref: '#/components/schemas/OperationTemplate'
                     - $ref: '#/components/schemas/OperationType'
                     - $ref: '#/components/schemas/Organisation'
+                    - $ref: '#/components/schemas/Location'
                     - $ref: '#/components/schemas/Property'
                     - $ref: '#/components/schemas/Scheme'
                     - $ref: '#/components/schemas/Street'
@@ -15415,6 +15934,7 @@ components:
                 - initiating_organisation
                 - recipient_organisation
                 - originating_request
+                - notification_recipients
             properties:
                 initiating_organisation:
                     type: object
@@ -15437,6 +15957,17 @@ components:
                     properties:
                         data:
                             $ref: '#/components/schemas/OrganisationBridgeRequestRelationship'
+                notification_recipients:
+                    type: object
+                    description: >-
+                        The users nominated to be told when work is shared over this bridge. The list may contain users from either organisation; each organisation nominates only its own members.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            type: array
+                            items:
+                                $ref: '#/components/schemas/UserRelationship'
         OrganisationBridgeRequestRelationship:
             type: object
             description: Represents a relationship to an organisation bridge request
@@ -15807,6 +16338,7 @@ components:
                         folders: "#/components/schemas/Folder"
                         operations: "#/components/schemas/Operation"
                         organisations: "#/components/schemas/Organisation"
+                        locations: "#/components/schemas/Location"
                         properties: "#/components/schemas/Property"
                         scheme-contracts: "#/components/schemas/SchemeContract"
                         scheme-templates: "#/components/schemas/SchemeTemplate"
@@ -15820,6 +16352,7 @@ components:
                     - $ref: '#/components/schemas/Folder'
                     - $ref: '#/components/schemas/Operation'
                     - $ref: '#/components/schemas/Organisation'
+                    - $ref: '#/components/schemas/Location'
                     - $ref: '#/components/schemas/Property'
                     - $ref: '#/components/schemas/SchemeContract'
                     - $ref: '#/components/schemas/SchemeTemplate'
@@ -15856,6 +16389,7 @@ components:
             description: Attributes for a scheme contract
             required:
                 - name
+                - status
             properties:
                 name:
                     type: string
@@ -15863,6 +16397,8 @@ components:
                     description: The display name of the contract.
                     examples:
                         - Northern Region
+                status:
+                    $ref: '#/components/schemas/LifecycleStatus'
         SchemeContractRelationships:
             type: object
             description: Relationships for a scheme contract
@@ -17989,6 +18525,52 @@ components:
                     - $ref: '#/components/schemas/Organisation'
                     - $ref: '#/components/schemas/OrganisationBridge'
                     - $ref: '#/components/schemas/Scheme'
+        SchemeShareRemovalImpact:
+            type: object
+            description: How much work is posted on a shared scheme.
+            required:
+                - id
+                - type
+                - attributes
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the scheme share this describes.
+                type:
+                    type: string
+                    const: scheme-share-removal-impacts
+                attributes:
+                    $ref: '#/components/schemas/SchemeShareRemovalImpactAttributes'
+        SchemeShareRemovalImpactAttributes:
+            type: object
+            description: |
+                How much work is posted on the shared scheme.
+
+                These are scheme-wide totals, not a prediction of what withdrawing the share
+                will remove. Telling the recipient organisation's postings apart from the
+                owner organisation's needs a membership lookup this read does not make, so
+                both counts include the owner organisation's own people, and the totals may
+                therefore overstate what the cleanup removes. How far they overstate it
+                depends entirely on who holds the postings: if every one of them is held by
+                someone who belongs only to the recipient organisation, the cleanup removes
+                all of them.
+
+                Present them as what is posted on the scheme, never as what is about to go.
+            required:
+                - job_role_postings
+                - operation_assignees
+            properties:
+                job_role_postings:
+                    type: integer
+                    minimum: 0
+                    description: >-
+                        Active job-role postings across the scheme, its work orders and its operations, whoever holds them.
+                operation_assignees:
+                    type: integer
+                    minimum: 0
+                    description: >-
+                        Assignee slots across the scheme's operations, whoever holds them. Slots, not people — someone assigned to three operations counts three times.
         SearchResult:
             type: object
             description: A search result
@@ -18084,6 +18666,160 @@ components:
                             data:
                                 $ref: '#/components/schemas/OperationRelationship'
                         - {}
+        SiteAttendance:
+            type: object
+            description: One person's presence on site, from sign-in to sign-out
+            required:
+                - id
+                - type
+                - attributes
+                - relationships
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the site attendance.
+                type:
+                    type: string
+                    const: site-attendances
+                attributes:
+                    $ref: '#/components/schemas/SiteAttendanceAttributes'
+                relationships:
+                    $ref: '#/components/schemas/SiteAttendanceRelationships'
+        SiteAttendanceIncludes:
+            type: array
+            description: Related resources that can be included when a site attendance is returned
+            items:
+                discriminator:
+                    propertyName: type
+                    mapping:
+                        schemes: "#/components/schemas/Scheme"
+                        users: "#/components/schemas/User"
+                oneOf:
+                    - $ref: '#/components/schemas/Scheme'
+                    - $ref: '#/components/schemas/User'
+        SiteAttendanceAttributes:
+            type: object
+            description: |
+                Attributes for a site attendance.
+
+                An attendance records presence noted by whoever operated the device, not induction
+                acknowledged by the attendee. `acknowledged` means the declaration was put to them; it is
+                not their own act, and there is deliberately no signature.
+            required:
+                - attendee_name
+                - reason
+                - acknowledged
+                - signed_in_at
+                - signed_out_at
+                - on_site
+            properties:
+                attendee_name:
+                    type: string
+                    minLength: 1
+                    description: The name of the person on site. Free text, because genuine visitors do not hold accounts.
+                attendee_company:
+                    type:
+                        - string
+                        - "null"
+                    description: The organisation the attendee is on site for.
+                attendee_contact:
+                    type:
+                        - string
+                        - "null"
+                    description: A contact number for the attendee, normalised on write.
+                reason:
+                    type: string
+                    enum:
+                        - working
+                        - visiting
+                        - other
+                    description: Why the attendee is on site.
+                reason_other:
+                    type:
+                        - string
+                        - "null"
+                    description: Required when `reason` is `other`, and must be absent otherwise.
+                acknowledged:
+                    type: boolean
+                    description: Whether the induction declaration was put to the attendee.
+                content_version:
+                    type:
+                        - string
+                        - "null"
+                    description: Which version of the declaration wording was presented. Null until the induction points content exists.
+                signed_in_at:
+                    type: string
+                    format: date-time
+                    description: When the attendee arrived on site.
+                signed_out_at:
+                    type:
+                        - string
+                        - "null"
+                    format: date-time
+                    description: |
+                        When the attendee left. Null means they are still on site.
+
+                        May be backdated: at close of play a register is reconciled in one sitting, so the
+                        departure time is often stated after the fact. `signed_out_recorded_at` keeps when it
+                        was actually asked for.
+                signed_out_recorded_at:
+                    type:
+                        - string
+                        - "null"
+                    format: date-time
+                    readOnly: true
+                    description: |
+                        When the sign-out was asked for, as opposed to the departure time claimed in
+                        `signed_out_at`. Server-derived and never accepted from a client, so a backdated
+                        sign-out is still auditable.
+                on_site:
+                    type: boolean
+                    readOnly: true
+                    description: Derived from `signed_out_at` being null, so it cannot drift from the timestamps.
+        SiteAttendanceRelationships:
+            type: object
+            description: Relationships for a site attendance
+            required:
+                - organisation
+                - scheme
+                - recorded_by
+            properties:
+                organisation:
+                    type: object
+                    description: The organisation the attendance belongs to.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/OrganisationRelationship'
+                scheme:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/SchemeRelationship'
+                user:
+                    type: object
+                    description: The attendee's account, present only where the attendee holds one.
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/UserRelationship'
+                recorded_by:
+                    type: object
+                    description: The principal who recorded the sign-in. Server-derived, never accepted from a client.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/UserRelationship'
+                signed_out_by:
+                    type: object
+                    description: The principal who recorded the sign-out. Server-derived, never accepted from a client.
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/UserRelationship'
         SSOProvider:
             type: object
             description: An SSO provider
@@ -19295,6 +20031,13 @@ components:
                             type:
                                 - "string"
                                 - "null"
+                        mot_test_due_date:
+                            type:
+                                - "string"
+                                - "null"
+                            format: date-time
+                            description: >-
+                                The date the vehicle's first MOT test is due. DVSA sends this only for a vehicle that has never been tested, in place of its MOT records.
                 mot_records:
                     type: array
                     description: Individual MOT test records returned alongside the enquiry.
@@ -21677,6 +22420,7 @@ components:
                         appointments: "#/components/schemas/CustomerAppointment"
                         operations: "#/components/schemas/Operation"
                         organisations: "#/components/schemas/Organisation"
+                        locations: "#/components/schemas/Location"
                         properties: "#/components/schemas/Property"
                         schemes: "#/components/schemas/Scheme"
                         streets: "#/components/schemas/Street"
@@ -21688,6 +22432,7 @@ components:
                     - $ref: '#/components/schemas/CustomerAppointment'
                     - $ref: '#/components/schemas/Operation'
                     - $ref: '#/components/schemas/Organisation'
+                    - $ref: '#/components/schemas/Location'
                     - $ref: '#/components/schemas/Property'
                     - $ref: '#/components/schemas/Scheme'
                     - $ref: '#/components/schemas/Street'
@@ -25379,6 +26124,31 @@ components:
                                     $ref: '#/components/schemas/FormSubmissionVersionIncludes'
                             - $ref: '#/components/schemas/DocumentMeta'
                             - $ref: '#/components/schemas/JSONAPI'
+        UnprocessableEntity:
+            description: The request was understood but names something the server cannot act on
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        properties:
+                            errors:
+                                type: array
+                                items:
+                                    $ref: '#/components/schemas/Error'
+                    example:
+                        errors:
+                            - id: d26cc34a-ceb2-45fb-aba2-c61782f9ec39
+                              status: "422"
+                              title: submitting organisation has no scheme share with the form's owning organisation
+                              detail: The request was understood but names something the server cannot act on.
+                              code: CH.001.054
         ListFormSubmissions:
             description: Get a list of submissions for a form.
             headers:
@@ -26093,6 +26863,54 @@ components:
                                 included:
                                     $ref: '#/components/schemas/LearningIncludes'
                             - $ref: '#/components/schemas/JSONAPI'
+        ListLocationImports:
+            description: List of location imports.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    title: A list of location imports
+                                    type: array
+                                    items:
+                                        $ref: '#/components/schemas/LocationImport'
+                                included:
+                                    $ref: '#/components/schemas/LocationImportIncludes'
+                            - $ref: '#/components/schemas/DocumentMeta'
+                            - $ref: '#/components/schemas/JSONAPI'
+        GetLocationImport:
+            description: An individual location import.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    $ref: '#/components/schemas/LocationImport'
+                                included:
+                                    $ref: '#/components/schemas/LocationImportIncludes'
+                            - $ref: '#/components/schemas/JSONAPI'
         ListLocationTypes:
             description: Get a list of location types.
             headers:
@@ -26159,6 +26977,8 @@ components:
                                     type: array
                                     items:
                                         $ref: '#/components/schemas/Location'
+                                included:
+                                    $ref: '#/components/schemas/LocationIncludes'
                             - $ref: '#/components/schemas/DocumentMeta'
                             - $ref: '#/components/schemas/JSONAPI'
         GetLocation:
@@ -26180,6 +27000,8 @@ components:
                               properties:
                                 data:
                                     $ref: '#/components/schemas/Location'
+                                included:
+                                    $ref: '#/components/schemas/LocationIncludes'
                             - $ref: '#/components/schemas/JSONAPI'
         ListMeters:
             description: Get a list of meters.
@@ -26415,6 +27237,33 @@ components:
                     $ref: '#/components/headers/x-request-id'
         AddAssigneesToOperation:
             description: Add assignees to an operation
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+        RemoveLocationsFromOperation:
+            description: Remove locations from an operation
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+        ReplaceOperationLocations:
+            description: Replace the locations on an operation
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+        AddLocationsToOperation:
+            description: Add locations to an operation
             headers:
                 Content-Type:
                     $ref: '#/components/headers/content-type'
@@ -27130,6 +27979,26 @@ components:
                             - $ref: '#/components/schemas/JSONAPI'
         GetOrganisationBridge:
             description: Get organisation bridge.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    $ref: '#/components/schemas/OrganisationBridge'
+                            - $ref: '#/components/schemas/JSONAPI'
+        ReplaceOrganisationBridgeRelationshipToNotificationRecipient:
+            description: Replace the calling organisation's nominated notification recipients on the bridge.
             headers:
                 Content-Type:
                     $ref: '#/components/headers/content-type'
@@ -28647,6 +29516,26 @@ components:
                                 included:
                                     $ref: '#/components/schemas/SchemeShareIncludes'
                             - $ref: '#/components/schemas/JSONAPI'
+        GetSchemeShareRemovalImpact:
+            description: How much work is posted on the shared scheme.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    $ref: '#/components/schemas/SchemeShareRemovalImpact'
+                            - $ref: '#/components/schemas/JSONAPI'
         ListSearchResults:
             description: Get a list of search results.
             headers:
@@ -28672,6 +29561,53 @@ components:
                                 included:
                                     $ref: '#/components/schemas/SearchResultIncludes'
                             - $ref: '#/components/schemas/DocumentMeta'
+                            - $ref: '#/components/schemas/JSONAPI'
+        ListSiteAttendances:
+            description: List site attendances.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    type: array
+                                    items:
+                                        $ref: '#/components/schemas/SiteAttendance'
+                                included:
+                                    $ref: '#/components/schemas/SiteAttendanceIncludes'
+                            - $ref: '#/components/schemas/DocumentMeta'
+                            - $ref: '#/components/schemas/JSONAPI'
+        GetSiteAttendance:
+            description: A site attendance.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    $ref: '#/components/schemas/SiteAttendance'
+                                included:
+                                    $ref: '#/components/schemas/SiteAttendanceIncludes'
                             - $ref: '#/components/schemas/JSONAPI'
         ListSkillsRegisterSchemeCategories:
             description: Get a list of skills register scheme categories.
@@ -33500,6 +34436,76 @@ components:
                 type: string
                 format: uuid
             example: f1000000-0000-0000-0000-000000000001
+        location_imports_filter:
+            name: filter
+            in: query
+            description: |
+                Filters the response data based on the value provided.
+
+                Available filters:
+
+                - `eq(organisation,xxx)`: Filter imports by the organisation whose locations they loaded. This is
+                  how an organisation's own import history is read.
+                - `eq(requested_by,xxx)`: Filter by who uploaded the file.
+                - `eq(status,xxx)`: Filter by where the import has got to: `pending`, `processing`, `completed`
+                  or `failed`.
+                - `eq(default_location_type,xxx)`: Filter by the type the import applied to untyped rows.
+                - `ge(requested_at,xxx)`: Filter by when the file was uploaded, e.g.
+                  `ge(requested_at,2026-09-01T00:00:00Z)`.
+
+                For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
+            required: false
+            schema:
+                type: string
+                default: ""
+        location_imports_sort:
+            in: query
+            name: sort
+            description: |
+                A comma separated list of fields to sort by.
+
+                Defaults to `-requested_at`: an import history is read to find out what happened recently.
+            required: false
+            style: form
+            explode: false
+            schema:
+                type: array
+                items:
+                    type: string
+                    enum:
+                        - requested_at
+                        - -requested_at
+                        - status
+                        - -status
+        location_imports_include:
+            name: include
+            in: query
+            description: |
+                A comma separated list of related resources to include.
+
+                `requester` names who uploaded the file, which an import history is mostly read for, and
+                `default_location_type` names the type the import applied to untyped rows. Both save a caller
+                resolving an id it would otherwise have to fetch separately.
+            required: false
+            style: form
+            explode: false
+            schema:
+                type: array
+                items:
+                    type: string
+                    enum:
+                        - organisation
+                        - requester
+                        - default_location_type
+        location_import_id:
+            name: location_import_id
+            in: path
+            required: true
+            description: The unique identifier for the location import.
+            schema:
+                type: string
+                format: uuid
+            example: 4d1f8a36-9b52-4c7e-8a03-6e5b1c9d2f47
         location_types_filter:
             name: filter
             in: query
@@ -33538,10 +34544,49 @@ components:
                 - `eq(name,xxx)`: Filter locations by name.
                 - `contains(name,xxx)`: Filter locations where name contains value.
                 - `eq(location_type,xxx)`: Filter locations by location type ID.
+                - `eq(reference,xxx)`: Filter locations by the organisation's own reference.
+                - `contains(reference,xxx)`: Filter locations where reference contains value.
+                - `contains(description,xxx)`: Filter locations where description contains value.
             required: false
             schema:
                 type: string
                 default: ""
+        locations_sort:
+            in: query
+            name: sort
+            description: A comma separated list of fields to sort by.
+            required: false
+            style: form
+            explode: false
+            schema:
+                type: array
+                items:
+                    type: string
+                    enum:
+                        - created_at
+                        - -created_at
+                        - name
+                        - -name
+                        - reference
+                        - -reference
+        locations_include:
+            name: include
+            in: query
+            description: |
+                A comma separated list of related resources to include.
+
+                `location_type` sideloads the location's type, which saves a list page fetching
+                the whole taxonomy separately just to render type names.
+            required: false
+            style: form
+            explode: false
+            schema:
+                type: array
+                items:
+                    type: string
+                    enum:
+                        - organisation
+                        - location_type
         location_id:
             name: location_id
             in: path
@@ -33662,6 +34707,7 @@ components:
                         - appointment
                         - assignees
                         - forms
+                        - locations
                         - operation_type
                         - organisation
                         - permits
@@ -34114,6 +35160,7 @@ components:
                         - initiating_organisation
                         - recipient_organisation
                         - initiating_request
+                        - notification_recipients
         bridge_id:
             name: bridge_id
             in: path
@@ -34273,6 +35320,7 @@ components:
                         - assignees
                         - contracts
                         - operations
+                        - locations
                         - organisation
                         - permits
                         - properties
@@ -34293,6 +35341,7 @@ components:
                 - `id_in`: Filter by scheme ID(s)
                 - `organisation_in`: Filter schemes by organisation ID(s)
                 - `eq(contract,xxx)`: Filter schemes that are assigned to the given scheme contract ID.
+                - `eq(status,xxx)`: Filter schemes by lifecycle status. One of `in_planning`, `in_progress`, `on_hold`, `complete`.
 
                 Project-role filters (cross-resource lookups against project role assignments):
 
@@ -35344,6 +36393,7 @@ components:
                 - `contains(name,xxx)`: Filter scheme contracts where name contains value.
                 - `eq(organisation,xxx)`: Filter scheme contracts by organisation ID.
                 - `eq(scheme,xxx)`: Filter scheme contracts that contain the given scheme ID.
+                - `eq(status,xxx)`: Filter scheme contracts by lifecycle status. One of `in_planning`, `in_progress`, `on_hold`, `complete`.
 
                 For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
             required: false
@@ -35478,6 +36528,82 @@ components:
             schema:
                 type: string
                 default: ""
+        site_attendances_include:
+            name: include
+            in: query
+            description: A comma separated list of related resources to include.
+            required: false
+            style: form
+            explode: false
+            schema:
+                type: array
+                items:
+                    type: string
+                    enum:
+                        - scheme
+                        - user
+                        - recorded_by
+                        - signed_out_by
+        site_attendances_sort:
+            in: query
+            name: sort
+            description: |
+                A comma separated list of fields to sort by.
+
+                A register reads newest-arrival-first, so `-signed_in_at` is the useful default for a
+                caller to ask for; the API imposes no ordering of its own.
+            required: false
+            style: form
+            explode: false
+            schema:
+                type: array
+                items:
+                    type: string
+                    enum:
+                        - attendee_name
+                        - -attendee_name
+                        - signed_in_at
+                        - -signed_in_at
+                        - signed_out_at
+                        - -signed_out_at
+                        - reason
+                        - -reason
+                        - created_at
+                        - -created_at
+        site_attendances_filter:
+            name: filter
+            in: query
+            description: |
+                Filters the response data based on the value provided.
+
+                Available filters:
+
+                - `id`: Filter by site attendance ID
+                - `scheme`: Filter by scheme ID
+                - `user`: Filter by the attendee's user account, where they hold one
+                - `reason`: Filter by reason for attending
+                - `on_site`: `eq(on_site,true)` for attendances not yet signed out. This is the evacuation list
+                - `signed_in_at`: `ge(signed_in_at,…)` and `le(signed_in_at,…)` bound a day's register
+
+                There is no `on` filter: a day is expressed as a `signed_in_at` range like any other date
+                window. `on_site` is a named filter rather than a null check on `signed_out_at` because the
+                filter grammar has no null operator; it is maintained from the sign-out timestamp on write,
+                so the two cannot disagree.
+
+                For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
+            required: false
+            schema:
+                type: string
+                default: ""
+        site_attendance_id:
+            name: site_attendance_id
+            in: path
+            required: true
+            description: The unique identifier for the site attendance resource.
+            schema:
+                type: string
+                format: uuid
+            example: 3f8c1d94-6b27-4e58-9a01-c7d2e5b48f16
         skills_register_scheme_categories_filter:
             name: filter
             in: query
@@ -36062,6 +37188,22 @@ components:
                         - author
                         - organisation
                         - vehicle
+        vehicle_inspections_sort:
+            in: query
+            name: sort
+            description: A comma separated list of fields to sort by.
+            required: false
+            style: form
+            explode: false
+            schema:
+                type: array
+                items:
+                    type: string
+                    enum:
+                        - created_at
+                        - -created_at
+                        - inspected_at
+                        - -inspected_at
         vehicle_inspection_id:
             name: vehicle_inspection_id
             in: path
@@ -36103,6 +37245,22 @@ components:
                         - equipment
                         - organisation
                         - vehicle
+        vehicle_inventory_checks_sort:
+            in: query
+            name: sort
+            description: A comma separated list of fields to sort by.
+            required: false
+            style: form
+            explode: false
+            schema:
+                type: array
+                items:
+                    type: string
+                    enum:
+                        - created_at
+                        - -created_at
+                        - inspected_at
+                        - -inspected_at
         vehicle_inventory_check_id:
             name: vehicle_inventory_check_id
             in: path
@@ -36203,6 +37361,24 @@ components:
                     enum:
                         - organisation
                         - vehicle
+        vehicle_mot_records_sort:
+            in: query
+            name: sort
+            description: A comma separated list of fields to sort by.
+            required: false
+            style: form
+            explode: false
+            schema:
+                type: array
+                items:
+                    type: string
+                    enum:
+                        - completed_date
+                        - -completed_date
+                        - created_at
+                        - -created_at
+                        - expiry_date
+                        - -expiry_date
         vehicle_mot_record_id:
             name: vehicle_mot_record_id
             in: path
@@ -36296,6 +37472,24 @@ components:
                         - allocated_work_order
                         - allocated_location
                         - folder
+        vehicles_sort:
+            in: query
+            name: sort
+            description: A comma separated list of fields to sort by.
+            required: false
+            style: form
+            explode: false
+            schema:
+                type: array
+                items:
+                    type: string
+                    enum:
+                        - created_at
+                        - -created_at
+                        - registration
+                        - -registration
+                        - updated_at
+                        - -updated_at
         vehicle_id:
             name: vehicle_id
             in: path
@@ -36667,6 +37861,7 @@ components:
                         - appointments
                         - assignees
                         - operations
+                        - locations
                         - organisation
                         - direct_permits
                         - permits
@@ -36688,6 +37883,7 @@ components:
                 - `id_in`: Filter by work order ID(s)
                 - 'organisation_in': Filter by organisation ID(s)
                 - `in_schemes`: Filter for work orders in scheme(s) by their ID(s)
+                - `eq(status,xxx)`: Filter for work orders by lifecycle status. One of `in_planning`, `in_progress`, `on_hold`, `complete`.
 
                 Project-role filters (cross-resource lookups against project role assignments):
 
@@ -44177,6 +45373,70 @@ components:
                                                                     type: string
                                                                     format: uuid
                                                             - type: "null"
+        CreateLocationImport:
+            required: true
+            description: |
+                The file to load, and how to read it.
+
+                The file itself is not sent here. Upload it first with `POST /v3/uploads` and name the id it
+                returns as `upload_id`: a 30,000-row CSV is a binary, and the same two-stage ingest already serves
+                videos, documents and certificates. The upload is consumed by this request, and the import keeps
+                its own copy of the bytes, so the hour-long upload expiry cannot outrun a queued import.
+
+                The requester is taken from the authenticated principal rather than accepted here, so an import
+                can never be attributed to somebody else.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                    - attributes
+                                    - relationships
+                                properties:
+                                    type:
+                                        type: string
+                                        const: location-imports
+                                    attributes:
+                                        type: object
+                                        required:
+                                            - upload_id
+                                            - column_mapping
+                                        properties:
+                                            upload_id:
+                                                type: string
+                                                format: uuid
+                                                description: The id of the uploaded CSV returned by `POST /v3/uploads`.
+                                            column_mapping:
+                                                $ref: '#/components/schemas/LocationImportColumnMapping'
+                                    relationships:
+                                        type: object
+                                        required:
+                                            - organisation
+                                        properties:
+                                            organisation:
+                                                type: object
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/OrganisationRelationship'
+                                            default_location_type:
+                                                type: object
+                                                description: |
+                                                    The type to apply to every row the file gives no type for. An organisation
+                                                    importing 30,000 poles has one type for all of them and no reason to repeat it
+                                                    on every line. Omit it to leave untyped rows untyped.
+                                                properties:
+                                                    data:
+                                                        oneOf:
+                                                            - $ref: '#/components/schemas/LocationTypeRelationship'
+                                                            - type: "null"
         CreateLocationType:
             required: true
             description: The location type to create.
@@ -44279,17 +45539,43 @@ components:
                                     attributes:
                                         type: object
                                         required:
-                                            - name
+                                            - reference
                                         properties:
-                                            name:
+                                            reference:
                                                 type: string
                                                 minLength: 1
+                                                pattern: \S
+                                                description: |
+                                                    The organisation's own lookup key for the place: a pole number, an
+                                                    internal asset tag. Required, and unique within the organisation.
+
+                                                    This is what identifies a location. A bulk import matches rows on it,
+                                                    so a location without one would be created again on every re-import,
+                                                    and the single-create path requires it for the same reason the import
+                                                    always has.
+                                                examples:
+                                                    - POLE-004512
+                                            name:
+                                                type: string
+                                                description: |
+                                                    What the place is called, where it is called anything. Optional: a pole
+                                                    file is commonly a column of pole numbers and nothing else, and a place
+                                                    identified by its reference does not need a name invented for it.
+
+                                                    Deliberately unconstrained, unlike `reference`. An empty string and an
+                                                    absent key are the same fact - this location has no name - and refusing
+                                                    one of the two would 400 a caller that sends every field for a location
+                                                    it is perfectly entitled to create. Whitespace is trimmed on the way in.
                                                 examples:
                                                     - North Depot
                                             description:
                                                 type: string
                                                 examples:
                                                     - Main northern storage site
+                                            location:
+                                                $ref: '#/components/schemas/GeoPoint'
+                                            address:
+                                                $ref: '#/components/schemas/PostalAddress'
                                     relationships:
                                         type: object
                                         required:
@@ -44335,6 +45621,18 @@ components:
                                     attributes:
                                         type: object
                                         properties:
+                                            reference:
+                                                type: string
+                                                minLength: 1
+                                                pattern: \S
+                                                description: |
+                                                    The organisation's own lookup key. Omit to leave it as it is.
+
+                                                    Not clearable, unlike the other attributes here. It identifies the
+                                                    location and is what a bulk import matches on, so clearing it would
+                                                    make the place unmatchable and duplicate it on the next import of the
+                                                    file it came from. Omitting it is how you leave it alone; there is no
+                                                    way to take it away.
                                             name:
                                                 type:
                                                     - "string"
@@ -44343,6 +45641,16 @@ components:
                                                 type:
                                                     - "string"
                                                     - "null"
+                                            location:
+                                                oneOf:
+                                                    - $ref: '#/components/schemas/GeoPoint'
+                                                    - type: "null"
+                                                description: Omit or send null to clear the coordinate.
+                                            address:
+                                                oneOf:
+                                                    - $ref: '#/components/schemas/PostalAddress'
+                                                    - type: "null"
+                                                description: Omit or send null to clear the address.
                                     relationships:
                                         type: object
                                         properties:
@@ -45334,6 +46642,36 @@ components:
                                                 properties:
                                                     data:
                                                         $ref: '#/components/schemas/OperationTypeRelationship'
+        RemoveLocationsFromOperation:
+            required: true
+            description: The locations to remove from the operation
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                title: An array of locations
+                                type: array
+                                items:
+                                    $ref: '#/components/schemas/LocationRelationship'
+        ReplaceLocationRelationshipsToOperation:
+            required: true
+            description: The complete set of locations for the operation. Any location not listed is unassigned.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                title: An array of locations
+                                type: array
+                                items:
+                                    $ref: '#/components/schemas/LocationRelationship'
         RemovePermitsFromOperation:
             required: true
             description: The permits to remove from the operation
@@ -47074,6 +48412,12 @@ components:
                                                 description: The name of the scheme
                                                 examples:
                                                     - "Updated Scheme Name"
+                                            status:
+                                                allOf:
+                                                    - $ref: '#/components/schemas/LifecycleStatus'
+                                                description: |
+                                                    The lifecycle status of the scheme. Optional: omit it to
+                                                    leave the current status unchanged.
                                             code:
                                                 type: string
                                                 description: The scheme code
@@ -49599,6 +50943,12 @@ components:
                                                 description: The display name of the contract.
                                                 examples:
                                                     - Northern Region
+                                            status:
+                                                allOf:
+                                                    - $ref: '#/components/schemas/LifecycleStatus'
+                                                description: |
+                                                    The lifecycle status of the contract. Optional: omit it to
+                                                    leave the current status unchanged.
                                     relationships:
                                         type: object
                                         required:
@@ -49871,6 +51221,182 @@ components:
                                         properties:
                                             read_only:
                                                 type: boolean
+        CreateSiteAttendance:
+            required: true
+            description: |
+                Sign a person in. `recorded_by` is derived from the authenticated principal and is not
+                accepted here; neither is `signed_out_at`, which is set by signing out.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                    - attributes
+                                    - relationships
+                                properties:
+                                    type:
+                                        type: string
+                                        const: site-attendances
+                                    attributes:
+                                        type: object
+                                        required:
+                                            - attendee_name
+                                            - reason
+                                            - signed_in_at
+                                        properties:
+                                            attendee_name:
+                                                type: string
+                                                minLength: 1
+                                            attendee_company:
+                                                type:
+                                                    - string
+                                                    - "null"
+                                            attendee_contact:
+                                                type:
+                                                    - string
+                                                    - "null"
+                                            reason:
+                                                type: string
+                                                enum:
+                                                    - working
+                                                    - visiting
+                                                    - other
+                                            reason_other:
+                                                type:
+                                                    - string
+                                                    - "null"
+                                                description: Required when reason is other, and rejected otherwise.
+                                            acknowledged:
+                                                type: boolean
+                                                default: false
+                                            signed_in_at:
+                                                type: string
+                                                format: date-time
+                                    relationships:
+                                        type: object
+                                        required:
+                                            - scheme
+                                        properties:
+                                            scheme:
+                                                type: object
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/SchemeRelationship'
+                                            user:
+                                                type: object
+                                                description: Set only where the attendee holds an account.
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/UserRelationship'
+        UpdateSiteAttendance:
+            required: true
+            description: |
+                Sign the attendee out, or correct captured details. `signed_out_by` is derived from the
+                authenticated principal and is not accepted here.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                properties:
+                                    type:
+                                        type: string
+                                        const: site-attendances
+                                    attributes:
+                                        type: object
+                                        properties:
+                                            attendee_name:
+                                                type: string
+                                                minLength: 1
+                                            attendee_company:
+                                                type:
+                                                    - string
+                                                    - "null"
+                                            attendee_contact:
+                                                type:
+                                                    - string
+                                                    - "null"
+                                            reason:
+                                                type: string
+                                                enum:
+                                                    - working
+                                                    - visiting
+                                                    - other
+                                            reason_other:
+                                                type:
+                                                    - string
+                                                    - "null"
+                                            acknowledged:
+                                                type: boolean
+                                            signed_out_at:
+                                                type:
+                                                    - string
+                                                    - "null"
+                                                format: date-time
+                                                description: |
+                                                    Setting this signs the attendee out, and may be backdated to when they
+                                                    actually left. Null clears a sign-out made in error. When the sign-out
+                                                    was requested is recorded separately and is not accepted here.
+        SignOutSiteAttendances:
+            required: true
+            description: |
+                Sign several attendees out at once, applying the same time to each.
+
+                This is not a convenience over the single-attendance update. On the form this resource
+                replaces, four people were signed out in 61 seconds at close of play, one keystroke at a
+                time. Reconciling the register in one sitting is the shape the work actually takes.
+
+                `signed_out_by` is derived from the authenticated principal and is not accepted here.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                    - attributes
+                                properties:
+                                    type:
+                                        type: string
+                                        const: site-attendances
+                                    attributes:
+                                        type: object
+                                        required:
+                                            - attendances
+                                            - signed_out_at
+                                        properties:
+                                            attendances:
+                                                type: array
+                                                minItems: 1
+                                                description: The attendances to sign out. Any already signed out are rejected.
+                                                items:
+                                                    type: string
+                                                    format: uuid
+                                            signed_out_at:
+                                                type: string
+                                                format: date-time
+                                                description: |
+                                                    Applied to every attendance in the request, and may be backdated to when
+                                                    they actually left. When the sign-out was requested is recorded
+                                                    separately and is not accepted here.
         CreateSkillsRegisterSchemeCategory:
             required: true
             description: The skills register scheme category to create.
@@ -51747,6 +53273,7 @@ components:
                                 required:
                                     - type
                                     - attributes
+                                    - relationships
                                 properties:
                                     type:
                                         type: string
@@ -51762,6 +53289,18 @@ components:
                                                 description: The registration to enquire about.
                                                 examples:
                                                     - BX10GKJ
+                                    relationships:
+                                        type: object
+                                        required:
+                                            - organisation
+                                        properties:
+                                            organisation:
+                                                type: object
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/OrganisationRelationship'
         CreateVehicleInspection:
             required: true
             description: The vehicle inspection to create.
@@ -53271,6 +54810,12 @@ components:
                                                 description: The name of the work order
                                                 examples:
                                                     - "Updated Infrastructure Work Order"
+                                            status:
+                                                allOf:
+                                                    - $ref: '#/components/schemas/LifecycleStatus'
+                                                description: |
+                                                    The lifecycle status of the work order. Optional: omit it
+                                                    to leave the current status unchanged.
                                             code:
                                                 type: string
                                                 description: The code of the work order
@@ -60504,6 +62049,8 @@ paths:
                     $ref: '#/components/responses/Unauthorised'
                 "409":
                     $ref: '#/components/responses/Conflict'
+                "422":
+                    $ref: '#/components/responses/UnprocessableEntity'
                 "500":
                     $ref: '#/components/responses/InternalServerError'
             security:
@@ -60645,6 +62192,41 @@ paths:
                 metadata:
                     title: List all submissions for a form
     /v3/form-submissions/{submission_id}:
+        delete:
+            description: |
+                Delete a draft submission. The submission is soft deleted: it stops appearing in any
+                read, and who deleted it and when is recorded against it.
+
+                Only a submission still in `draft` status can be deleted. Once a submission has been
+                submitted it is a validated record and this endpoint rejects the request with a 409.
+            operationId: DeleteSubmission
+            parameters:
+                - $ref: '#/components/parameters/submission_id'
+            responses:
+                "204":
+                    description: Draft submission deleted successfully.
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Delete a draft submission
+            tags:
+                - Submissions
+            x-ctrl-hub:
+                domain: dataCapture
+            x-mint:
+                metadata:
+                    title: Delete a draft submission
         get:
             description: Get an individual submission by ID.
             operationId: GetSubmission
@@ -62294,6 +63876,141 @@ paths:
             x-mint:
                 metadata:
                     title: Update a learning
+    /v3/location-imports:
+        get:
+            description: |
+                Retrieve location imports: the record of which files were loaded, by whom, and what they did.
+
+                Read an organisation's own history with `eq(organisation,<id>)`. Newest first by default, since a
+                history is read to find out what happened recently.
+
+                Authorised by the locations view grant, because an import is a record of what was written to the
+                locations collection.
+            operationId: ListLocationImports
+            parameters:
+                - $ref: '#/components/parameters/location_imports_filter'
+                - $ref: '#/components/parameters/location_imports_sort'
+                - $ref: '#/components/parameters/location_imports_include'
+                - $ref: '#/components/parameters/limit'
+                - $ref: '#/components/parameters/offset'
+            responses:
+                "200":
+                    $ref: '#/components/responses/ListLocationImports'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - Cookie: []
+                - OAuth2: []
+            tags:
+                - Location Imports
+            x-ctrl-hub:
+                domain: geo
+            x-mint:
+                metadata:
+                    title: List location imports
+        post:
+            description: |
+                Load a CSV of locations in bulk.
+
+                Upload the file first with `POST /v3/uploads`, then name the id it returns here together with a
+                column mapping. The request reads and validates the whole file before returning, so a mapping that
+                names a column the file does not have, or that names no reference column, is refused now rather
+                than becoming an import that fails later with nobody watching. The response carries the row count
+                the import will work through.
+
+                The rows are written afterwards, in chunks, and the record's `progress` and `results` are what a
+                caller polls. Nothing is pushed: `GET /v3/location-imports/{location_import_id}` until `status` is
+                `completed` or `failed`.
+
+                `reference` is mandatory in the mapping. It is the identity rows are matched on: a row whose
+                reference already names a location in the organisation updates it, and one whose reference is new
+                creates a location. That is what makes re-importing a corrected file idempotent instead of
+                doubling the population, and it is why a file with no reference column is refused rather than
+                loaded once.
+
+                A row that cannot be read is skipped with a reason and the import still completes. A file of
+                30,000 poles with four bad coordinates loads 29,996 locations and reports four rows, because
+                making somebody find and fix all four before any of it lands is worse than loading most of it.
+
+                Authorised by the locations grants that govern the records it writes: **both** `locations:create`
+                and `locations:update`, because an import does both and which of the two a given file does is not
+                knowable until it has been read. There is no import permission of its own.
+
+                The bulk path deliberately emits no per-row audit or entity events. This record is the audit
+                trail, and anything that needs to react to a bulk import reacts to the import's own completion.
+            operationId: CreateLocationImport
+            requestBody:
+                $ref: '#/components/requestBodies/CreateLocationImport'
+            responses:
+                "201":
+                    $ref: '#/components/responses/GetLocationImport'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - Cookie: []
+                - OAuth2: []
+            summary: Load a file of locations
+            tags:
+                - Location Imports
+            x-ctrl-hub:
+                domain: geo
+            x-mint:
+                metadata:
+                    title: Load a file of locations
+    /v3/location-imports/{location_import_id}:
+        get:
+            description: |
+                Retrieve a location import by its unique identifier.
+
+                This is what a caller polls while an import runs. `progress` gives processed against total rows,
+                `results` gives the running inserted, updated and skipped counts, and `row_errors` gives the
+                reasons rows were left out. Stop polling when `status` is `completed` or `failed`; a failed import
+                is deliberately distinguishable from one still running, so a caller is not left waiting for
+                something that is not coming.
+
+                Authorised by `locations:view` in the import's organisation, at the organisation level rather than
+                against the record: somebody whose locations grant is narrowed to particular places still has to
+                be able to watch the import they started.
+            operationId: GetLocationImport
+            parameters:
+                - $ref: '#/components/parameters/location_import_id'
+                - $ref: '#/components/parameters/location_imports_include'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetLocationImport'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - Cookie: []
+                - OAuth2: []
+            tags:
+                - Location Imports
+            x-ctrl-hub:
+                domain: geo
+            x-mint:
+                metadata:
+                    title: Get a location import
     /v3/location-types:
         get:
             description: Retrieve a list of location types.
@@ -62446,6 +64163,8 @@ paths:
             operationId: ListLocations
             parameters:
                 - $ref: '#/components/parameters/locations_filter'
+                - $ref: '#/components/parameters/locations_sort'
+                - $ref: '#/components/parameters/locations_include'
                 - $ref: '#/components/parameters/limit'
                 - $ref: '#/components/parameters/offset'
             responses:
@@ -62532,6 +64251,7 @@ paths:
             operationId: GetLocation
             parameters:
                 - $ref: '#/components/parameters/location_id'
+                - $ref: '#/components/parameters/locations_include'
             responses:
                 "200":
                     $ref: '#/components/responses/GetLocation'
@@ -63262,6 +64982,94 @@ paths:
             x-mint:
                 metadata:
                     title: Assign users to an operation
+    /v3/operations/{operation_id}/relationships/locations:
+        delete:
+            description: Remove locations from the operation
+            operationId: RemoveLocationsFromOperation
+            parameters:
+                - $ref: '#/components/parameters/operation_id'
+            requestBody:
+                $ref: '#/components/requestBodies/RemoveLocationsFromOperation'
+            responses:
+                "200":
+                    $ref: '#/components/responses/RemoveLocationsFromOperation'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            tags:
+                - Operations
+            x-mint:
+                metadata:
+                    title: Remove locations from an operation
+        patch:
+            description: Replace the locations assigned to the operation
+            operationId: ReplaceLocationRelationshipsToOperation
+            parameters:
+                - $ref: '#/components/parameters/operation_id'
+            requestBody:
+                $ref: '#/components/requestBodies/ReplaceLocationRelationshipsToOperation'
+            responses:
+                "200":
+                    $ref: '#/components/responses/ReplaceOperationLocations'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            tags:
+                - Operations
+            x-mint:
+                metadata:
+                    title: Replace locations on an operation
+        post:
+            description: Add organisation-managed locations to an operation
+            operationId: AddLocationsToOperation
+            parameters:
+                - $ref: '#/components/parameters/operation_id'
+            requestBody:
+                content:
+                    application/vnd.api+json:
+                        schema:
+                            properties:
+                                data:
+                                    items:
+                                        $ref: '#/components/schemas/LocationRelationship'
+                                    type: array
+                            required:
+                                - data
+                            type: object
+                description: Add locations to an operation
+                required: true
+            responses:
+                "201":
+                    $ref: '#/components/responses/AddLocationsToOperation'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            tags:
+                - Operations
+            x-mint:
+                metadata:
+                    title: Assign locations to an operation
     /v3/operations/{operation_id}/relationships/permits:
         delete:
             description: |
@@ -65297,6 +67105,52 @@ paths:
             x-mint:
                 metadata:
                     title: Get a bridge
+    /v3/orgs/{org_id}/organisation-bridges/{bridge_id}/relationships/notification-recipients:
+        patch:
+            description: 'Replace the calling organisation''s nominated notification recipients on the bridge. Both organisations share a single list and can see all of it, but each may only nominate its own members: the counterpart organisation''s nominations are left untouched, and submitting a user who is not a member of the calling organisation is rejected. Nominated users who are no longer a member of either organisation are dropped.'
+            operationId: ReplaceOrganisationBridgeRelationshipToNotificationRecipient
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+                - $ref: '#/components/parameters/bridge_id'
+            requestBody:
+                content:
+                    application/vnd.api+json:
+                        schema:
+                            properties:
+                                data:
+                                    items:
+                                        $ref: '#/components/schemas/UserRelationship'
+                                    type: array
+                            required:
+                                - data
+                            type: object
+                description: The nominated notification recipients belonging to the calling organisation.
+                required: true
+            responses:
+                "200":
+                    $ref: '#/components/responses/ReplaceOrganisationBridgeRelationshipToNotificationRecipient'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            tags:
+                - Bridges
+            x-ctrl-hub:
+                domain: iam
+                domainLiteral: IAM
+                entity: OrganisationBridge
+                manual: true
+            x-mint:
+                metadata:
+                    title: Replace bridge notification recipients
     /v3/orgs/{org_id}/people/teams:
         get:
             description: List all of the teams in an organisation.
@@ -68791,6 +70645,43 @@ paths:
                 metadata:
                     title: Create a scheme share
     /v3/scheme-shares/{scheme_share_id}:
+        delete:
+            description: |
+                Withdraw a scheme share, removing the recipient organisation's access to the
+                scheme and to the work orders and operations within it. Only the owning
+                organisation can withdraw a share.
+
+                Soft-delete: the share record is retained so historical submissions made
+                under it keep their provenance. Access is revoked asynchronously, as is the
+                removal of the recipient organisation's people from job roles and operation
+                assignments within the scheme.
+            operationId: DeleteSchemeShare
+            parameters:
+                - $ref: '#/components/parameters/scheme_share_id'
+            responses:
+                "204":
+                    description: Scheme share deleted successfully.
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Delete a scheme share
+            tags:
+                - Scheme Shares
+            x-ctrl-hub:
+                domain: projects
+                entity: SchemeShare
+            x-mint:
+                metadata:
+                    title: Delete a scheme share
         get:
             description: Get a scheme share.
             operationId: GetSchemeShare
@@ -68844,6 +70735,46 @@ paths:
             x-mint:
                 metadata:
                     title: Update a scheme share
+    /v3/scheme-shares/{scheme_share_id}/removal-impact:
+        get:
+            description: |
+                Report how much work is posted on the shared scheme, so a withdrawal can be
+                confirmed with a sense of its scale.
+
+                The counts are scheme-wide totals and include the owning organisation's own
+                people. Narrowing them to the recipient organisation needs a membership
+                lookup this endpoint does not make, so the totals may overstate what the
+                cleanup removes — by how much depends on who holds the postings, and if they
+                are all held by people who belong only to the recipient organisation the
+                cleanup removes all of them. Present them as what is posted on the scheme
+                rather than as a prediction of what is about to be removed.
+            operationId: GetSchemeShareRemovalImpact
+            parameters:
+                - $ref: '#/components/parameters/scheme_share_id'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetSchemeShareRemovalImpact'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Get the removal impact of a scheme share
+            tags:
+                - Scheme Shares
+            x-ctrl-hub:
+                domain: projects
+                entity: SchemeShareRemovalImpact
+            x-mint:
+                metadata:
+                    title: Get the removal impact of a scheme share
     /v3/schemes:
         get:
             description: List all of the schemes in an organisation.
@@ -68998,6 +70929,178 @@ paths:
             x-mint:
                 metadata:
                     title: Search shared resources
+    /v3/site-attendances:
+        get:
+            description: |
+                List site attendances.
+
+                There is no daily register resource. Bound a day with a `signed_in_at` range, and use
+                `on_site` for who has signed in and not yet signed out.
+            operationId: ListSiteAttendances
+            parameters:
+                - $ref: '#/components/parameters/limit'
+                - $ref: '#/components/parameters/offset'
+                - $ref: '#/components/parameters/site_attendances_include'
+                - $ref: '#/components/parameters/site_attendances_sort'
+                - $ref: '#/components/parameters/site_attendances_filter'
+            responses:
+                "200":
+                    $ref: '#/components/responses/ListSiteAttendances'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: List site attendance resources
+            tags:
+                - Site Attendances
+            x-ctrl-hub:
+                domain: cdm
+                entity: SiteAttendance
+            x-mint:
+                metadata:
+                    title: List site attendances
+        post:
+            description: |
+                Sign a person in.
+
+                The attendee does not have to hold an account: name, company and contact number are free
+                text, and the user relationship is set only where they do.
+            operationId: CreateSiteAttendance
+            requestBody:
+                $ref: '#/components/requestBodies/CreateSiteAttendance'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetSiteAttendance'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Sign a person in to site
+            tags:
+                - Site Attendances
+            x-ctrl-hub:
+                domain: cdm
+                entity: SiteAttendance
+            x-mint:
+                metadata:
+                    title: Sign a person in to site
+    /v3/site-attendances/{site_attendance_id}:
+        get:
+            description: Get a site attendance.
+            operationId: GetSiteAttendance
+            parameters:
+                - $ref: '#/components/parameters/site_attendance_id'
+                - $ref: '#/components/parameters/site_attendances_include'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetSiteAttendance'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Get a site attendance resource
+            tags:
+                - Site Attendances
+            x-ctrl-hub:
+                domain: cdm
+                entity: SiteAttendance
+            x-mint:
+                metadata:
+                    title: Get a site attendance
+        patch:
+            description: Sign the attendee out, or correct details captured on the attendance.
+            operationId: UpdateSiteAttendance
+            parameters:
+                - $ref: '#/components/parameters/site_attendance_id'
+            requestBody:
+                $ref: '#/components/requestBodies/UpdateSiteAttendance'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetSiteAttendance'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Sign a person out, or correct their attendance
+            tags:
+                - Site Attendances
+            x-ctrl-hub:
+                domain: cdm
+                entity: SiteAttendance
+            x-mint:
+                metadata:
+                    title: Sign a person out of site
+    /v3/site-attendances/sign-out:
+        post:
+            description: |
+                Sign several attendances out in one request, applying the same time to each.
+
+                End of day is when a register is reconciled in one sitting, so this is the shape the work
+                actually takes rather than a convenience over the single-attendance update.
+            operationId: SignOutSiteAttendances
+            requestBody:
+                $ref: '#/components/requestBodies/SignOutSiteAttendances'
+            responses:
+                "200":
+                    $ref: '#/components/responses/ListSiteAttendances'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Sign several people out of site at once
+            tags:
+                - Site Attendances
+            x-ctrl-hub:
+                domain: cdm
+                entity: SiteAttendance
+                manual: true
+            x-mint:
+                metadata:
+                    title: Sign several people out of site
     /v3/skills-register-scheme-categories:
         get:
             description: List all skills register scheme categories.
@@ -71158,6 +73261,7 @@ paths:
                 - $ref: '#/components/parameters/vehicle_inspections_include'
                 - $ref: '#/components/parameters/limit'
                 - $ref: '#/components/parameters/offset'
+                - $ref: '#/components/parameters/vehicle_inspections_sort'
             responses:
                 "200":
                     $ref: '#/components/responses/ListVehicleInspections'
@@ -71300,6 +73404,7 @@ paths:
                 - $ref: '#/components/parameters/vehicle_inventory_checks_include'
                 - $ref: '#/components/parameters/limit'
                 - $ref: '#/components/parameters/offset'
+                - $ref: '#/components/parameters/vehicle_inventory_checks_sort'
             responses:
                 "200":
                     $ref: '#/components/responses/ListVehicleInventoryChecks'
@@ -71735,6 +73840,7 @@ paths:
                 - $ref: '#/components/parameters/vehicle_mot_records_include'
                 - $ref: '#/components/parameters/limit'
                 - $ref: '#/components/parameters/offset'
+                - $ref: '#/components/parameters/vehicle_mot_records_sort'
             responses:
                 "200":
                     $ref: '#/components/responses/ListVehicleMOTRecords'
@@ -71939,6 +74045,7 @@ paths:
                 - $ref: '#/components/parameters/vehicles_include'
                 - $ref: '#/components/parameters/limit'
                 - $ref: '#/components/parameters/offset'
+                - $ref: '#/components/parameters/vehicles_sort'
             responses:
                 "200":
                     $ref: '#/components/responses/ListVehicles'
@@ -74656,6 +76763,12 @@ tags:
         Locations are places an organisation manages, optionally classified by a location type.
       name: Locations
     - description: |
+        Bulk loads of locations from an uploaded CSV. An import matches rows on the organisation's own
+        `reference`, so re-importing a corrected file updates what is already there rather than
+        doubling the population, and the import record is the audit trail for the whole load: the bulk
+        write path deliberately emits no per-row events.
+      name: Location Imports
+    - description: |
         Manage your forms and their schemas
       name: Forms, Schemas and Categories
     - description: |
@@ -74748,6 +76861,11 @@ tags:
     - description: |
         Schemes are large programmes of work
       name: Schemes
+    - description: |
+        Site attendances record who was on site and when, whether or not they hold an account.
+        There is no daily register resource: a day's register and who is currently on site are
+        both queries over the attendances themselves.
+      name: Site Attendances
     - description: |
         Work orders the component parts of a scheme.
       name: Work Orders
