@@ -1,0 +1,147 @@
+name: OpenAPI Spec Update Receiver
+
+# mono sends `openapi_spec_updated` whenever api/openapi/generated.public.yaml changes on main.
+# The API Reference tab renders api-reference/openapi.yaml as-is, so this copies the new spec over
+# it and opens a pull request; merging publishes it through Mintlify.
+on:
+  repository_dispatch:
+    types: [openapi_spec_updated]
+  workflow_dispatch:
+    inputs:
+      source_owner:
+        description: 'Source repository owner'
+        required: true
+        default: 'ctrl-hub'
+        type: string
+      source_repo:
+        description: 'Source repository name'
+        required: true
+        default: 'mono'
+        type: string
+      commit_sha:
+        description: 'Full commit SHA to download the spec from'
+        required: true
+        type: string
+      commit_short_sha:
+        description: 'Short commit SHA (for branch naming - first 7 chars)'
+        required: true
+        type: string
+      commit_author:
+        description: 'Commit author username'
+        required: true
+        type: string
+      commit_message:
+        description: 'Commit message'
+        required: false
+        default: 'Manual OpenAPI spec update'
+        type: string
+
+jobs:
+  handle-spec-update:
+    name: Handle OpenAPI Spec Update
+    runs-on: ubuntu-latest
+    env:
+      SOURCE_OWNER: ${{ inputs.source_owner || github.event.client_payload.source_owner }}
+      SOURCE_REPO: ${{ inputs.source_repo || github.event.client_payload.source_repo }}
+      COMMIT_SHA: ${{ inputs.commit_sha || github.event.client_payload.commit_sha }}
+      COMMIT_SHORT_SHA: ${{ inputs.commit_short_sha || github.event.client_payload.commit_short_sha }}
+      COMMIT_AUTHOR: ${{ inputs.commit_author || github.event.client_payload.commit_author }}
+      COMMIT_MESSAGE: ${{ inputs.commit_message || github.event.client_payload.commit_message }}
+    steps:
+      - name: Checkout doc.public repo
+        uses: actions/checkout@v4
+
+      - name: Display dispatch payload
+        run: |
+          echo "OpenAPI spec update from $SOURCE_OWNER/$SOURCE_REPO"
+          echo "Commit SHA: $COMMIT_SHA"
+          echo "Short SHA: $COMMIT_SHORT_SHA"
+          echo "Author: $COMMIT_AUTHOR"
+          echo "Message: $COMMIT_MESSAGE"
+          echo "Triggered via: $GITHUB_EVENT_NAME"
+
+      - name: Download updated OpenAPI spec
+        env:
+          REPO_TOKEN: ${{ secrets.CTRL_HUB_BOT_REPO_ACCESS_TOKEN }}
+        run: |
+          # source_owner, source_repo and commit_sha steer the download URL, so they are checked
+          # against GitHub's own name and SHA charsets before use.
+          if ! [[ "$SOURCE_OWNER" =~ ^[a-zA-Z0-9]([a-zA-Z0-9-]{0,37}[a-zA-Z0-9])?$ ]]; then
+            echo "❌ source_owner \"$SOURCE_OWNER\" is not a valid GitHub owner name"
+            exit 1
+          fi
+
+          if ! [[ "$SOURCE_REPO" =~ ^[A-Za-z0-9_.-]{1,100}$ ]]; then
+            echo "❌ source_repo \"$SOURCE_REPO\" is not a valid GitHub repository name"
+            exit 1
+          fi
+
+          if ! [[ "$COMMIT_SHA" =~ ^[0-9a-f]{7,40}$ ]]; then
+            echo "❌ commit_sha \"$COMMIT_SHA\" is not a valid commit SHA"
+            exit 1
+          fi
+
+          if ! [[ "$COMMIT_SHORT_SHA" =~ ^[0-9a-f]{7,40}$ ]]; then
+            echo "❌ commit_short_sha \"$COMMIT_SHORT_SHA\" is not a valid commit SHA"
+            exit 1
+          fi
+
+          mkdir -p ./specs
+          curl --fail --silent --show-error \
+               -H "Accept: application/vnd.github.v3.raw" \
+               -H "Authorization: token $REPO_TOKEN" \
+               -L "https://api.github.com/repos/$SOURCE_OWNER/$SOURCE_REPO/contents/api/openapi/generated.public.yaml?ref=$COMMIT_SHA" \
+               -o ./specs/api.yaml
+
+          ls -la ./specs/
+
+      # Keys in the generated spec are sorted, so `openapi:` is not on the first line; look for it
+      # anywhere at the top level. An error body from the contents API has no such line.
+      - name: Ensure the spec is a real OpenAPI document
+        run: |
+          file_size=$(wc -c < ./specs/api.yaml)
+          echo "File size: $file_size bytes"
+
+          if [ "$file_size" -lt 1000 ] || ! grep -qE '^openapi: 3\.' ./specs/api.yaml; then
+            echo "❌ Downloaded file is not an OpenAPI 3 document"
+            head -c 2000 ./specs/api.yaml
+            exit 1
+          fi
+
+          mv ./specs/api.yaml api-reference/openapi.yaml
+          rm -r ./specs
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if git diff --quiet -- api-reference/openapi.yaml; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            echo "No changes detected"
+          else
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+            git diff --stat -- api-reference/openapi.yaml
+          fi
+
+      # GITHUB_TOKEN in this repository is read-only and not allowed to open pull requests, so the
+      # bot token opens it instead.
+      - name: Create Pull Request
+        if: steps.check_changes.outputs.has_changes == 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.CTRL_HUB_BOT_REPO_ACCESS_TOKEN }}
+          add-paths: api-reference/openapi.yaml
+          commit-message: Update API spec
+          title: "OpenAPI spec update from ${{ env.SOURCE_REPO }} ${{ env.COMMIT_SHORT_SHA }}"
+          body: |
+            ## OpenAPI Spec Update
+
+            This PR contains an automated update to the API Reference spec (`api-reference/openapi.yaml`), copied from `api/openapi/generated.public.yaml`. Merging it publishes the new reference.
+
+            **Source:** ${{ env.SOURCE_OWNER }}/${{ env.SOURCE_REPO }}
+            **Commit:** ${{ env.COMMIT_SHORT_SHA }}
+            **Author:** @${{ env.COMMIT_AUTHOR }}
+            **Message:** ${{ env.COMMIT_MESSAGE }}
+            **Triggered via:** ${{ github.event_name == 'workflow_dispatch' && '🖱️ Manual dispatch' || '🤖 Repository dispatch' }}
+          branch: openapi-update-${{ env.COMMIT_SHORT_SHA }}
+          delete-branch: true
+          reviewers: ${{ env.COMMIT_AUTHOR }}
