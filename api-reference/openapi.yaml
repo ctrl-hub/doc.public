@@ -945,6 +945,17 @@ components:
                         endpoints.
                     examples:
                         - active
+                password_set_at:
+                    type:
+                        - string
+                        - "null"
+                    format: date-time
+                    description: |
+                        When the user last set a password. Null if they never have, or if it is
+                        unknown because the user was created before this was tracked. Set by the
+                        server; it cannot be written through the API.
+                    examples:
+                        - 2026-09-25T10:15:00Z
                 identities:
                     type: array
                     items:
@@ -73776,6 +73787,53 @@ paths:
                 - Cookie: []
             tags:
                 - IAM
+    /v3/users/{user_id}/send-access-email:
+        post:
+            description: |
+                Send an access email to a user managed by an organisation, so they can get
+                into their account. The server chooses which email to send from the user's
+                `password_set_at`: when it is null the user is sent the setup (welcome)
+                email again, and when it is set they are sent a password reset email. Both
+                emails lead the user through a recovery flow to set a password; neither
+                contains a secret.
+
+                The user must be managed by an organisation, have a Kratos identity, and
+                have an active membership in the managing organisation, otherwise the
+                request returns 409 Conflict with an error code saying which condition
+                failed. The caller needs permission to update the user in the managing
+                organisation. Every request sends a new email.
+            operationId: SendAccessEmail
+            parameters:
+                - $ref: '#/components/parameters/user_id'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetUser'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "403":
+                    $ref: '#/components/responses/Forbidden'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Send a setup or password reset email to a managed user
+            tags:
+                - Users
+            x-ctrl-hub:
+                domain: iam
+                entity: User
+                manual: true
+            x-mint:
+                metadata:
+                    title: Send an access email
     /v3/vehicle-categories:
         get:
             description: Retrieve a list of vehicle categories.
