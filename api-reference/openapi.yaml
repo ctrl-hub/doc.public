@@ -53813,6 +53813,46 @@ components:
                                                                 type: string
                                                                 description: Employment start date in YYYY-MM-DD format
                                                                 example: 2018-03-15
+        SendAccessEmail:
+            required: false
+            description: |
+                Optional. Names the organisation the caller is acting in. When a body is
+                supplied it must use the `access-emails` type and relate the organisation.
+
+                Without a body the organisation is the one that manages the user, so only a
+                user managed by an organisation can be sent an access email. With a body any
+                active member of the named organisation can be sent one: the setup email if
+                that organisation manages them and they have never set a password, otherwise a
+                password reset. A password reset needs a password to reset, so a member who
+                signs in only with single sign-on is refused.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                    - relationships
+                                properties:
+                                    type:
+                                        type: string
+                                        const: access-emails
+                                    relationships:
+                                        type: object
+                                        required:
+                                            - organisation
+                                        properties:
+                                            organisation:
+                                                type: object
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/OrganisationRelationship'
         CreateVehicleCategory:
             required: true
             description: The vehicle category to create.
@@ -73790,21 +73830,31 @@ paths:
     /v3/users/{user_id}/send-access-email:
         post:
             description: |
-                Send an access email to a user managed by an organisation, so they can get
-                into their account. The server chooses which email to send from the user's
-                `password_set_at`: when it is null the user is sent the setup (welcome)
-                email again, and when it is set they are sent a password reset email. Both
-                emails lead the user through a recovery flow to set a password; neither
-                contains a secret.
+                Send an access email to a member so they can get into their account.
 
-                The user must be managed by an organisation, have a Kratos identity, and
-                have an active membership in the managing organisation, otherwise the
-                request returns 409 Conflict with an error code saying which condition
-                failed. The caller needs permission to update the user in the managing
-                organisation. Every request sends a new email.
+                The request body is optional and names the organisation the caller is acting
+                in. Without it, the organisation is the one that manages the user: the user
+                must be managed by an organisation, and the caller needs permission to update
+                the user there. With it, the caller needs permission to update users in the
+                named organisation and the user must be a member of it; a user who is not
+                returns 404 Not Found.
+
+                The server chooses which email to send. A user managed by the acting
+                organisation who has never set a password (`password_set_at` is null) is sent
+                the setup (welcome) email again. Anyone else is sent a password reset email
+                naming the acting organisation. A user who is not managed by an organisation
+                and signs in only with single sign-on has no password to reset and is
+                refused. Both emails lead the user through a recovery flow to set a
+                password; neither contains a secret.
+
+                The user must have a Kratos identity and an active membership in the acting
+                organisation, otherwise the request returns 409 Conflict with an error code
+                saying which condition failed. Every request sends a new email.
             operationId: SendAccessEmail
             parameters:
                 - $ref: '#/components/parameters/user_id'
+            requestBody:
+                $ref: '#/components/requestBodies/SendAccessEmail'
             responses:
                 "200":
                     $ref: '#/components/responses/GetUser'
@@ -73824,7 +73874,7 @@ paths:
                 - Session: []
                 - OAuth2: []
                 - Cookie: []
-            summary: Send a setup or password reset email to a managed user
+            summary: Send a setup or password reset email to a member
             tags:
                 - Users
             x-ctrl-hub:
