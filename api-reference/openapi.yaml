@@ -7664,19 +7664,19 @@ components:
             description: Attributes of a document review request
             required:
                 - message
-                - comments_due
-                - approval_due
+                - comments_due_at
+                - approvals_due_at
             properties:
                 message:
                     type: string
                     description: Message from the requester describing what needs review
-                comments_due:
+                comments_due_at:
                     type:
                         - string
                         - "null"
                     format: date-time
                     description: Optional due date for comments
-                approval_due:
+                approvals_due_at:
                     type:
                         - string
                         - "null"
