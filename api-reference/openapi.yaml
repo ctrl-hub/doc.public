@@ -925,6 +925,9 @@ components:
         UserAttributes:
             type: object
             description: Attributes for a user
+            required:
+                - email
+                - profile
             properties:
                 email:
                     type: string
@@ -980,9 +983,20 @@ components:
                                 description: Additional metadata for the identity.
                 profile:
                     type: object
+                    required:
+                        - work
+                        - personal
+                        - contact
+                        - address
+                        - settings
                     properties:
                         work:
                             type: object
+                            required:
+                                - occupation
+                                - cscs
+                                - eusr
+                                - start_date
                             properties:
                                 occupation:
                                     type: string
@@ -1007,6 +1021,11 @@ components:
                                         - 2020-03-01
                         personal:
                             type: object
+                            required:
+                                - first_name
+                                - last_name
+                                - dob
+                                - username
                             properties:
                                 first_name:
                                     type: string
@@ -1031,6 +1050,9 @@ components:
                                         - johndoe
                         contact:
                             type: object
+                            required:
+                                - mobile
+                                - landline
                             properties:
                                 mobile:
                                     type: string
@@ -1044,6 +1066,16 @@ components:
                                         - +44 20 7946 0958
                         address:
                             type: object
+                            required:
+                                - name
+                                - number
+                                - street
+                                - area
+                                - town
+                                - county
+                                - postcode
+                                - country_code
+                                - what3words
                             properties:
                                 name:
                                     type: string
@@ -1093,6 +1125,9 @@ components:
                                         - filled.count.soap
                         settings:
                             type: object
+                            required:
+                                - preferred_language
+                                - timezone
                             properties:
                                 preferred_language:
                                     type: string
