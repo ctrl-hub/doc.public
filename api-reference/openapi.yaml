@@ -14971,15 +14971,26 @@ components:
         NomenclatureAttributes:
             type: object
             description: Attributes for nomenclature settings
+            required:
+                - governance
             properties:
                 governance:
                     type: object
+                    required:
+                        - schemes
+                        - work_orders
+                        - operations
+                        - scheme_contracts
                     properties:
                         schemes:
                             type: array
                             description: Custom terminology for schemes.
                             items:
                                 type: object
+                                required:
+                                    - singular
+                                    - plural
+                                    - language
                                 properties:
                                     singular:
                                         type: string
@@ -14998,6 +15009,10 @@ components:
                             description: Custom terminology for work orders.
                             items:
                                 type: object
+                                required:
+                                    - singular
+                                    - plural
+                                    - language
                                 properties:
                                     singular:
                                         type: string
@@ -15016,6 +15031,10 @@ components:
                             description: Custom terminology for operations.
                             items:
                                 type: object
+                                required:
+                                    - singular
+                                    - plural
+                                    - language
                                 properties:
                                     singular:
                                         type: string
@@ -15034,6 +15053,10 @@ components:
                             description: Custom terminology for scheme contracts.
                             items:
                                 type: object
+                                required:
+                                    - singular
+                                    - plural
+                                    - language
                                 properties:
                                     singular:
                                         type: string
