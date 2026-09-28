@@ -34444,7 +34444,25 @@ components:
         submission_version_filter:
             name: filter
             in: query
-            description: "Filters the response data based on the value provided.\n\nAvailable filters:\n\n- `in(id,[xxx])`: Filter by ID(s)\n- `latest_only`: Filter for latest submission versions only\n- `in(form,[xxx])`: Filter submission versions by form ID(s)  \n- `created_at_from`: Filter submission versions created after a certain timestamp\n- `created_at_to`: Filter submission versions created before a certain timestamp\n\nFor more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)\n"
+            description: |
+                Filters the response data based on the value provided.
+
+                Available filters:
+
+                - `in(submission,[xxx])`: Filter submission versions by submission ID(s), e.g. `eq(submission,xxx)` for every version of one submission
+                - `in(id,[xxx])`: Filter by submission ID(s). Matches the same field as `submission`, not the version's own ID
+                - `in(form,[xxx])`: Filter submission versions by form ID(s)
+                - `in(schema,[xxx])`: Filter submission versions by the schema they were captured on
+                - `in(organisation,[xxx])`: Filter submission versions by organisation ID(s)
+                - `in(author.id,[xxx])`: Filter submission versions by author ID(s)
+                - `status`: Filter by `draft` or `submitted`, e.g. `eq(status,submitted)`
+                - `eq(is_latest,true)`: Filter for the latest version of each submission only
+                - `ge(created_at,<date-time>)`: Filter submission versions created at or after an RFC 3339 timestamp
+                - `le(created_at,<date-time>)`: Filter submission versions created at or before an RFC 3339 timestamp
+                - `in(related_resources.id,[xxx])`: Filter submission versions by related resource ID(s)
+                - `in(scheme_shares,[xxx])`: Filter submission versions by scheme share ID(s)
+
+                For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
             required: false
             schema:
                 type: string
