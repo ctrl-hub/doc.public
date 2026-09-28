@@ -7237,6 +7237,148 @@ components:
                     format: date-time
                     description: When the dashboard was last updated.
                     readOnly: true
+        DeviceBackup:
+            type: object
+            description: |
+                A copy of a mobile device's local database, sent by the operative so that people in their
+                organisation can recover work that never reached the server. Kept for 30 days.
+            required:
+                - id
+                - type
+                - attributes
+                - meta
+                - relationships
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the device backup.
+                type:
+                    type: string
+                    const: device-backups
+                attributes:
+                    $ref: '#/components/schemas/DeviceBackupAttributes'
+                meta:
+                    $ref: '#/components/schemas/DeviceBackupMeta'
+                relationships:
+                    $ref: '#/components/schemas/DeviceBackupRelationships'
+        DeviceBackupIncludes:
+            type: array
+            description: Related resources that can be included when a device backup is returned.
+            items:
+                discriminator:
+                    propertyName: type
+                    mapping:
+                        organisations: "#/components/schemas/Organisation"
+                        users: "#/components/schemas/User"
+                oneOf:
+                    - $ref: '#/components/schemas/Organisation'
+                    - $ref: '#/components/schemas/User'
+        DeviceBackupAttributes:
+            type: object
+            description: Attributes of a device backup
+            required:
+                - reference
+                - file
+                - device
+            properties:
+                reference:
+                    type: string
+                    description: The short code the operative was shown, to read out to support.
+                    example: K7QM-3X9P
+                file:
+                    $ref: '#/components/schemas/DeviceBackupFile'
+                device:
+                    $ref: '#/components/schemas/DeviceBackupDevice'
+        DeviceBackupMeta:
+            type: object
+            description: Metadata for a device backup
+            required:
+                - created_at
+                - expires_at
+            properties:
+                created_at:
+                    type: string
+                    format: date-time
+                    description: When the backup was sent.
+                expires_at:
+                    type: string
+                    format: date-time
+                    description: When the backup and its file are removed.
+        DeviceBackupRelationships:
+            type: object
+            description: Relationships for a device backup
+            required:
+                - organisation
+                - author
+            properties:
+                organisation:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/OrganisationRelationship'
+                    description: The organisation the backup is filed against, which decides who can see it.
+                author:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/UserRelationship'
+                    description: Who sent it.
+        DeviceBackupFile:
+            type: object
+            description: The stored database, described without saying where it is stored.
+            required:
+                - filename
+                - content_type
+                - size_bytes
+                - checksum
+            properties:
+                filename:
+                    type: string
+                    description: What a browser saves the download as.
+                content_type:
+                    type: string
+                size_bytes:
+                    type: integer
+                    format: int64
+                checksum:
+                    type: string
+                    description: The upload's checksum, as `md5:<hex>`.
+        DeviceBackupDevice:
+            type: object
+            description: |
+                What the app reported about itself when it sent the backup, so whoever opens the file knows which
+                build and database schema wrote it.
+            required:
+                - app_version
+                - build_number
+                - platform
+                - os_version
+                - api_env
+                - schema_version
+            properties:
+                app_version:
+                    type: string
+                    description: The app's marketing version, e.g. `2.0.12`.
+                build_number:
+                    type: string
+                    description: The platform build number.
+                platform:
+                    type: string
+                    description: The device platform, e.g. `ios` or `android`.
+                os_version:
+                    type: string
+                    description: The operating system version.
+                api_env:
+                    type: string
+                    description: The API environment the app was pointed at, e.g. `prod`.
+                schema_version:
+                    type: integer
+                    description: The version of the app's local database schema.
         DocumentDownload:
             type: object
             description: Document download
@@ -25489,6 +25631,54 @@ components:
                                 data:
                                     $ref: '#/components/schemas/Dashboard'
                             - $ref: '#/components/schemas/JSONAPI'
+        ListDeviceBackups:
+            description: List of device backups.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    title: A list of device backups
+                                    type: array
+                                    items:
+                                        $ref: '#/components/schemas/DeviceBackup'
+                                included:
+                                    $ref: '#/components/schemas/DeviceBackupIncludes'
+                            - $ref: '#/components/schemas/DocumentMeta'
+                            - $ref: '#/components/schemas/JSONAPI'
+        GetDeviceBackup:
+            description: An individual device backup.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    $ref: '#/components/schemas/DeviceBackup'
+                                included:
+                                    $ref: '#/components/schemas/DeviceBackupIncludes'
+                            - $ref: '#/components/schemas/JSONAPI'
         ListDownloads:
             description: Get a list of downloads
             headers:
@@ -33505,6 +33695,63 @@ components:
                 type: string
                 format: uuid
             example: d4a3b8c0-1e2f-4a5b-8c9d-0e1f2a3b4c5d
+        device_backups_sort:
+            in: query
+            name: sort
+            description: A comma separated list of fields to sort by.
+            required: false
+            style: form
+            explode: false
+            schema:
+                type: array
+                items:
+                    type: string
+                    enum:
+                        - created_at
+                        - -created_at
+        device_backups_filter:
+            name: filter
+            in: query
+            description: |
+                Filters the response data based on the value provided.
+
+                Available filters:
+
+                - `eq(id,xxx)`: Filter device backups by ID.
+                - `eq(organisation,xxx)`: Filter by the organisation a backup is filed against.
+                - `eq(author,xxx)`: Filter to the backups one user sent, by user ID. This is how a member's backups are read.
+                - `eq(reference,xxx)`: Find the backup an operative read out, e.g. `eq(reference,K7QM-3X9P)`.
+                - `ge(created_at,xxx)` / `le(created_at,xxx)`: Filter by when a backup was sent. Use the
+                  function-style `ge`/`le` operators (not `gte`/`lte`).
+
+                For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
+            required: false
+            schema:
+                type: string
+                default: ""
+        device_backups_include:
+            name: include
+            in: query
+            description: A comma separated list of related resources to include.
+            required: false
+            style: form
+            explode: false
+            schema:
+                type: array
+                items:
+                    type: string
+                    enum:
+                        - organisation
+                        - author
+        device_backup_id:
+            name: device_backup_id
+            in: path
+            required: true
+            description: The unique identifier for the device backup.
+            schema:
+                type: string
+                format: uuid
+            example: de71ce00-bac0-4000-8000-000000000001
         document_downloads_include:
             name: include
             in: query
@@ -34444,7 +34691,25 @@ components:
         submission_version_filter:
             name: filter
             in: query
-            description: "Filters the response data based on the value provided.\n\nAvailable filters:\n\n- `in(id,[xxx])`: Filter by ID(s)\n- `latest_only`: Filter for latest submission versions only\n- `in(form,[xxx])`: Filter submission versions by form ID(s)  \n- `created_at_from`: Filter submission versions created after a certain timestamp\n- `created_at_to`: Filter submission versions created before a certain timestamp\n\nFor more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)\n"
+            description: |
+                Filters the response data based on the value provided.
+
+                Available filters:
+
+                - `in(submission,[xxx])`: Filter submission versions by submission ID(s), e.g. `eq(submission,xxx)` for every version of one submission
+                - `in(id,[xxx])`: Filter by submission ID(s). Matches the same field as `submission`, not the version's own ID
+                - `in(form,[xxx])`: Filter submission versions by form ID(s)
+                - `in(schema,[xxx])`: Filter submission versions by the schema they were captured on
+                - `in(organisation,[xxx])`: Filter submission versions by organisation ID(s)
+                - `in(author.id,[xxx])`: Filter submission versions by author ID(s)
+                - `status`: Filter by `draft` or `submitted`, e.g. `eq(status,submitted)`
+                - `eq(is_latest,true)`: Filter for the latest version of each submission only
+                - `ge(created_at,<date-time>)`: Filter submission versions created at or after an RFC 3339 timestamp
+                - `le(created_at,<date-time>)`: Filter submission versions created at or before an RFC 3339 timestamp
+                - `in(related_resources.id,[xxx])`: Filter submission versions by related resource ID(s)
+                - `in(scheme_shares,[xxx])`: Filter submission versions by scheme share ID(s)
+
+                For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
             required: false
             schema:
                 type: string
@@ -42288,6 +42553,70 @@ components:
                                                         type: array
                                                         items:
                                                             type: string
+        CreateDeviceBackup:
+            required: true
+            description: |
+                The device backup to file.
+
+                The sender is taken from the authenticated principal rather than accepted here, and the reference,
+                file details and expiry are decided by the API.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                    - attributes
+                                    - relationships
+                                properties:
+                                    type:
+                                        type: string
+                                        const: device-backups
+                                    attributes:
+                                        type: object
+                                        required:
+                                            - upload_id
+                                            - device
+                                        properties:
+                                            upload_id:
+                                                type: string
+                                                format: uuid
+                                                description: |
+                                                    The upload holding the database, from `POST /v3/uploads`. It must have been
+                                                    made by the caller, and must be a SQLite database.
+                                            device:
+                                                $ref: '#/components/schemas/DeviceBackupDevice'
+                                    relationships:
+                                        type: object
+                                        required:
+                                            - organisation
+                                        properties:
+                                            organisation:
+                                                type: object
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        type: object
+                                                        required:
+                                                            - type
+                                                            - id
+                                                        properties:
+                                                            type:
+                                                                type: string
+                                                                const: organisations
+                                                            id:
+                                                                type: string
+                                                                format: uuid
+                                                                description: |
+                                                                    The organisation to file the backup against: the operative's current
+                                                                    organisation in the app. People there with `device-backups:view` can
+                                                                    see it.
         UpdateDocumentReviewDecision:
             required: true
             content:
@@ -59861,6 +60190,167 @@ paths:
             x-mint:
                 metadata:
                     title: Update a dashboard
+    /v3/device-backups:
+        get:
+            description: |
+                Retrieve the device backups the caller may see that are still within their 30 days.
+
+                Filter by `eq(author,<user id>)` for one member's backups, or by `eq(reference,<reference>)` to
+                find the one an operative read out. Authorised by `device-backups:view` in the organisation each
+                backup is filed against.
+            operationId: ListDeviceBackups
+            parameters:
+                - $ref: '#/components/parameters/limit'
+                - $ref: '#/components/parameters/offset'
+                - $ref: '#/components/parameters/device_backups_sort'
+                - $ref: '#/components/parameters/device_backups_filter'
+                - $ref: '#/components/parameters/device_backups_include'
+            responses:
+                "200":
+                    $ref: '#/components/responses/ListDeviceBackups'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - Cookie: []
+                - OAuth2: []
+            tags:
+                - Device Backups
+            x-ctrl-hub:
+                domain: exports
+            x-mint:
+                metadata:
+                    title: List device backups
+        post:
+            description: |
+                File a copy of the mobile app's local database against an organisation, so that people there can
+                recover work that never reached the server. Sent only when the operative asks.
+
+                The bytes go up first through `POST /v3/uploads`, and this names that upload. Only the person who
+                made the upload can file it: anyone else's upload id is answered as not found. The file has to be a
+                SQLite database, which is checked against its own first bytes rather than the content type it was
+                uploaded with.
+
+                The organisation is the one the backup is filed against, and decides who can see it. The database
+                itself is not scoped to it: a device caches data for every organisation its user belongs to, and
+                the app says so before anything is sent.
+
+                The response carries a short `reference` for the operative to read out. Backups are kept for 30
+                days.
+            operationId: CreateDeviceBackup
+            requestBody:
+                $ref: '#/components/requestBodies/CreateDeviceBackup'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetDeviceBackup'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - Cookie: []
+                - OAuth2: []
+            summary: Send a device's database to Ctrl Hub
+            tags:
+                - Device Backups
+            x-ctrl-hub:
+                domain: exports
+            x-mint:
+                metadata:
+                    title: Send a device backup
+    /v3/device-backups/{device_backup_id}:
+        get:
+            description: |
+                Retrieve one device backup. Authorised by `device-backups:view` in the organisation it is filed
+                against. A backup past its 30 days is answered as not found, because its file has been removed.
+            operationId: GetDeviceBackup
+            parameters:
+                - $ref: '#/components/parameters/device_backup_id'
+                - $ref: '#/components/parameters/device_backups_include'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetDeviceBackup'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - Cookie: []
+                - OAuth2: []
+            tags:
+                - Device Backups
+            x-ctrl-hub:
+                domain: exports
+            x-mint:
+                metadata:
+                    title: Get a device backup
+    /v3/device-backups/{device_backup_id}/download:
+        get:
+            description: |
+                Stream the database file a device sent. Authorised by `device-backups:view` in the organisation it
+                is filed against, checked when the file is fetched.
+
+                The file is the device's whole local database, which can include data from other organisations the
+                operative belongs to. Handle it accordingly.
+
+                Served by a custom handler rather than a generated one, because it returns a file rather than a
+                JSON:API document.
+            operationId: DownloadDeviceBackup
+            parameters:
+                - $ref: '#/components/parameters/device_backup_id'
+            responses:
+                "200":
+                    content:
+                        application/vnd.sqlite3:
+                            schema:
+                                format: binary
+                                type: string
+                    description: The database file.
+                    headers:
+                        Content-Disposition:
+                            description: Names the file so a browser saves rather than renders it.
+                            schema:
+                                type: string
+                        Content-Length:
+                            $ref: '#/components/headers/content-length'
+                        X-Request-ID:
+                            $ref: '#/components/headers/x-request-id'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - Cookie: []
+                - OAuth2: []
+            summary: Download a device backup's database
+            tags:
+                - Device Backups
+            x-ctrl-hub:
+                domain: exports
+                entity: DeviceBackup
+                manual: true
+            x-mint:
+                metadata:
+                    title: Download a device backup
     /v3/document-downloads:
         get:
             description: Retrieve all downloads
@@ -78000,6 +78490,11 @@ tags:
     - description: |
         User-owned dashboards composed of cards on a fixed-slot bento layout. Cards come from a per-domain registry; the API stores their config as opaque JSON.
       name: Dashboards
+    - description: |
+        Copies of a mobile device's local database, sent by the operative on request so that people
+        in their organisation can recover work that never reached the server. Kept for 30 days, and
+        visible to people granted `device-backups:view` in the organisation each is filed against.
+      name: Device Backups
     - description: |
         A record of documents the platform generated and handed over, retained as evidence of what
         was issued. `subject_type` says what kind of records an export covers, and it is what decides
