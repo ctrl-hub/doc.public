@@ -11777,6 +11777,31 @@ components:
                     properties:
                         data:
                             $ref: '#/components/schemas/FormRelationship'
+        XSourceOption:
+            type: object
+            description: |
+                One option of a form field whose choices come from an x-source: the id a submission stores, and the label
+                a picker shows for it. The same pair hydration writes into the schema's `enum` and view block `map`.
+            required:
+                - id
+                - type
+                - attributes
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The id of the sourced resource, which is what the field's value holds.
+                type:
+                    type: string
+                    const: x-source-options
+                attributes:
+                    type: object
+                    required:
+                        - label
+                    properties:
+                        label:
+                            type: string
+                            description: The option's display label, e.g. `scheme / work order / operation` for an operation.
         FormSubmissionArtefact:
             type: object
             description: |
@@ -26688,6 +26713,72 @@ components:
                     $ref: '#/components/headers/cache-control'
                 X-Request-ID:
                     $ref: '#/components/headers/x-request-id'
+        ListXSourceOptions:
+            description: The options of an x-source field.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                                - meta
+                              properties:
+                                data:
+                                    title: A list of x-source options
+                                    type: array
+                                    items:
+                                        $ref: '#/components/schemas/XSourceOption'
+                                meta:
+                                    type: object
+                                    required:
+                                        - stats
+                                    properties:
+                                        stats:
+                                            type: object
+                                            required:
+                                                - truncated
+                                            properties:
+                                                truncated:
+                                                    type: boolean
+                                                    description: |
+                                                        True when the list may not hold every matching option: more matched than the limit, a
+                                                        parent lookup reached its cap, or a later search word removed options. It errs towards
+                                                        true. A picker must not present the list as complete; narrowing `search` is how the
+                                                        rest are reached.
+                            - $ref: '#/components/schemas/JSONAPI'
+        UnprocessableEntity:
+            description: The request was understood but names something the server cannot act on
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        properties:
+                            errors:
+                                type: array
+                                items:
+                                    $ref: '#/components/schemas/Error'
+                    example:
+                        errors:
+                            - id: d26cc34a-ceb2-45fb-aba2-c61782f9ec39
+                              status: "422"
+                              title: submitting organisation has no scheme share with the form's owning organisation
+                              detail: The request was understood but names something the server cannot act on.
+                              code: CH.001.054
         ListFormSubmissionArtefacts:
             description: List of archived submission documents.
             headers:
@@ -26784,31 +26875,6 @@ components:
                                     $ref: '#/components/schemas/FormSubmissionVersionIncludes'
                             - $ref: '#/components/schemas/DocumentMeta'
                             - $ref: '#/components/schemas/JSONAPI'
-        UnprocessableEntity:
-            description: The request was understood but names something the server cannot act on
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        type: object
-                        properties:
-                            errors:
-                                type: array
-                                items:
-                                    $ref: '#/components/schemas/Error'
-                    example:
-                        errors:
-                            - id: d26cc34a-ceb2-45fb-aba2-c61782f9ec39
-                              status: "422"
-                              title: submitting organisation has no scheme share with the form's owning organisation
-                              detail: The request was understood but names something the server cannot act on.
-                              code: CH.001.054
         ListFormSubmissions:
             description: Get a list of submissions for a form.
             headers:
@@ -34556,6 +34622,23 @@ components:
                 type: string
                 format: uuid
             example: 691430fc-ec27-4755-b79b-95fd786622ea
+        defer_x_sources:
+            name: defer_x_sources
+            in: query
+            description: |
+                Resource types whose x-source fields are left un-hydrated when `include=x-sources` is requested.
+                A deferred field comes back exactly as stored, with its `x-source` and no `enum` or view block `map`,
+                and its options are read on demand from `GET /v3/form-schemas/{schema_id}/x-sources/{field_id}/options`
+                instead. Without this parameter every x-source is hydrated, as it always has been.
+            required: false
+            style: form
+            explode: false
+            schema:
+                type: array
+                items:
+                    type: string
+                    enum:
+                        - operations
         if_none_match:
             name: If-None-Match
             in: header
@@ -34565,6 +34648,53 @@ components:
             schema:
                 type: string
             example: W/"a1b2c3d4e5f6"
+        x_source_field_id:
+            name: field_id
+            in: path
+            required: true
+            description: The id of a field in the form schema's model, as it appears under `model.properties`.
+            schema:
+                type: string
+                minLength: 1
+            example: xsource-operation
+        x_source_options_search:
+            name: search
+            in: query
+            description: |
+                Words to match, split on whitespace and `/`. An option matches when every word appears, case-insensitively,
+                in some segment of its label: the operation's, work order's or scheme's name or code, or the organisation
+                name when options span organisations. Order does not matter. The first five distinct words are searched in the
+                database and any further ones are applied to the returned labels, which sets `meta.stats.truncated` when it
+                removes options.
+            required: false
+            schema:
+                type: string
+        x_source_options_ids:
+            name: ids
+            in: query
+            description: |
+                Restrict the options to these ids, for showing the labels of values already held. An id the caller can no
+                longer pick is simply absent. The limit is raised to cover every id asked for.
+            required: false
+            style: form
+            explode: false
+            schema:
+                type: array
+                maxItems: 100
+                items:
+                    type: string
+                    format: uuid
+        x_source_options_limit:
+            name: limit
+            in: query
+            description: The most options to return. When more match, `meta.stats.truncated` is true.
+            required: false
+            schema:
+                type: integer
+                format: int64
+                minimum: 1
+                maximum: 100
+                default: 25
         form_submission_artefacts_sort:
             in: query
             name: sort
@@ -46697,6 +46827,21 @@ components:
                                                         oneOf:
                                                             - $ref: '#/components/schemas/LocationTypeRelationship'
                                                             - type: "null"
+                                            operation:
+                                                type: object
+                                                description: |
+                                                    The operation this location is recorded against, if any. When given, the
+                                                    location is created in the operation's organisation and attached to the
+                                                    operation in the same request, and the caller must be allowed to update
+                                                    that operation.
+
+                                                    This is how a contractor records a location on a network's shared scheme:
+                                                    a new location is on no scheme until an operation is against it, so the
+                                                    operation is what a scheme share's create permission is checked against.
+                                                    The organisation relationship must then name the operation's organisation.
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/OperationRelationship'
         UpdateLocation:
             required: true
             description: The location to update.
@@ -63329,6 +63474,7 @@ paths:
             parameters:
                 - $ref: '#/components/parameters/schema_id'
                 - $ref: '#/components/parameters/form_schemas_include'
+                - $ref: '#/components/parameters/defer_x_sources'
                 - $ref: '#/components/parameters/if_none_match'
             responses:
                 "200":
@@ -63350,6 +63496,44 @@ paths:
             x-mint:
                 metadata:
                     title: Get a form schema
+    /v3/form-schemas/{schema_id}/x-sources/{field_id}/options:
+        get:
+            description: |
+                List the options of one x-source field in a form schema, searched and bounded, for a picker that does not
+                have them inlined (see `defer_x_sources` on `GET /v3/form-schemas/{schema_id}`).
+
+                The options are the ones hydration would write into the schema for the same caller, with the same scoping
+                and labels: the owner organisation's, narrowed to the shared schemes for a contractor, or the bridged
+                organisations the field names. Only `operations` fields are supported.
+            operationId: ListXSourceOptions
+            parameters:
+                - $ref: '#/components/parameters/schema_id'
+                - $ref: '#/components/parameters/x_source_field_id'
+                - $ref: '#/components/parameters/x_source_options_search'
+                - $ref: '#/components/parameters/x_source_options_ids'
+                - $ref: '#/components/parameters/x_source_options_limit'
+            responses:
+                "200":
+                    $ref: '#/components/responses/ListXSourceOptions'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "422":
+                    $ref: '#/components/responses/UnprocessableEntity'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            tags:
+                - Forms, Schemas and Categories
+            x-mint:
+                metadata:
+                    title: List x-source options
     /v3/form-submission-artefacts:
         get:
             description: |
@@ -65667,7 +65851,11 @@ paths:
                 metadata:
                     title: List locations
         post:
-            description: Create a new location.
+            description: |
+                Create a new location.
+
+                With an `operation` relationship, the location is created in that operation's organisation and
+                attached to it, which is how a contractor records a location against a network's shared operation.
             operationId: CreateLocation
             requestBody:
                 $ref: '#/components/requestBodies/CreateLocation'
@@ -65678,6 +65866,8 @@ paths:
                     $ref: '#/components/responses/BadRequest'
                 "401":
                     $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
                 "409":
                     $ref: '#/components/responses/Conflict'
                 "500":
