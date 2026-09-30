@@ -12319,7 +12319,8 @@ components:
                         properties:
                             field_id:
                                 type: string
-                                description: The field id the answer was stored under on the schema being moved from.
+                                description: >-
+                                    Where the answer was stored on the schema being moved from, as a dotted address. A top-level field is its field id. Inside a repeating row (a collection) the address is scoped to it: the row's id for the whole collection, `<row id>.<index>` for one entry, or `<row id>.<index>.<field id>` for one field of one entry, where the index is the entry's zero-based position on the version moved from. Each address appears once, and an entry discarded whole is not repeated field by field.
                             value:
                                 description: The discarded answer exactly as it was stored, which may be any JSON value.
         Image:
