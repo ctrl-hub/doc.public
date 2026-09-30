@@ -11693,6 +11693,47 @@ components:
                                                 - title
                                                 - description
                                             properties:
+                                                kind:
+                                                    type: string
+                                                    description: >-
+                                                        What the row is. A plain row lays its blocks out once. A collection row repeats them, so a submission holds a variable number of entries for it, posted as an array of objects under the row's id. Omitted means row.
+                                                    enum:
+                                                        - row
+                                                        - collection
+                                                    default: row
+                                                id:
+                                                    type: string
+                                                    format: uuid
+                                                    description: >-
+                                                        The model property a collection row's entries live under. Required when kind is collection; the model must hold an array of objects under it whose items.properties are exactly the row's blocks.
+                                                collection:
+                                                    type: object
+                                                    description: >-
+                                                        How many entries a collection row accepts. Present exactly when kind is collection. min must equal the model's minItems and max its maxItems (absent when max is null).
+                                                    required:
+                                                        - min
+                                                    properties:
+                                                        min:
+                                                            type: integer
+                                                            minimum: 0
+                                                            description: The fewest entries a submission may hold. Zero makes the collection optional.
+                                                            examples:
+                                                                - 1
+                                                        max:
+                                                            type:
+                                                                - integer
+                                                                - "null"
+                                                            minimum: 1
+                                                            description: The most entries a submission may hold, or null for no cap.
+                                                            examples:
+                                                                - null
+                                                        add_label:
+                                                            type: string
+                                                            minLength: 1
+                                                            maxLength: 60
+                                                            description: What the button that adds an entry says. Omitted means the client's default, "Add entry".
+                                                            examples:
+                                                                - Add another person
                                                 title:
                                                     type: string
                                                     description: The title of the row
@@ -12014,6 +12055,8 @@ components:
                     type: integer
                     description: The iteration number of this submission version
                     minimum: 1
+                upgrade:
+                    $ref: '#/components/schemas/SubmissionUpgrade'
                 resources:
                     type: array
                     description: Referenced resources included in this submission version
@@ -12252,6 +12295,33 @@ components:
                             type: array
                             items:
                                 $ref: '#/components/schemas/SchemeShareRelationship'
+        SubmissionUpgrade:
+            type: object
+            description: >-
+                Present on a version that moved its submission onto a newer schema of the same form, and absent on every other version. Records the schema the submission was moved from and every answer a person chose to discard because it had no place on the new schema. The person is the version's author. The previous version still holds each discarded answer under its original field id, so nothing recorded here is otherwise lost. On create, supply it only when adding a version to an existing submission; a new submission refuses it.
+            required:
+                - from_schema_id
+                - discarded
+            properties:
+                from_schema_id:
+                    type: string
+                    format: uuid
+                    description: >-
+                        The schema this upgrade moved the submission from. It may be any schema one of the submission's versions was captured on, and must differ from this version's own schema. The console sends the schema of the version it moved.
+                discarded:
+                    type: array
+                    description: The answers left out of this version, each with the field id and value it held before. Empty when every answer carried over.
+                    items:
+                        type: object
+                        required:
+                            - field_id
+                            - value
+                        properties:
+                            field_id:
+                                type: string
+                                description: The field id the answer was stored under on the schema being moved from.
+                            value:
+                                description: The discarded answer exactly as it was stored, which may be any JSON value.
         Image:
             type: object
             description: An image
@@ -18545,6 +18615,7 @@ components:
                                     - max
                                     - median
                                     - percentile
+                                    - entry_count
                             type:
                                 type: string
                                 description: "The declared value type of the field being aggregated (number, integer, duration, string, choice, ...). Needed by the functions that only mean something over a number (sum, avg, min, max, median, percentile) on a payload field, since only the form knows a field type. Omitting it is not refused, so a measure saved before this existed still runs; declaring a non-numeric type for one of those functions is a 400 naming the field, enforced by the service on create, update and preview rather than by this schema."
@@ -18557,7 +18628,7 @@ components:
                                 type: integer
                                 minimum: 0
                                 maximum: 10
-                                description: "How many decimal places the figure is shown to, in the results grid and the CSV export alike. Omitted means 2 for every function that computes a value, because an aggregate manufactures precision the data never had (an average of 1, 1 and 5 is 2.3333333333333335, and an interpolated percentile of whole numbers is 7.399999999999999). count and count_distinct are whole numbers and are never rounded."
+                                description: "How many decimal places the figure is shown to, in the results grid and the CSV export alike. Omitted means 2 for every function that computes a value, because an aggregate manufactures precision the data never had (an average of 1, 1 and 5 is 2.3333333333333335, and an interpolated percentile of whole numbers is 7.399999999999999). count, count_distinct and entry_count are whole numbers and are never rounded."
                             label:
                                 type: string
                 filters:
@@ -18597,6 +18668,12 @@ components:
                     description: Full display order of detail-mode result columns by key, including resolved projection columns (e.g. "<fieldKey>.scheme.name"). Empty falls back to fields order with projections grouped after their parent.
                     items:
                         type: string
+                entry_of:
+                    type:
+                        - string
+                        - "null"
+                    format: uuid
+                    description: The collection row (a repeating row's id) whose entries are this query's rows. Absent, the rows are submissions. Set, the collection is joined so each row is one entry of one submission; its children become ordinary fields, a root field repeats onto each of its submission's entries, count counts entries, and entry_index (the entry's 1-based position) is a selectable spine column. A field inside a collection's entries may only be used at that collection's grain, and entry_count is refused there (count is the same question). One collection at most.
         QueryMeta:
             type: object
             description: Metadata for a query
@@ -44697,6 +44774,47 @@ components:
                                                                             - title
                                                                             - description
                                                                         properties:
+                                                                            kind:
+                                                                                type: string
+                                                                                description: >-
+                                                                                    What the row is. A plain row lays its blocks out once. A collection row repeats them, so a submission holds a variable number of entries for it, posted as an array of objects under the row's id. Omitted means row.
+                                                                                enum:
+                                                                                    - row
+                                                                                    - collection
+                                                                                default: row
+                                                                            id:
+                                                                                type: string
+                                                                                format: uuid
+                                                                                description: >-
+                                                                                    The model property a collection row's entries live under. Required when kind is collection; the model must hold an array of objects under it whose items.properties are exactly the row's blocks.
+                                                                            collection:
+                                                                                type: object
+                                                                                description: >-
+                                                                                    How many entries a collection row accepts. Present exactly when kind is collection. min must equal the model's minItems and max its maxItems (absent when max is null).
+                                                                                required:
+                                                                                    - min
+                                                                                properties:
+                                                                                    min:
+                                                                                        type: integer
+                                                                                        minimum: 0
+                                                                                        description: The fewest entries a submission may hold. Zero makes the collection optional.
+                                                                                        examples:
+                                                                                            - 1
+                                                                                    max:
+                                                                                        type:
+                                                                                            - integer
+                                                                                            - "null"
+                                                                                        minimum: 1
+                                                                                        description: The most entries a submission may hold, or null for no cap.
+                                                                                        examples:
+                                                                                            - null
+                                                                                    add_label:
+                                                                                        type: string
+                                                                                        minLength: 1
+                                                                                        maxLength: 60
+                                                                                        description: What the button that adds an entry says. Omitted means the client's default, "Add entry".
+                                                                                        examples:
+                                                                                            - Add another person
                                                                             title:
                                                                                 type: object
                                                                                 description: Row title configuration
@@ -44814,11 +44932,13 @@ components:
                                         properties:
                                             payload:
                                                 type: object
-                                                description: The partial form data payload
+                                                description: >-
+                                                    The partial form data payload, keyed by block id. A collection row holds an array of entries under the row's id, each an object keyed by the row's block ids, in the same shape a submitted version uses; a draft may hold fewer entries than the row's min.
                                                 additionalProperties: true
                                                 examples:
-                                                    - name: "John Doe"
-                                                      email: "john@example.com"
+                                                    - f6bb723a-dd1c-4115-b23d-06f3ce5a8824: "Depot inspection"
+                                                      0c1f5a1e-3b7c-4b21-9d3e-2f6c1a4e8d90:
+                                                        - 461bd4e6-1c8b-430c-9eaa-f35de3438c9b: "Ann"
                                     relationships:
                                         type: object
                                         required:
@@ -44913,13 +45033,19 @@ components:
                                         properties:
                                             payload:
                                                 type: object
-                                                description: The form data payload
+                                                description: >-
+                                                    The form data payload, keyed by block id. A block in a plain row holds one value. A collection row holds an array of entries under the row's id, each an object keyed by the row's block ids; entries are identified by position only. A collection with no entries is omitted rather than sent as an empty array. A resource picked inside an entry (a users or schemes x-source) is snapshotted and tagged exactly as one picked at the root, including scheme-share tagging.
                                                 additionalProperties: true
                                                 examples:
-                                                    - name: "John Doe"
-                                                      email: "john@example.com"
-                                                      phone: "+1234567890"
-                                                      message: "This is a test submission"
+                                                    - f6bb723a-dd1c-4115-b23d-06f3ce5a8824: "Depot inspection"
+                                                      68f46335-2060-4348-a6f0-46b0c95359d7: true
+                                                      0c1f5a1e-3b7c-4b21-9d3e-2f6c1a4e8d90:
+                                                        - 461bd4e6-1c8b-430c-9eaa-f35de3438c9b: "Ann"
+                                                          97284ef4-143c-4f2b-a9ef-46cfaf702809: "1bb1b3e6-a3e9-4be9-9674-89d773fb6a28"
+                                                        - 461bd4e6-1c8b-430c-9eaa-f35de3438c9b: "Bob"
+                                                          97284ef4-143c-4f2b-a9ef-46cfaf702809: "582a6d1a-d918-42cb-b5c8-2467738d647a"
+                                            upgrade:
+                                                $ref: '#/components/schemas/SubmissionUpgrade'
                                     relationships:
                                         type: object
                                         required:
@@ -51574,6 +51700,7 @@ components:
                                                                 - max
                                                                 - median
                                                                 - percentile
+                                                                - entry_count
                                                         type:
                                                             type: string
                                                             description: "The declared value type of the field being aggregated (number, integer, duration, string, choice, ...). Needed by the functions that only mean something over a number (sum, avg, min, max, median, percentile) on a payload field, since only the form knows a field type. Omitting it is not refused, so a measure saved before this existed still runs; declaring a non-numeric type for one of those functions is a 400 naming the field, enforced by the service on create, update and preview rather than by this schema."
@@ -51586,7 +51713,7 @@ components:
                                                             type: integer
                                                             minimum: 0
                                                             maximum: 10
-                                                            description: "How many decimal places the figure is shown to, in the results grid and the CSV export alike. Omitted means 2 for every function that computes a value, because an aggregate manufactures precision the data never had (an average of 1, 1 and 5 is 2.3333333333333335, and an interpolated percentile of whole numbers is 7.399999999999999). count and count_distinct are whole numbers and are never rounded."
+                                                            description: "How many decimal places the figure is shown to, in the results grid and the CSV export alike. Omitted means 2 for every function that computes a value, because an aggregate manufactures precision the data never had (an average of 1, 1 and 5 is 2.3333333333333335, and an interpolated percentile of whole numbers is 7.399999999999999). count, count_distinct and entry_count are whole numbers and are never rounded."
                                                         label:
                                                             type: string
                                                     allOf:
@@ -51603,6 +51730,7 @@ components:
                                                                         - max
                                                                         - median
                                                                         - percentile
+                                                                        - entry_count
                                                           then:
                                                             required:
                                                                 - key
@@ -51650,6 +51778,12 @@ components:
                                                 description: Full display order of detail-mode result columns by key, including resolved projection columns. Empty falls back to fields order with projections grouped after their parent.
                                                 items:
                                                     type: string
+                                            entry_of:
+                                                type:
+                                                    - string
+                                                    - "null"
+                                                format: uuid
+                                                description: The collection row (a repeating row's id) whose entries are this query's rows. Absent, the rows are submissions. Set, the collection is joined so each row is one entry of one submission; its children become ordinary fields, a root field repeats onto each of its submission's entries, count counts entries, and entry_index (the entry's 1-based position) is a selectable spine column. A field inside a collection's entries may only be used at that collection's grain, and entry_count is refused there (count is the same question). One collection at most.
                                     relationships:
                                         type: object
                                         required:
@@ -51836,6 +51970,7 @@ components:
                                                                 - max
                                                                 - median
                                                                 - percentile
+                                                                - entry_count
                                                         type:
                                                             type: string
                                                             description: "The declared value type of the field being aggregated (number, integer, duration, string, choice, ...). Needed by the functions that only mean something over a number (sum, avg, min, max, median, percentile) on a payload field, since only the form knows a field type. Omitting it is not refused, so a measure saved before this existed still runs; declaring a non-numeric type for one of those functions is a 400 naming the field, enforced by the service on create, update and preview rather than by this schema."
@@ -51848,7 +51983,7 @@ components:
                                                             type: integer
                                                             minimum: 0
                                                             maximum: 10
-                                                            description: "How many decimal places the figure is shown to, in the results grid and the CSV export alike. Omitted means 2 for every function that computes a value, because an aggregate manufactures precision the data never had (an average of 1, 1 and 5 is 2.3333333333333335, and an interpolated percentile of whole numbers is 7.399999999999999). count and count_distinct are whole numbers and are never rounded."
+                                                            description: "How many decimal places the figure is shown to, in the results grid and the CSV export alike. Omitted means 2 for every function that computes a value, because an aggregate manufactures precision the data never had (an average of 1, 1 and 5 is 2.3333333333333335, and an interpolated percentile of whole numbers is 7.399999999999999). count, count_distinct and entry_count are whole numbers and are never rounded."
                                                         label:
                                                             type: string
                                                     allOf:
@@ -51865,6 +52000,7 @@ components:
                                                                         - max
                                                                         - median
                                                                         - percentile
+                                                                        - entry_count
                                                           then:
                                                             required:
                                                                 - key
@@ -51912,6 +52048,12 @@ components:
                                                 description: Full display order of detail-mode result columns by key, including resolved projection columns. Empty falls back to fields order with projections grouped after their parent.
                                                 items:
                                                     type: string
+                                            entry_of:
+                                                type:
+                                                    - string
+                                                    - "null"
+                                                format: uuid
+                                                description: The collection row (a repeating row's id) whose entries are this query's rows. Absent, the rows are submissions. Set, the collection is joined so each row is one entry of one submission; its children become ordinary fields, a root field repeats onto each of its submission's entries, count counts entries, and entry_index (the entry's 1-based position) is a selectable spine column. A field inside a collection's entries may only be used at that collection's grain, and entry_count is refused there (count is the same question). One collection at most.
         CreateRegistration:
             required: true
             description: The registration to create.
