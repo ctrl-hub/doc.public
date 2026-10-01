@@ -34989,7 +34989,11 @@ components:
                 - `in(creator.id,[xxx])`: Filter submissions by creator ID(s)
                 - `in(form,[xxx])`: Filter submissions by form ID(s)
                 - `in(schema,[xxx])`: Filter submissions by schema ID(s). Matches a submission if any of its versions was captured on one of the schemas, so a submission amended onto a newer schema is found by both its original and its newer schema
-                - `in(related_resources.id,[xxx])`: Filter submissions by related resource ID(s) (mirrored from the latest version)
+                - `in(related_resources.id,[xxx])`: Filter submissions by related resource ID(s) (mirrored from the latest version). Also matches the work orders, schemes and contracts above an operation, work order or scheme the submission references, so a scheme ID finds the submissions under it
+                - `eq(contract,xxx)`: Filter submissions by scheme contract. Matches a submission whose latest version references an operation, work order or scheme under the contract, or names the contract itself. Follows the contract's current schemes, so relinking a scheme moves its existing submissions to the new contract
+                - `eq(scheme,xxx)`: Filter submissions by scheme, including those that reference an operation or work order under it
+                - `eq(work-order,xxx)`: Filter submissions by work order, including those that reference an operation under it
+                - `eq(operation,xxx)`: Filter submissions by operation
 
                 For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
             required: false
