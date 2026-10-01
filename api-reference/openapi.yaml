@@ -11546,7 +11546,7 @@ components:
                 map:
                     type: object
                     description: >-
-                        Legacy field identifiers mapped to the canonical field identifier they represent. Keys are field identifiers from any of the form's schema versions, values are field identifiers in the form's latest schema. The stored map is flattened, so a value is never also a key.
+                        Legacy field identifiers mapped to the canonical field identifier they represent. Keys are field identifiers from any of the form's schema versions, values are field identifiers in the form's latest schema. A field is either a top-level field or a field inside a repeating row (a collection), and is bonded only to a field of the same kind; a repeating row is itself a top-level field. The stored map is flattened, so a value is never also a key.
                     additionalProperties:
                         type: string
                         format: uuid
@@ -34989,7 +34989,11 @@ components:
                 - `in(creator.id,[xxx])`: Filter submissions by creator ID(s)
                 - `in(form,[xxx])`: Filter submissions by form ID(s)
                 - `in(schema,[xxx])`: Filter submissions by schema ID(s). Matches a submission if any of its versions was captured on one of the schemas, so a submission amended onto a newer schema is found by both its original and its newer schema
-                - `in(related_resources.id,[xxx])`: Filter submissions by related resource ID(s) (mirrored from the latest version)
+                - `in(related_resources.id,[xxx])`: Filter submissions by related resource ID(s) (mirrored from the latest version). Also matches the work orders, schemes and contracts above an operation, work order or scheme the submission references, so a scheme ID finds the submissions under it
+                - `eq(contract,xxx)`: Filter submissions by scheme contract. Matches a submission whose latest version references an operation, work order or scheme under the contract, or names the contract itself. Follows the contract's current schemes, so relinking a scheme moves its existing submissions to the new contract
+                - `eq(scheme,xxx)`: Filter submissions by scheme, including those that reference an operation or work order under it
+                - `eq(work-order,xxx)`: Filter submissions by work order, including those that reference an operation under it
+                - `eq(operation,xxx)`: Filter submissions by operation
 
                 For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
             required: false
@@ -44603,7 +44607,7 @@ components:
                                             map:
                                                 type: object
                                                 description: >-
-                                                    The bonds to add, as legacy field identifier to canonical field identifier. Keys must exist in one of the form's schema versions, values must exist in its latest schema, and the submitted map must be chain free: a field cannot be both a key and a value. Bonds recorded by earlier versions are carried forward automatically, so post only what is new or repointed.
+                                                    The bonds to add, as legacy field identifier to canonical field identifier. Keys must exist in one of the form's schema versions, values must exist in its latest schema, and the submitted map must be chain free: a field cannot be both a key and a value. A top-level field is bonded only to a top-level field, and a field inside a repeating row only to a field inside a repeating row, of the same row or of a row bonded to it (the row bond may be posted in the same request). An identifier a schema version declares in more than one place cannot be bonded. Bonds recorded by earlier versions are carried forward automatically, so post only what is new or repointed; a request that repoints a row out from under bonds already recorded for its fields is refused.
                                                 minProperties: 1
                                                 additionalProperties:
                                                     type: string
