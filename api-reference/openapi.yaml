@@ -15384,9 +15384,10 @@ components:
                         - assigned
                         - participating
                         - nominated
+                        - invited
                         - mentioned
                     description: >-
-                        Why this person received the notification. `assigned` means they are an approver or assignee, `participating` that they requested, uploaded or previously downloaded it, `nominated` that they hold a job role that was nominated, and `mentioned` is reserved.
+                        Why this person received the notification. `assigned` means they are an approver or assignee, `participating` that they requested, uploaded or previously downloaded it, `nominated` that they hold a job role that was nominated, `invited` that they were invited to join an organisation, and `mentioned` is reserved.
                 channels:
                     type: array
                     description: >-
@@ -39843,6 +39844,7 @@ components:
                                                                 const: organisations
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                                                 description: The ID of the organisation.
                                             project:
                                                 type: object
@@ -40283,6 +40285,7 @@ components:
                                                                 const: organisations
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                                                 description: The ID of the organisation.
                                             reports_to:
                                                 type: object
@@ -41246,6 +41249,7 @@ components:
                                                                 const: organisations
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                                                 description: The ID of the organisation.
                                             agent_issue:
                                                 type: object
@@ -42946,6 +42950,7 @@ components:
                                                                 const: organisations
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                                                 description: The ID of the organisation.
                                             document:
                                                 type: object
@@ -42963,6 +42968,7 @@ components:
                                                                 const: documents
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                                                 description: The ID of the document.
                                             approvers:
                                                 type: object
@@ -42982,6 +42988,7 @@ components:
                                                                     const: users
                                                                 id:
                                                                     type: string
+                                                                    format: uuid
                                                                     description: The ID of the user.
                                             notify:
                                                 type: object
@@ -43012,6 +43019,7 @@ components:
                                                                     const: job-roles
                                                                 id:
                                                                     type: string
+                                                                    format: uuid
                                                                     description: The ID of the job role whose holders to notify.
         UpdateDocumentReviewRequest:
             required: true
@@ -43079,6 +43087,7 @@ components:
                                                                     const: users
                                                                 id:
                                                                     type: string
+                                                                    format: uuid
                                                                     description: The ID of the user.
                                             notify:
                                                 type: object
@@ -43112,6 +43121,7 @@ components:
                                                                     const: job-roles
                                                                 id:
                                                                     type: string
+                                                                    format: uuid
                                                                     description: The ID of the job role whose holders to notify.
         UploadDocument:
             required: true
@@ -43180,6 +43190,7 @@ components:
                                                                 const: organisations
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                                                 description: The ID of the organisation.
                                             folder:
                                                 type: object
@@ -43197,6 +43208,7 @@ components:
                                                                 const: folders
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                                                 description: The ID of the folder.
         UpdateDocument:
             required: true
@@ -44462,6 +44474,7 @@ components:
                                                                 const: organisations
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                                                 description: The ID of the organisation.
                                             parent:
                                                 type: object
@@ -44479,6 +44492,7 @@ components:
                                                                 const: folders
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                                                 description: The ID of the parent folder.
         UpdateFolder:
             required: true
@@ -44532,6 +44546,7 @@ components:
                                                                 const: folders
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                                                 description: The ID of the parent folder.
         UpdateFolderParent:
             required: true
@@ -45444,6 +45459,7 @@ components:
                                                                 const: organisations
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                                                 description: The ID of the organisation.
                                             grantee_job_role:
                                                 type: object
@@ -45463,6 +45479,7 @@ components:
                                                                 const: job-roles
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                                                 description: The ID of the job role.
         UpdateGrant:
             required: true
@@ -46623,6 +46640,7 @@ components:
                                                                 const: organisations
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                                                 description: The ID of the organisation.
                                             project:
                                                 type: object
@@ -50286,6 +50304,7 @@ components:
                                                                 const: organisations
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                                                 description: The ID of the organisation.
                                             parent_goal:
                                                 type: object
@@ -50471,6 +50490,7 @@ components:
                                                                 const: organisations
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                             goal:
                                                 type: object
                                                 properties:
@@ -50720,6 +50740,7 @@ components:
                                                                 const: organisations
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                                                 description: The ID of the organisation.
         UpdatePlaneProject:
             required: true
@@ -50826,6 +50847,7 @@ components:
                                                                 const: organisations
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                             session:
                                                 type: object
                                                 required:
@@ -50895,6 +50917,7 @@ components:
                                                                 const: organisations
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                             plan:
                                                 type: object
                                                 required:
@@ -51403,6 +51426,7 @@ components:
                                                     description: The date and time when the qualification is due
                                               additionalProperties: false
                                     relationships:
+                                        type: object
                                         required:
                                             - organisation
                                             - qualification
@@ -51832,6 +51856,7 @@ components:
                                                                 const: organisations
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                                                 description: The ID of the organisation.
                                             form:
                                                 type: object
@@ -53439,6 +53464,7 @@ components:
                                                                 const: organisations
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                                                 description: The ID of the organisation.
                                             default_role:
                                                 type: object
