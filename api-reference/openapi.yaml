@@ -2739,6 +2739,18 @@ components:
                                     uniqueItems: true
                                     examples:
                                         - ["b234c567-8901-2345-6789-abcdef012345"]
+                        security:
+                            type: object
+                            description: Security settings for the organisation.
+                            properties:
+                                require_mfa:
+                                    type: boolean
+                                    description: |
+                                        Whether members must use a second factor to see this
+                                        organisation's data. A single sign-on sign-in counts as one.
+                                        Service accounts are exempt.
+                                    examples:
+                                        - false
         OrganisationMeta:
             type: object
             description: Meta information for an organisation
@@ -15384,9 +15396,10 @@ components:
                         - assigned
                         - participating
                         - nominated
+                        - invited
                         - mentioned
                     description: >-
-                        Why this person received the notification. `assigned` means they are an approver or assignee, `participating` that they requested, uploaded or previously downloaded it, `nominated` that they hold a job role that was nominated, and `mentioned` is reserved.
+                        Why this person received the notification. `assigned` means they are an approver or assignee, `participating` that they requested, uploaded or previously downloaded it, `nominated` that they hold a job role that was nominated, `invited` that they were invited to join an organisation, and `mentioned` is reserved.
                 channels:
                     type: array
                     description: >-
@@ -39843,6 +39856,7 @@ components:
                                                                 const: organisations
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                                                 description: The ID of the organisation.
                                             project:
                                                 type: object
@@ -40283,6 +40297,7 @@ components:
                                                                 const: organisations
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                                                 description: The ID of the organisation.
                                             reports_to:
                                                 type: object
@@ -41246,6 +41261,7 @@ components:
                                                                 const: organisations
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                                                 description: The ID of the organisation.
                                             agent_issue:
                                                 type: object
@@ -42946,6 +42962,7 @@ components:
                                                                 const: organisations
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                                                 description: The ID of the organisation.
                                             document:
                                                 type: object
@@ -42963,6 +42980,7 @@ components:
                                                                 const: documents
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                                                 description: The ID of the document.
                                             approvers:
                                                 type: object
@@ -42982,6 +43000,7 @@ components:
                                                                     const: users
                                                                 id:
                                                                     type: string
+                                                                    format: uuid
                                                                     description: The ID of the user.
                                             notify:
                                                 type: object
@@ -43012,6 +43031,7 @@ components:
                                                                     const: job-roles
                                                                 id:
                                                                     type: string
+                                                                    format: uuid
                                                                     description: The ID of the job role whose holders to notify.
         UpdateDocumentReviewRequest:
             required: true
@@ -43079,6 +43099,7 @@ components:
                                                                     const: users
                                                                 id:
                                                                     type: string
+                                                                    format: uuid
                                                                     description: The ID of the user.
                                             notify:
                                                 type: object
@@ -43112,6 +43133,7 @@ components:
                                                                     const: job-roles
                                                                 id:
                                                                     type: string
+                                                                    format: uuid
                                                                     description: The ID of the job role whose holders to notify.
         UploadDocument:
             required: true
@@ -43180,6 +43202,7 @@ components:
                                                                 const: organisations
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                                                 description: The ID of the organisation.
                                             folder:
                                                 type: object
@@ -43197,6 +43220,7 @@ components:
                                                                 const: folders
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                                                 description: The ID of the folder.
         UpdateDocument:
             required: true
@@ -44462,6 +44486,7 @@ components:
                                                                 const: organisations
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                                                 description: The ID of the organisation.
                                             parent:
                                                 type: object
@@ -44479,6 +44504,7 @@ components:
                                                                 const: folders
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                                                 description: The ID of the parent folder.
         UpdateFolder:
             required: true
@@ -44532,6 +44558,7 @@ components:
                                                                 const: folders
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                                                 description: The ID of the parent folder.
         UpdateFolderParent:
             required: true
@@ -45444,6 +45471,7 @@ components:
                                                                 const: organisations
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                                                 description: The ID of the organisation.
                                             grantee_job_role:
                                                 type: object
@@ -45463,6 +45491,7 @@ components:
                                                                 const: job-roles
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                                                 description: The ID of the job role.
         UpdateGrant:
             required: true
@@ -46623,6 +46652,7 @@ components:
                                                                 const: organisations
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                                                 description: The ID of the organisation.
                                             project:
                                                 type: object
@@ -50024,6 +50054,37 @@ components:
                                                 type: array
                                                 items:
                                                     $ref: '#/components/schemas/Label'
+        UpdateOrganisationSecuritySettings:
+            required: true
+            description: The security-settings for the organisation to update.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                    - attributes
+                                properties:
+                                    type:
+                                        type: string
+                                        const: security-settings
+                                    attributes:
+                                        type: object
+                                        required:
+                                            - require_mfa
+                                        properties:
+                                            require_mfa:
+                                                type: boolean
+                                                description: |
+                                                    Whether members must use a second factor to see this
+                                                    organisation's data. A single sign-on sign-in counts as one.
+                                                examples:
+                                                    - true
         UpdateOrganisationTeamSettings:
             required: true
             description: The team-settings for the organisation to update.
@@ -50286,6 +50347,7 @@ components:
                                                                 const: organisations
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                                                 description: The ID of the organisation.
                                             parent_goal:
                                                 type: object
@@ -50471,6 +50533,7 @@ components:
                                                                 const: organisations
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                             goal:
                                                 type: object
                                                 properties:
@@ -50720,6 +50783,7 @@ components:
                                                                 const: organisations
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                                                 description: The ID of the organisation.
         UpdatePlaneProject:
             required: true
@@ -50826,6 +50890,7 @@ components:
                                                                 const: organisations
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                             session:
                                                 type: object
                                                 required:
@@ -50895,6 +50960,7 @@ components:
                                                                 const: organisations
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                             plan:
                                                 type: object
                                                 required:
@@ -51403,6 +51469,7 @@ components:
                                                     description: The date and time when the qualification is due
                                               additionalProperties: false
                                     relationships:
+                                        type: object
                                         required:
                                             - organisation
                                             - qualification
@@ -51832,6 +51899,7 @@ components:
                                                                 const: organisations
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                                                 description: The ID of the organisation.
                                             form:
                                                 type: object
@@ -53439,6 +53507,7 @@ components:
                                                                 const: organisations
                                                             id:
                                                                 type: string
+                                                                format: uuid
                                                                 description: The ID of the organisation.
                                             default_role:
                                                 type: object
@@ -69991,6 +70060,51 @@ paths:
             x-mint:
                 metadata:
                     title: Update a work order template
+    /v3/orgs/{org_id}/settings/security:
+        patch:
+            description: |
+                Replace the security-settings sub-resource for an organisation.
+
+                `require_mfa` makes the organisation require a second factor. While it is on,
+                a member whose session is neither two-factor (`aal2`) nor a single sign-on
+                sign-in cannot see the organisation's data until they set up and use a second
+                factor. Service accounts are exempt. It is off by default.
+
+                Turning `require_mfa` on is refused with 403 unless the caller's own session
+                already satisfies it, so an administrator cannot lock themselves out.
+                Turning it off has no such check.
+
+                Only an interactive sign-in can turn it on: a person using a second factor
+                or single sign-on. A service account or other OAuth2 client has no sign-in
+                session, so it can turn the requirement off but never on.
+            operationId: UpdateOrganisationSecuritySettings
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+            requestBody:
+                $ref: '#/components/requestBodies/UpdateOrganisationSecuritySettings'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetOrganisation'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "403":
+                    $ref: '#/components/responses/Forbidden'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Update an organisation's security settings
+            tags:
+                - Organisations
+            x-mint:
+                metadata:
+                    title: Update organisation security settings
     /v3/orgs/{org_id}/settings/teams:
         patch:
             description: |
