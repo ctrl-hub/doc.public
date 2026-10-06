@@ -564,9 +564,12 @@ components:
                 code:
                     description: >-
                         A unique code for the error that may help us to diagnose the issue. Not all errors have codes, so this is usually empty.
+
+                        `CH.003.080` (403) means the organisation in `meta.organisation_id` requires two-factor authentication and the caller's session does not satisfy it. The caller must set up or use a second factor, or sign in through their organisation's SAML single sign-on. Other OIDC sign-ins do not count.
                     type: string
                     examples:
                         - "AUTH.001"
+                        - "CH.003.080"
                 source:
                     description: >-
                         A JSON object containing additional information about the error.
@@ -584,6 +587,24 @@ components:
                             type: string
                             examples:
                                 - "include"
+                meta:
+                    description: >-
+                        A JSON object containing additional information about the error.
+
+                        When a parameter caused the error, there will be a `resource` property with the name of the resource that caused the error.
+
+                        When `code` is `CH.003.080`, `organisation_id` names the organisation that requires two-factor authentication, which the caller's session does not satisfy.
+                    type: object
+                    properties:
+                        resource:
+                            type: string
+                            description: The resource a parameter error relates to, such as an unsupported include.
+                        organisation_id:
+                            type: string
+                            format: uuid
+                            examples:
+                                - "c000c344-8847-47da-a091-32e75902d3b1"
+                    additionalProperties: true
             required:
                 - id
                 - status
@@ -1164,6 +1185,20 @@ components:
                         - organisation
                         - unknown
                     description: How this user is managed.
+                withheld_organisations:
+                    type: array
+                    description: |
+                        Returned on `/v3/whoami` only. The organisations whose access is withheld
+                        from this session, because each requires two-factor authentication and the
+                        session does not satisfy it. This includes organisations the caller works in
+                        through a grant without being a member, such as a contractor in the owner's
+                        organisation. Absent when there are none. Requests to those organisations'
+                        routes answer 403 with code `CH.003.080`.
+                    items:
+                        type: string
+                        format: uuid
+                    examples:
+                        - ["c000c344-8847-47da-a091-32e75902d3b1"]
         UserRelationships:
             type: object
             description: Relationships for a user
@@ -2758,9 +2793,10 @@ components:
                                 require_mfa:
                                     type: boolean
                                     description: |
-                                        Whether members must use a second factor to see this
-                                        organisation's data. A single sign-on sign-in counts as one.
-                                        Service accounts are exempt.
+                                        Whether people must use a second factor to see this organisation's data:
+                                        its members, and anyone working in it through a grant without being a
+                                        member, such as a contractor. A SAML single sign-on sign-in counts as
+                                        one; other OIDC sign-ins do not. Service accounts are exempt.
                                     examples:
                                         - false
         OrganisationMeta:
@@ -19628,6 +19664,58 @@ components:
                                         id:
                                             type: string
                                             format: uuid
+        OrganisationSecuritySettings:
+            type: object
+            description: An organisation's security settings. Their id is the organisation's id.
+            required:
+                - id
+                - type
+                - attributes
+                - relationships
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The id of the organisation these settings belong to.
+                type:
+                    type: string
+                    const: security-settings
+                attributes:
+                    type: object
+                    required:
+                        - require_mfa
+                    properties:
+                        require_mfa:
+                            type: boolean
+                            description: |
+                                Whether people must use a second factor to see this organisation's data:
+                                its members, and anyone working in it through a grant without being a
+                                member, such as a contractor. A SAML single sign-on sign-in counts as
+                                one; other OIDC sign-ins do not. Service accounts are exempt.
+                            examples:
+                                - true
+                relationships:
+                    type: object
+                    required:
+                        - organisation
+                    properties:
+                        organisation:
+                            type: object
+                            required:
+                                - data
+                            properties:
+                                data:
+                                    type: object
+                                    required:
+                                        - type
+                                        - id
+                                    properties:
+                                        type:
+                                            type: string
+                                            const: organisations
+                                        id:
+                                            type: string
+                                            format: uuid
         SiteAttendance:
             type: object
             description: One person's presence on site, from sign-in to sign-out
@@ -30672,6 +30760,26 @@ components:
                                     items:
                                         $ref: '#/components/schemas/SecuritySettingsImpact'
                             - $ref: '#/components/schemas/JSONAPI'
+        GetSecuritySettings:
+            description: An organisation's security settings.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    $ref: '#/components/schemas/OrganisationSecuritySettings'
+                            - $ref: '#/components/schemas/JSONAPI'
         ListSiteAttendances:
             description: List site attendances.
             headers:
@@ -37943,6 +38051,16 @@ components:
             examples:
                 one:
                     value: eq(organisation,c000c344-8847-47da-a091-32e75902d3b1)
+        security_settings_id:
+            name: security_settings_id
+            in: path
+            required: true
+            description: >-
+                The security settings to update. Each organisation has one set of security settings, identified by the organisation's id.
+            schema:
+                type: string
+                format: uuid
+            example: 5ec5e771-0000-4000-8000-000000000001
         site_attendances_include:
             name: include
             in: query
@@ -50283,37 +50401,6 @@ components:
                                                 type: array
                                                 items:
                                                     $ref: '#/components/schemas/Label'
-        UpdateOrganisationSecuritySettings:
-            required: true
-            description: The security-settings for the organisation to update.
-            content:
-                application/vnd.api+json:
-                    schema:
-                        type: object
-                        required:
-                            - data
-                        properties:
-                            data:
-                                type: object
-                                required:
-                                    - type
-                                    - attributes
-                                properties:
-                                    type:
-                                        type: string
-                                        const: security-settings
-                                    attributes:
-                                        type: object
-                                        required:
-                                            - require_mfa
-                                        properties:
-                                            require_mfa:
-                                                type: boolean
-                                                description: |
-                                                    Whether members must use a second factor to see this
-                                                    organisation's data. A single sign-on sign-in counts as one.
-                                                examples:
-                                                    - true
         UpdateOrganisationTeamSettings:
             required: true
             description: The team-settings for the organisation to update.
@@ -53023,6 +53110,39 @@ components:
                                         properties:
                                             read_only:
                                                 type: boolean
+        UpdateOrganisationSecuritySettings:
+            required: true
+            description: The security-settings for the organisation to update.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                    - attributes
+                                properties:
+                                    type:
+                                        type: string
+                                        const: security-settings
+                                    attributes:
+                                        type: object
+                                        required:
+                                            - require_mfa
+                                        properties:
+                                            require_mfa:
+                                                type: boolean
+                                                description: |
+                                                    Whether people must use a second factor to see this organisation's data:
+                                                    its members, and anyone working in it through a grant without being a
+                                                    member, such as a contractor. A SAML single sign-on sign-in counts as
+                                                    one; other OIDC sign-ins do not. Service accounts are exempt.
+                                                examples:
+                                                    - true
         CreateSiteAttendance:
             required: true
             description: |
@@ -70289,51 +70409,6 @@ paths:
             x-mint:
                 metadata:
                     title: Update a work order template
-    /v3/orgs/{org_id}/settings/security:
-        patch:
-            description: |
-                Replace the security-settings sub-resource for an organisation.
-
-                `require_mfa` makes the organisation require a second factor. While it is on,
-                a member whose session is neither two-factor (`aal2`) nor a single sign-on
-                sign-in cannot see the organisation's data until they set up and use a second
-                factor. Service accounts are exempt. It is off by default.
-
-                Turning `require_mfa` on is refused with 403 unless the caller's own session
-                already satisfies it, so an administrator cannot lock themselves out.
-                Turning it off has no such check.
-
-                Only an interactive sign-in can turn it on: a person using a second factor
-                or single sign-on. A service account or other OAuth2 client has no sign-in
-                session, so it can turn the requirement off but never on.
-            operationId: UpdateOrganisationSecuritySettings
-            parameters:
-                - $ref: '#/components/parameters/org_id'
-            requestBody:
-                $ref: '#/components/requestBodies/UpdateOrganisationSecuritySettings'
-            responses:
-                "200":
-                    $ref: '#/components/responses/GetOrganisation'
-                "400":
-                    $ref: '#/components/responses/BadRequest'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "403":
-                    $ref: '#/components/responses/Forbidden'
-                "404":
-                    $ref: '#/components/responses/NotFound'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - OAuth2: []
-                - Cookie: []
-            summary: Update an organisation's security settings
-            tags:
-                - Organisations
-            x-mint:
-                metadata:
-                    title: Update organisation security settings
     /v3/orgs/{org_id}/settings/teams:
         patch:
             description: |
@@ -73449,6 +73524,57 @@ paths:
             x-mint:
                 metadata:
                     title: List security settings impacts
+    /v3/security-settings/{security_settings_id}:
+        patch:
+            description: |
+                Update an organisation's security settings. They are identified by the
+                organisation's id.
+
+                `require_mfa` makes the organisation require a second factor. While it is on,
+                anyone whose session is neither two-factor (`aal2`) nor a SAML single sign-on
+                sign-in cannot see the organisation's data until they set up and use a second
+                factor: its members, and people working in it through a grant without being
+                members, such as contractors. Other OIDC sign-ins do not count. Service
+                accounts are exempt. It is off by default.
+
+                A change applies straight away for requests served by the same server, and
+                within about 30 seconds everywhere else.
+
+                Turning `require_mfa` on is refused with 403 unless the caller's own session
+                already satisfies it, so an administrator cannot lock themselves out.
+                Turning it off has no such check.
+
+                Only an interactive sign-in can turn it on: a person using a second factor
+                or SAML single sign-on. A service account or other OAuth2 client has no sign-in
+                session, so it can turn the requirement off but never on.
+            operationId: UpdateSecuritySettings
+            parameters:
+                - $ref: '#/components/parameters/security_settings_id'
+            requestBody:
+                $ref: '#/components/requestBodies/UpdateOrganisationSecuritySettings'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetSecuritySettings'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "403":
+                    $ref: '#/components/responses/Forbidden'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Update an organisation's security settings
+            tags:
+                - Security Settings
+            x-mint:
+                metadata:
+                    title: Update security settings
     /v3/shared-search:
         get:
             description: |
