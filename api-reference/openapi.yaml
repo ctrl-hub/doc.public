@@ -959,6 +959,18 @@ components:
                         server; it cannot be written through the API.
                     examples:
                         - 2026-09-25T10:15:00Z
+                mfa_enabled_at:
+                    type:
+                        - string
+                        - "null"
+                    format: date-time
+                    description: |
+                        When the user set up two-factor authentication with an authenticator app
+                        (TOTP). Null when they have none, including after they turn it off.
+                        Recovery codes on their own do not count. Set by the server from the
+                        identity provider; it cannot be written through the API.
+                    examples:
+                        - 2026-10-06T09:30:00Z
                 identities:
                     type: array
                     items:
@@ -19540,6 +19552,82 @@ components:
                             data:
                                 $ref: '#/components/schemas/OperationRelationship'
                         - {}
+        SecuritySettingsImpact:
+            type: object
+            description: >-
+                Who requiring MFA in an organisation would affect. Its id is the organisation's. Counts active user members only: service accounts are exempt, and people working in the organisation through a contractor bridge are held to the requirement but are not members, so they are not counted.
+            required:
+                - id
+                - type
+                - attributes
+                - relationships
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The id of the organisation.
+                type:
+                    type: string
+                    const: security-settings-impacts
+                attributes:
+                    type: object
+                    required:
+                        - active_members
+                        - protected_members
+                        - affected_members
+                    properties:
+                        active_members:
+                            type: integer
+                            description: Every active user member.
+                            examples:
+                                - 42
+                        protected_members:
+                            type: integer
+                            description: >-
+                                Active members who already satisfy the requirement: they have an authenticator app or sign in through SAML single sign-on.
+                            examples:
+                                - 30
+                        affected_members:
+                            type: array
+                            description: >-
+                                Active members who would lose access to the organisation until they set up an authenticator app, sorted by name.
+                            items:
+                                type: object
+                                required:
+                                    - id
+                                    - name
+                                    - email
+                                properties:
+                                    id:
+                                        type: string
+                                        format: uuid
+                                    name:
+                                        type: string
+                                        description: Their full name, or their email when they have not given one.
+                                    email:
+                                        type: string
+                relationships:
+                    type: object
+                    required:
+                        - organisation
+                    properties:
+                        organisation:
+                            type: object
+                            required:
+                                - data
+                            properties:
+                                data:
+                                    type: object
+                                    required:
+                                        - type
+                                        - id
+                                    properties:
+                                        type:
+                                            type: string
+                                            const: organisations
+                                        id:
+                                            type: string
+                                            format: uuid
         SiteAttendance:
             type: object
             description: One person's presence on site, from sign-in to sign-out
@@ -30562,6 +30650,28 @@ components:
                                     $ref: '#/components/schemas/SearchResultIncludes'
                             - $ref: '#/components/schemas/DocumentMeta'
                             - $ref: '#/components/schemas/JSONAPI'
+        ListSecuritySettingsImpacts:
+            description: Who requiring MFA would affect, one item per organisation the filter names that the caller may see.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    type: array
+                                    items:
+                                        $ref: '#/components/schemas/SecuritySettingsImpact'
+                            - $ref: '#/components/schemas/JSONAPI'
         ListSiteAttendances:
             description: List site attendances.
             headers:
@@ -37816,6 +37926,23 @@ components:
             schema:
                 type: string
                 default: ""
+        security_settings_impacts_filter:
+            name: filter
+            in: query
+            description: |
+                Names the organisations to report on. Required: a request that names no
+                organisation is refused.
+
+                Available filters:
+
+                - `eq(organisation,xxx)`: The organisation with this ID.
+                - `in(organisation,[xxx,yyy])`: Each of these organisations.
+            required: true
+            schema:
+                type: string
+            examples:
+                one:
+                    value: eq(organisation,c000c344-8847-47da-a091-32e75902d3b1)
         site_attendances_include:
             name: include
             in: query
@@ -73288,6 +73415,40 @@ paths:
             x-mint:
                 metadata:
                     title: Perform a search
+    /v3/security-settings-impacts:
+        get:
+            description: |
+                For each organisation the filter names, the active user members who already
+                satisfy a requirement for two-factor authentication (an authenticator app, or
+                SAML single sign-on) and those who would lose access to the organisation until
+                they set one up. Use it before turning `require_mfa` on.
+
+                An organisation the caller may not update the security settings of, or that
+                does not exist or is inactive, is left out rather than refused. A request that
+                names no organisation is refused with 400 (`CH.003.081`), and one naming more
+                than 50 distinct organisations with 400 (`CH.003.082`), since each costs a
+                members query. Not paginated.
+            operationId: ListSecuritySettingsImpacts
+            parameters:
+                - $ref: '#/components/parameters/security_settings_impacts_filter'
+            responses:
+                "200":
+                    $ref: '#/components/responses/ListSecuritySettingsImpacts'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - Cookie: []
+            summary: List who requiring MFA would affect
+            tags:
+                - Security Settings
+            x-mint:
+                metadata:
+                    title: List security settings impacts
     /v3/shared-search:
         get:
             description: |
