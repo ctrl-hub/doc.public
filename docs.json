@@ -29,6 +29,8 @@
               "guides/getting-started/enrolling-users",
               "guides/getting-started/accepting-an-enrolment-invitation",
               "guides/getting-started/managing-your-password",
+              "guides/getting-started/two-factor-authentication",
+              "guides/getting-started/requiring-two-factor-authentication",
               "guides/getting-started/sharing-between-organisations"
             ]
           },
