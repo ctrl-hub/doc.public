@@ -3892,6 +3892,117 @@ components:
                                         type: string
                                         format: uuid
                                 - type: "null"
+        CompetencyExpiringRecord:
+            type: object
+            description: |
+                A competency record that expires, belonging to a member of an organisation.
+                The resource id is the record's own id.
+            required:
+                - id
+                - type
+                - attributes
+                - relationships
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The id of the underlying record, such as the qualification award or the training completion.
+                type:
+                    type: string
+                    const: competency-expiring-records
+                attributes:
+                    $ref: '#/components/schemas/CompetencyExpiringRecordAttributes'
+                relationships:
+                    $ref: '#/components/schemas/CompetencyExpiringRecordRelationships'
+        CompetencyExpiringRecordIncludes:
+            type: array
+            description: Related resources that can be included when an expiring competency record is returned
+            items:
+                discriminator:
+                    propertyName: type
+                    mapping:
+                        users: "#/components/schemas/User"
+                oneOf:
+                    - $ref: '#/components/schemas/User'
+        CompetencyExpiringRecordAttributes:
+            type: object
+            description: Attributes for an expiring competency record.
+            required:
+                - record_type
+                - definition
+                - expires_at
+                - risk_status
+                - required_by
+            properties:
+                record_type:
+                    type: string
+                    description: The kind of record.
+                    enum:
+                        - qualification
+                        - training
+                        - induction
+                        - assessment
+                        - registration
+                        - scheme_registration
+                        - category_registration
+                definition:
+                    type: object
+                    description: |
+                        What the record is for: the qualification, training standard or item,
+                        induction, assessment definition, skills register, scheme or category.
+                    required:
+                        - id
+                        - name
+                    properties:
+                        id:
+                            type: string
+                            format: uuid
+                        name:
+                            type: string
+                expires_at:
+                    type: string
+                    format: date-time
+                    description: When the record expires.
+                risk_status:
+                    type: string
+                    description: |
+                        The risk band now, from the definition's risk durations. `critical` means
+                        the record has expired.
+                    enum:
+                        - none
+                        - low
+                        - medium
+                        - high
+                        - critical
+                required_by:
+                    type: array
+                    description: |
+                        The person's job roles whose requirement specification names this
+                        record's definition. Empty when no assigned role requires it.
+                    items:
+                        type: object
+                        required:
+                            - id
+                            - name
+                        properties:
+                            id:
+                                type: string
+                                format: uuid
+                            name:
+                                type: string
+        CompetencyExpiringRecordRelationships:
+            type: object
+            description: Relationships for an expiring competency record
+            required:
+                - user
+            properties:
+                user:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/UserRelationship'
         CompetencyHolder:
             type: object
             description: |
@@ -25379,6 +25490,47 @@ components:
                                 included:
                                     $ref: '#/components/schemas/AgentIssueCommentIncludes'
                             - $ref: '#/components/schemas/JSONAPI'
+        ListCompetencyExpiringRecords:
+            description: |
+                A page of expiring competency records, or the whole filtered set as CSV when
+                `format=csv` was asked for.
+            headers:
+                X-Expiring-Records-Truncated:
+                    description: |
+                        Present and `true` on the CSV export when the filtered set was larger than
+                        the export's 10 000 row limit, so the file holds only the first 10 000
+                        rows in the requested order.
+                    schema:
+                        type: string
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    title: A list of expiring competency records
+                                    type: array
+                                    items:
+                                        $ref: '#/components/schemas/CompetencyExpiringRecord'
+                                included:
+                                    $ref: '#/components/schemas/CompetencyExpiringRecordIncludes'
+                            - $ref: '#/components/schemas/DocumentMeta'
+                            - $ref: '#/components/schemas/JSONAPI'
+                text/csv:
+                    schema:
+                        type: string
+                        description: |
+                            The records as comma-separated values, one row per record, in the
+                            requested order. Pagination does not apply.
         ListCompetencyHolders:
             description: Get a list of competency holders.
             headers:
@@ -33599,6 +33751,71 @@ components:
                 type: string
                 format: uuid
             example: e0000000-0000-0000-0000-000000000020
+        competency_expiring_records_filter:
+            name: filter
+            in: query
+            description: |
+                Filters the records listed.
+
+                - `eq(organisation,xxx)`: **Required.** The organisation whose members' records are listed.
+                - `ge(expires_at,xxx)` and `le(expires_at,xxx)`: the expiry window. Without `ge`, records that have already expired are included.
+                - `in(type,[xxx,yyy])`: the record types. One of `qualification`, `training`, `induction`, `assessment`, `registration`, `scheme_registration` or `category_registration`.
+                - `in(job_role,[xxx,yyy])`: records required by at least one of these job roles.
+                - `in(risk,[xxx,yyy])`: the risk bands. One of `critical`, `high`, `medium`, `low` or `none`. `critical` means expired.
+                - `contains(name,xxx)`: the person's name or email. Every word must match.
+
+                A filter term this endpoint does not recognise, or one given more than once, is rejected with a 400 rather than ignored. `expires_at` takes one `ge` and one `le`.
+
+                For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
+            required: true
+            schema:
+                type: string
+                minLength: 1
+        competency_expiring_records_sort:
+            in: query
+            name: sort
+            description: |
+                The field to order the records by. One field only.
+
+                Defaults to `expires_at`, the soonest expiry first. `risk` orders by severity,
+                from `critical` down to `none`, and soonest expiry first within a band.
+            required: false
+            style: form
+            explode: false
+            schema:
+                type: array
+                maxItems: 1
+                items:
+                    type: string
+                    enum:
+                        - expires_at
+                        - -expires_at
+                        - risk
+                        - -risk
+        competency_expiring_records_include:
+            name: include
+            in: query
+            description: A comma separated list of related resources to include.
+            required: false
+            style: form
+            explode: false
+            schema:
+                type: array
+                items:
+                    type: string
+                    enum:
+                        - user
+        competency_expiring_records_format:
+            name: format
+            in: query
+            description: |
+                Asks for the CSV export rather than a page of records. The export exists as a
+                plain URL so a browser download can use it without setting a header.
+            required: false
+            schema:
+                type: string
+                enum:
+                    - csv
         competency_holders_filter:
             name: filter
             in: query
@@ -59508,6 +59725,64 @@ paths:
             x-mint:
                 metadata:
                     title: Update a comment
+    /v3/competency-expiring-records:
+        get:
+            description: |
+                List the competency records that expire, across every member of an
+                organisation. One row per record: qualification awards, training, induction
+                and assessment records, and skills-register, scheme and category
+                registrations.
+
+                Only a person's latest record for each definition is listed, so an expired
+                record that has since been renewed does not appear. Exemption records and
+                records with no expiry are never listed, but they still count as the latest
+                record: a renewal with no expiry, or a later exemption, hides an older
+                expiring record. Deactivated members are left out.
+
+                A qualification award is listed only when one of the person's job roles
+                requires it, which is how the holder detail page shows awards. The other
+                record types are listed whether or not a role requires them.
+
+                The `organisation` filter is **required**. A caller reading a bridged
+                organisation sees only the people assigned to the roles shared with them, and
+                only the records those roles require.
+
+                Send `format=csv` for the export instead of a page. The export ignores
+                pagination and covers the whole filtered set, up to 10 000 rows.
+
+                Served by a hand-written handler rather than a generated one, because the
+                resource is computed rather than stored and the operation negotiates CSV.
+            operationId: ListCompetencyExpiringRecords
+            parameters:
+                - $ref: '#/components/parameters/competency_expiring_records_filter'
+                - $ref: '#/components/parameters/competency_expiring_records_sort'
+                - $ref: '#/components/parameters/competency_expiring_records_include'
+                - $ref: '#/components/parameters/limit'
+                - $ref: '#/components/parameters/offset'
+                - $ref: '#/components/parameters/page'
+                - $ref: '#/components/parameters/competency_expiring_records_format'
+            responses:
+                "200":
+                    $ref: '#/components/responses/ListCompetencyExpiringRecords'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            tags:
+                - Competency
+            x-ctrl-hub:
+                domain: workforce
+                entity: CompetencyExpiringRecord
+                manual: true
+            x-mint:
+                metadata:
+                    title: List expiring competency records
     /v3/competency-holders:
         get:
             description: |
