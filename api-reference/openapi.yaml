@@ -1526,6 +1526,16 @@ components:
                             type: array
                             items:
                                 $ref: '#/components/schemas/PropertyRelationship'
+                payload_meters:
+                    type: object
+                    description: The meters the submission's payload referenced.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            type: array
+                            items:
+                                $ref: '#/components/schemas/MeterRelationship'
         FormSubmissionVersionRelationship:
             type: object
             description: Represents a relationship to a form submission version
@@ -1666,6 +1676,20 @@ components:
                 type:
                     type: string
                     const: videos
+        MeterRelationship:
+            type: object
+            description: Represents a relationship to a meter
+            required:
+                - id
+                - type
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the meter
+                type:
+                    type: string
+                    const: meters
         JobRoleAttributes:
             type: object
             description: Attributes of a job role.
@@ -12358,6 +12382,15 @@ components:
                             type: array
                             items:
                                 $ref: '#/components/schemas/UserRelationship'
+                payload_meters:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            type: array
+                            items:
+                                $ref: '#/components/schemas/MeterRelationship'
                 payload_vehicles:
                     type: object
                     required:
@@ -13163,20 +13196,6 @@ components:
                             type: array
                             items:
                                 $ref: '#/components/schemas/PSRRelationship'
-        MeterRelationship:
-            type: object
-            description: Represents a relationship to a meter
-            required:
-                - id
-                - type
-            properties:
-                id:
-                    type: string
-                    format: uuid
-                    description: The unique identifier of the meter
-                type:
-                    type: string
-                    const: meters
         PSRRelationship:
             type: object
             description: Represents a relationship to a PSR record
@@ -21979,6 +21998,7 @@ components:
                 - ref_type
                 - status
                 - verified_at
+                - comment
             properties:
                 ref_type:
                     type: string
@@ -22004,6 +22024,12 @@ components:
                     type: string
                     format: date-time
                     description: When the verification took place.
+                comment:
+                    type: string
+                    description: |
+                        The verifier's justification for the outcome. Empty when none was
+                        given, which includes `invalid` verifications recorded before comments
+                        were required.
         VerificationRelationships:
             type: object
             description: |
@@ -35197,6 +35223,7 @@ components:
                         - payload_contracts
                         - payload_properties
                         - payload_users
+                        - payload_meters
                         - payload_vehicles
                         - payload_equipment_items
                         - scheme_shares
@@ -35278,6 +35305,7 @@ components:
                         - payload_images
                         - payload_videos
                         - payload_properties
+                        - payload_meters
                         - payload_vehicles
         submission_filter:
             name: filter
@@ -45551,6 +45579,7 @@ components:
                                                         - payload_contracts
                                                         - payload_images
                                                         - payload_properties
+                                                        - payload_meters
                                                 description: Related resources to include in the response.
                                             limit:
                                                 type: integer
@@ -55939,6 +55968,16 @@ components:
                                             - ref_type
                                             - ref_id
                                             - status
+                                        allOf:
+                                            - if:
+                                                properties:
+                                                    status:
+                                                        const: invalid
+                                                required:
+                                                    - status
+                                              then:
+                                                required:
+                                                    - comment
                                         properties:
                                             ref_type:
                                                 type: string
@@ -55969,6 +56008,15 @@ components:
                                                 description: |
                                                     When the verification took place. Defaults to now if
                                                     omitted.
+                                            comment:
+                                                type: string
+                                                maxLength: 2000
+                                                description: |
+                                                    The verifier's justification for the outcome. Required
+                                                    when `status` is `invalid`, optional when it is `valid`.
+                                                    At most 2000 characters before trimming. Leading and
+                                                    trailing whitespace is then trimmed, and a comment that is
+                                                    only whitespace counts as missing.
                                     relationships:
                                         type: object
                                         required:
