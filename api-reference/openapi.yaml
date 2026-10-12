@@ -20447,6 +20447,41 @@ components:
                     properties:
                         data:
                             $ref: '#/components/schemas/StreetManagerPermitRelationship'
+        StreetSearchResult:
+            type: object
+            description: |
+                A street as the gazetteer describes it, which may or may not be a street we
+                already held. Every street a search returns is recorded before the response
+                is sent, so it can be fetched from /v3/geo/streets/{street_id} by its USRN
+                straight away.
+            required:
+                - id
+                - type
+                - attributes
+            properties:
+                id:
+                    type: string
+                    description: The USRN, rendered as a string. The gazetteer has no other identifier for a street.
+                type:
+                    type: string
+                    const: street-search-results
+                attributes:
+                    $ref: '#/components/schemas/StreetSearchResultAttributes'
+        StreetSearchResultAttributes:
+            type: object
+            description: Attributes for a street search result
+            required:
+                - usrn
+            properties:
+                usrn:
+                    type: number
+                    description: The Unique Street Reference Number, the gazetteer's identifier for the street.
+                name:
+                    type: string
+                    description: The street name as the gazetteer records it, in upper case.
+                town:
+                    type: string
+                    description: The town the street is in, in upper case.
         TrainingStandardCategory:
             type: object
             description: A training standard category
@@ -31331,6 +31366,45 @@ components:
                                 data:
                                     $ref: '#/components/schemas/StreetManagerPermitVersion'
                             - $ref: '#/components/schemas/JSONAPI'
+        ListStreetSearchResults:
+            description: Get a list of results.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    title: A list of results
+                                    type: array
+                                    items:
+                                        $ref: '#/components/schemas/StreetSearchResult'
+                            - $ref: '#/components/schemas/DocumentMeta'
+                            - $ref: '#/components/schemas/JSONAPI'
+                            - type: object
+                              properties:
+                                meta:
+                                    type: object
+                                    properties:
+                                        stats:
+                                            type: object
+                                            properties:
+                                                attribution:
+                                                    type: string
+                                                    description: |
+                                                        The acknowledgement the gazetteer's data provider requires
+                                                        wherever its data is displayed — for OS open data, the Crown
+                                                        copyright notice. Show it with the results, as given. Absent
+                                                        when the provider sent none.
         ListTrainingCompletions:
             description: Get a list of training completions.
             headers:
@@ -38577,6 +38651,25 @@ components:
                 type: string
                 format: uuid
             example: 660e8400-e29b-41d4-a716-446655440002
+        street_search_results_filter:
+            name: filter
+            in: query
+            description: |
+                Filters the response data based on the value provided.
+
+                A `term` filter is required; without one the search returns nothing rather
+                than every street in the country. A term of digits only is a USRN, and is
+                looked up rather than searched for: it returns at most one street. Any other
+                term is passed to the gazetteer as a street name query.
+
+                An `after` filter, naming the USRN of the last street on the previous page,
+                asks for the next page: `and(eq(term,"high street"),eq(after,42502279))`.
+
+                For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
+            required: false
+            schema:
+                type: string
+                default: ""
         training_completions_filter:
             name: filter
             in: query
@@ -74796,6 +74889,63 @@ paths:
             x-mint:
                 metadata:
                     title: Get a permit version
+    /v3/street-search-results:
+        get:
+            description: |
+                Search the national street gazetteer by street name.
+
+                Unlike listing streets, which returns only streets already held, this asks the
+                gazetteer and so finds streets no permit has ever touched. Results are ordered
+                by the provider's relevance; there is no score to sort on.
+
+                **Paging is by cursor.** The gazetteer can continue after a street it has
+                already returned, but it cannot skip to the nth result. So the first page is
+                asked for with no cursor, and each page after it with an `after` filter naming
+                the USRN of the last street on the page before:
+                `and(eq(term,"bentinck road"),eq(after,15003853))`. `offset` still numbers the
+                page in the response meta, but does not fetch one: an `offset` above zero with
+                no `after` is a 400, as is an `after` that is not in this term's results.
+                `limit` is capped at 50. The count in the response is the number of streets
+                matching the term, not the size of the page.
+
+                Gazetteer data must be acknowledged wherever it is shown. A name search and a
+                USRN lookup both answer from OS open data, and return that acknowledgement as
+                `meta.stats.attribution`, to be displayed with the results as given.
+
+                A USRN term (digits only) is a lookup, not a search: it returns at most one
+                street, and there is never a second page.
+
+                Every street returned is recorded before the response is sent, so each `id`
+                can be fetched from `/v3/geo/streets/{street_id}` straight away. A street
+                recorded this way has its USRN, name and town. A street already held gains
+                the search's name and town only where its own are empty; nothing else of it
+                changes.
+            operationId: ListStreetSearchResults
+            parameters:
+                - $ref: '#/components/parameters/street_search_results_filter'
+                - $ref: '#/components/parameters/limit'
+                - $ref: '#/components/parameters/offset'
+            responses:
+                "200":
+                    $ref: '#/components/responses/ListStreetSearchResults'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            tags:
+                - Geo
+            x-ctrl-hub:
+                domain: geo
+                manual: true
+            x-mint:
+                metadata:
+                    title: Search for streets
     /v3/training-completions:
         get:
             description: List all training completions.
