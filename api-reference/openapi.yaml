@@ -4109,6 +4109,26 @@ components:
                     $ref: '#/components/schemas/CompetencyRequirementSpecificationAttributes'
                 relationships:
                     $ref: '#/components/schemas/CompetencyRequirementSpecificationRelationships'
+        CompetencyRequirementSpecificationIncludes:
+            type: array
+            description: Related resources that can be included when a competency requirement specification is returned.
+            items:
+                discriminator:
+                    propertyName: type
+                    mapping:
+                        skills-registers: "#/components/schemas/SkillsRegister"
+                        skills-register-schemes: "#/components/schemas/SkillsRegisterScheme"
+                        skills-register-scheme-categories: "#/components/schemas/SkillsRegisterSchemeCategory"
+                        training-items: "#/components/schemas/TrainingItem"
+                        inductions: "#/components/schemas/Induction"
+                        assessment-definitions: "#/components/schemas/AssessmentDefinition"
+                oneOf:
+                    - $ref: '#/components/schemas/SkillsRegister'
+                    - $ref: '#/components/schemas/SkillsRegisterScheme'
+                    - $ref: '#/components/schemas/SkillsRegisterSchemeCategory'
+                    - $ref: '#/components/schemas/TrainingItem'
+                    - $ref: '#/components/schemas/Induction'
+                    - $ref: '#/components/schemas/AssessmentDefinition'
         CompetencyRequirementSpecificationAttributes:
             type: object
             description: Attributes for a competency requirement specification
@@ -4184,159 +4204,6 @@ components:
                         minItems: 1
                         items:
                             $ref: '#/components/schemas/SpecificationNode'
-        CompetencyComplianceResult:
-            type: object
-            description: The compliance evaluation result for a CRS against a set of users.
-            required:
-                - id
-                - type
-                - attributes
-                - relationships
-            properties:
-                id:
-                    type: string
-                    description: Composite identifier in the form "{crs_id}:{user_id}".
-                    example: "aaaaaaaa-0000-0000-0000-000000000001:bbbbbbbb-0000-0000-0000-000000000001"
-                type:
-                    type: string
-                    const: competency-compliance-results
-                attributes:
-                    $ref: '#/components/schemas/CompetencyComplianceResultAttributes'
-                relationships:
-                    $ref: '#/components/schemas/CompetencyComplianceResultRelationships'
-        CompetencyComplianceResultIncludes:
-            type: array
-            description: Related resources that can be included when a compliance result is returned.
-            items:
-                discriminator:
-                    propertyName: type
-                    mapping:
-                        skills-registers: "#/components/schemas/SkillsRegister"
-                        skills-register-schemes: "#/components/schemas/SkillsRegisterScheme"
-                        skills-register-scheme-categories: "#/components/schemas/SkillsRegisterSchemeCategory"
-                        training-items: "#/components/schemas/TrainingItem"
-                        inductions: "#/components/schemas/Induction"
-                        assessment-definitions: "#/components/schemas/AssessmentDefinition"
-                        training-completions: "#/components/schemas/TrainingCompletion"
-                        induction-completions: "#/components/schemas/InductionCompletion"
-                        registrations: "#/components/schemas/Registration"
-                        scheme-registrations: "#/components/schemas/SchemeRegistration"
-                        category-registrations: "#/components/schemas/CategoryRegistration"
-                        assessment-records: "#/components/schemas/AssessmentRecord"
-                oneOf:
-                    - $ref: '#/components/schemas/SkillsRegister'
-                    - $ref: '#/components/schemas/SkillsRegisterScheme'
-                    - $ref: '#/components/schemas/SkillsRegisterSchemeCategory'
-                    - $ref: '#/components/schemas/TrainingItem'
-                    - $ref: '#/components/schemas/Induction'
-                    - $ref: '#/components/schemas/AssessmentDefinition'
-                    - $ref: '#/components/schemas/TrainingCompletion'
-                    - $ref: '#/components/schemas/InductionCompletion'
-                    - $ref: '#/components/schemas/Registration'
-                    - $ref: '#/components/schemas/SchemeRegistration'
-                    - $ref: '#/components/schemas/CategoryRegistration'
-                    - $ref: '#/components/schemas/AssessmentRecord'
-        CompetencyComplianceResultAttributes:
-            type: object
-            required:
-                - satisfied
-                - report
-            properties:
-                satisfied:
-                    type: boolean
-                    description: Whether the evaluated collection satisfies the CRS specification.
-                report:
-                    $ref: '#/components/schemas/ComplianceReportNode'
-        CompetencyComplianceResultRelationships:
-            type: object
-            description: Relationships for a competency compliance result
-            required:
-                - competency_requirement_specification
-                - user
-            properties:
-                competency_requirement_specification:
-                    type: object
-                    required:
-                        - data
-                    properties:
-                        data:
-                            $ref: '#/components/schemas/CompetencyRequirementSpecificationRelationship'
-                user:
-                    type: object
-                    required:
-                        - data
-                    properties:
-                        data:
-                            $ref: '#/components/schemas/UserRelationship'
-        ComplianceReportNode:
-            description: >
-                A single node in the compliance report tree. Leaf nodes carry `type` and `reference_id`; logic nodes carry `node_kind` and `children`.
-
-            oneOf:
-                - $ref: '#/components/schemas/ComplianceReportLeaf'
-                - $ref: '#/components/schemas/ComplianceReportLogicAndOr'
-                - $ref: '#/components/schemas/ComplianceReportLogicNot'
-        ComplianceReportLeaf:
-            type: object
-            required:
-                - satisfied
-                - type
-                - reference_id
-            properties:
-                satisfied:
-                    type: boolean
-                    description: Whether this node's specification is satisfied by the evaluated collection.
-                type:
-                    type: string
-                    description: The requirement item type.
-                    example: training-items
-                reference_id:
-                    type: string
-                    format: uuid
-                    description: The UUID of the referenced requirement item.
-                    example: "aaaaaaaa-0000-0000-0000-000000000001"
-        ComplianceReportLogicAndOr:
-            type: object
-            required:
-                - satisfied
-                - node_kind
-                - children
-            properties:
-                satisfied:
-                    type: boolean
-                    description: Whether this node's specification is satisfied by the evaluated collection.
-                node_kind:
-                    type: string
-                    enum:
-                        - and
-                        - or
-                    description: The logical combinator kind.
-                children:
-                    type: array
-                    description: Child nodes. Empty when the specification has no required items, in which case the node is satisfied.
-                    items:
-                        $ref: '#/components/schemas/ComplianceReportNode'
-        ComplianceReportLogicNot:
-            type: object
-            required:
-                - satisfied
-                - node_kind
-                - children
-            properties:
-                satisfied:
-                    type: boolean
-                    description: Whether this node's specification is satisfied by the evaluated collection.
-                node_kind:
-                    type: string
-                    const: not
-                    description: The logical negation combinator.
-                children:
-                    type: array
-                    minItems: 1
-                    maxItems: 1
-                    description: The single child node being negated.
-                    items:
-                        $ref: '#/components/schemas/ComplianceReportNode'
         SkillsRegister:
             type: object
             description: A skills register
@@ -4434,86 +4301,6 @@ components:
                     $ref: '#/components/schemas/InductionAttributes'
                 relationships:
                     $ref: '#/components/schemas/InductionRelationships'
-        TrainingCompletion:
-            type: object
-            description: A training completion
-            required:
-                - id
-                - type
-                - attributes
-                - relationships
-            properties:
-                id:
-                    type: string
-                    format: uuid
-                    description: The unique identifier of the training completion.
-                type:
-                    type: string
-                    const: training-completions
-                attributes:
-                    $ref: '#/components/schemas/TrainingCompletionAttributes'
-                relationships:
-                    $ref: '#/components/schemas/TrainingCompletionRelationships'
-        InductionCompletion:
-            type: object
-            description: An induction completion record
-            required:
-                - id
-                - type
-                - attributes
-                - relationships
-            properties:
-                id:
-                    type: string
-                    format: uuid
-                    description: The unique identifier of the induction completion.
-                type:
-                    type: string
-                    const: induction-completions
-                attributes:
-                    $ref: '#/components/schemas/InductionCompletionAttributes'
-                relationships:
-                    $ref: '#/components/schemas/InductionCompletionRelationships'
-        Registration:
-            type: object
-            description: A registration on a skills register
-            required:
-                - id
-                - type
-                - attributes
-                - relationships
-            properties:
-                id:
-                    type: string
-                    format: uuid
-                    description: The unique identifier of the registration.
-                type:
-                    type: string
-                    const: registrations
-                attributes:
-                    $ref: '#/components/schemas/RegistrationAttributes'
-                relationships:
-                    $ref: '#/components/schemas/RegistrationRelationships'
-        SchemeRegistration:
-            type: object
-            description: A scheme registration
-            required:
-                - id
-                - type
-                - attributes
-                - relationships
-            properties:
-                id:
-                    type: string
-                    format: uuid
-                    description: The unique identifier of the scheme registration.
-                type:
-                    type: string
-                    const: scheme-registrations
-                attributes:
-                    $ref: '#/components/schemas/SchemeRegistrationAttributes'
-                relationships:
-                    $ref: '#/components/schemas/SchemeRegistrationRelationships'
         SkillsRegisterAttributes:
             type: object
             description: Attributes for a skills register
@@ -4857,6 +4644,239 @@ components:
                     properties:
                         data:
                             $ref: '#/components/schemas/OrganisationRelationship'
+        CompetencyComplianceResult:
+            type: object
+            description: The compliance evaluation result for a CRS against a set of users.
+            required:
+                - id
+                - type
+                - attributes
+                - relationships
+            properties:
+                id:
+                    type: string
+                    description: Composite identifier in the form "{crs_id}:{user_id}".
+                    example: "aaaaaaaa-0000-0000-0000-000000000001:bbbbbbbb-0000-0000-0000-000000000001"
+                type:
+                    type: string
+                    const: competency-compliance-results
+                attributes:
+                    $ref: '#/components/schemas/CompetencyComplianceResultAttributes'
+                relationships:
+                    $ref: '#/components/schemas/CompetencyComplianceResultRelationships'
+        CompetencyComplianceResultIncludes:
+            type: array
+            description: Related resources that can be included when a compliance result is returned.
+            items:
+                discriminator:
+                    propertyName: type
+                    mapping:
+                        skills-registers: "#/components/schemas/SkillsRegister"
+                        skills-register-schemes: "#/components/schemas/SkillsRegisterScheme"
+                        skills-register-scheme-categories: "#/components/schemas/SkillsRegisterSchemeCategory"
+                        training-items: "#/components/schemas/TrainingItem"
+                        inductions: "#/components/schemas/Induction"
+                        assessment-definitions: "#/components/schemas/AssessmentDefinition"
+                        training-completions: "#/components/schemas/TrainingCompletion"
+                        induction-completions: "#/components/schemas/InductionCompletion"
+                        registrations: "#/components/schemas/Registration"
+                        scheme-registrations: "#/components/schemas/SchemeRegistration"
+                        category-registrations: "#/components/schemas/CategoryRegistration"
+                        assessment-records: "#/components/schemas/AssessmentRecord"
+                oneOf:
+                    - $ref: '#/components/schemas/SkillsRegister'
+                    - $ref: '#/components/schemas/SkillsRegisterScheme'
+                    - $ref: '#/components/schemas/SkillsRegisterSchemeCategory'
+                    - $ref: '#/components/schemas/TrainingItem'
+                    - $ref: '#/components/schemas/Induction'
+                    - $ref: '#/components/schemas/AssessmentDefinition'
+                    - $ref: '#/components/schemas/TrainingCompletion'
+                    - $ref: '#/components/schemas/InductionCompletion'
+                    - $ref: '#/components/schemas/Registration'
+                    - $ref: '#/components/schemas/SchemeRegistration'
+                    - $ref: '#/components/schemas/CategoryRegistration'
+                    - $ref: '#/components/schemas/AssessmentRecord'
+        CompetencyComplianceResultAttributes:
+            type: object
+            required:
+                - satisfied
+                - report
+            properties:
+                satisfied:
+                    type: boolean
+                    description: Whether the evaluated collection satisfies the CRS specification.
+                report:
+                    $ref: '#/components/schemas/ComplianceReportNode'
+        CompetencyComplianceResultRelationships:
+            type: object
+            description: Relationships for a competency compliance result
+            required:
+                - competency_requirement_specification
+                - user
+            properties:
+                competency_requirement_specification:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/CompetencyRequirementSpecificationRelationship'
+                user:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/UserRelationship'
+        ComplianceReportNode:
+            description: >
+                A single node in the compliance report tree. Leaf nodes carry `type` and `reference_id`; logic nodes carry `node_kind` and `children`.
+
+            oneOf:
+                - $ref: '#/components/schemas/ComplianceReportLeaf'
+                - $ref: '#/components/schemas/ComplianceReportLogicAndOr'
+                - $ref: '#/components/schemas/ComplianceReportLogicNot'
+        ComplianceReportLeaf:
+            type: object
+            required:
+                - satisfied
+                - type
+                - reference_id
+            properties:
+                satisfied:
+                    type: boolean
+                    description: Whether this node's specification is satisfied by the evaluated collection.
+                type:
+                    type: string
+                    description: The requirement item type.
+                    example: training-items
+                reference_id:
+                    type: string
+                    format: uuid
+                    description: The UUID of the referenced requirement item.
+                    example: "aaaaaaaa-0000-0000-0000-000000000001"
+        ComplianceReportLogicAndOr:
+            type: object
+            required:
+                - satisfied
+                - node_kind
+                - children
+            properties:
+                satisfied:
+                    type: boolean
+                    description: Whether this node's specification is satisfied by the evaluated collection.
+                node_kind:
+                    type: string
+                    enum:
+                        - and
+                        - or
+                    description: The logical combinator kind.
+                children:
+                    type: array
+                    description: Child nodes. Empty when the specification has no required items, in which case the node is satisfied.
+                    items:
+                        $ref: '#/components/schemas/ComplianceReportNode'
+        ComplianceReportLogicNot:
+            type: object
+            required:
+                - satisfied
+                - node_kind
+                - children
+            properties:
+                satisfied:
+                    type: boolean
+                    description: Whether this node's specification is satisfied by the evaluated collection.
+                node_kind:
+                    type: string
+                    const: not
+                    description: The logical negation combinator.
+                children:
+                    type: array
+                    minItems: 1
+                    maxItems: 1
+                    description: The single child node being negated.
+                    items:
+                        $ref: '#/components/schemas/ComplianceReportNode'
+        TrainingCompletion:
+            type: object
+            description: A training completion
+            required:
+                - id
+                - type
+                - attributes
+                - relationships
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the training completion.
+                type:
+                    type: string
+                    const: training-completions
+                attributes:
+                    $ref: '#/components/schemas/TrainingCompletionAttributes'
+                relationships:
+                    $ref: '#/components/schemas/TrainingCompletionRelationships'
+        InductionCompletion:
+            type: object
+            description: An induction completion record
+            required:
+                - id
+                - type
+                - attributes
+                - relationships
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the induction completion.
+                type:
+                    type: string
+                    const: induction-completions
+                attributes:
+                    $ref: '#/components/schemas/InductionCompletionAttributes'
+                relationships:
+                    $ref: '#/components/schemas/InductionCompletionRelationships'
+        Registration:
+            type: object
+            description: A registration on a skills register
+            required:
+                - id
+                - type
+                - attributes
+                - relationships
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the registration.
+                type:
+                    type: string
+                    const: registrations
+                attributes:
+                    $ref: '#/components/schemas/RegistrationAttributes'
+                relationships:
+                    $ref: '#/components/schemas/RegistrationRelationships'
+        SchemeRegistration:
+            type: object
+            description: A scheme registration
+            required:
+                - id
+                - type
+                - attributes
+                - relationships
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the scheme registration.
+                type:
+                    type: string
+                    const: scheme-registrations
+                attributes:
+                    $ref: '#/components/schemas/SchemeRegistrationAttributes'
+                relationships:
+                    $ref: '#/components/schemas/SchemeRegistrationRelationships'
         TrainingCompletionAttributes:
             type: object
             description: Attributes for a training completion
@@ -26708,6 +26728,8 @@ components:
                                     type: array
                                     items:
                                         $ref: '#/components/schemas/CompetencyRequirementSpecification'
+                                included:
+                                    $ref: '#/components/schemas/CompetencyRequirementSpecificationIncludes'
                             - $ref: '#/components/schemas/DocumentMeta'
                             - $ref: '#/components/schemas/JSONAPI'
         GetCompetencyRequirementSpecification:
@@ -26729,6 +26751,8 @@ components:
                               properties:
                                 data:
                                     $ref: '#/components/schemas/CompetencyRequirementSpecification'
+                                included:
+                                    $ref: '#/components/schemas/CompetencyRequirementSpecificationIncludes'
                             - $ref: '#/components/schemas/JSONAPI'
         PostCompetencyRequirementSpecificationCompliance:
             description: Per-user compliance results for a CRS, one entry per requested user who was evaluated.
