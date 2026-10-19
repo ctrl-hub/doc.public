@@ -8053,23 +8053,6 @@ components:
                 - reference
                 - serial
                 - asset_number
-            allOf:
-                - if:
-                    properties:
-                        vibration_source:
-                            const: true
-                    required:
-                        - vibration_source
-                  then:
-                    required:
-                        - vibration_magnitude
-                    properties:
-                        vibration_magnitude:
-                            type: number
-                  else:
-                    not:
-                        required:
-                            - vibration_magnitude
             properties:
                 reference:
                     type: string
@@ -8097,18 +8080,6 @@ components:
                     description: The date the equipment item was purchased (date only).
                     examples:
                         - 2024-01-15
-                vibration_source:
-                    type: boolean
-                    description: Whether the equipment item is a source of hand-arm vibration.
-                vibration_magnitude:
-                    type:
-                        - "number"
-                        - "null"
-                    description: |
-                        The vibration magnitude in m/s². Required when vibration_source is true and
-                        must be omitted otherwise.
-                    examples:
-                        - 2.7
                 description:
                     type:
                         - "string"
@@ -13442,6 +13413,164 @@ components:
                 updated_at:
                     type: string
                     format: date-time
+        HavsExposure:
+            type: object
+            description: A completed period of hand-arm vibration exposure, recorded against an HSE Table 1 category.
+            required:
+                - id
+                - type
+                - attributes
+                - meta
+                - relationships
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the HAVS exposure.
+                type:
+                    type: string
+                    const: havs-exposures
+                attributes:
+                    $ref: '#/components/schemas/HavsExposureAttributes'
+                meta:
+                    $ref: '#/components/schemas/HavsExposureMeta'
+                relationships:
+                    $ref: '#/components/schemas/HavsExposureRelationships'
+        HavsExposureAttributes:
+            type: object
+            description: Attributes of a HAVS exposure
+            required:
+                - start_time
+                - end_time
+                - ppe
+                - location
+                - magnitude
+            properties:
+                start_time:
+                    type: string
+                    format: date-time
+                    description: When the exposure started.
+                end_time:
+                    type: string
+                    format: date-time
+                    description: When the exposure ended. Always after the start time.
+                ppe:
+                    $ref: '#/components/schemas/HavsExposurePPE'
+                location:
+                    description: Where the exposure took place, or null when no position was available.
+                    oneOf:
+                        - $ref: '#/components/schemas/GeoPoint'
+                        - type: "null"
+                magnitude:
+                    type: number
+                    format: double
+                    readOnly: true
+                    description: The vibration magnitude in m/s², copied from the category's recommended initial value when the exposure was recorded.
+                    examples:
+                        - 5
+        HavsExposureMeta:
+            type: object
+            description: |
+                Metadata for a HAVS exposure. Points, A(8) and the trigger time are derived on the server from the record's magnitude and duration (T, in hours).
+            required:
+                - points
+                - a8
+                - trigger_time
+                - created_at
+                - updated_at
+            properties:
+                points:
+                    type: number
+                    format: double
+                    description: Exposure points, (magnitude / 2.5)² × (T / 8) × 100. 100 points is the exposure action value (EAV) and 400 the exposure limit value (ELV).
+                    examples:
+                        - 200
+                a8:
+                    type: number
+                    format: double
+                    description: The daily exposure A(8) in m/s², magnitude × √(T / 8).
+                    examples:
+                        - 3.54
+                trigger_time:
+                    type: number
+                    format: double
+                    description: Hours of use of this tool alone to reach the exposure action value (100 points), 8 × (2.5 / magnitude)².
+                    examples:
+                        - 2
+                created_at:
+                    type: string
+                    format: date-time
+                updated_at:
+                    type: string
+                    format: date-time
+        HavsExposureRelationships:
+            type: object
+            description: Relationships for a HAVS exposure
+            required:
+                - organisation
+                - subject
+                - recorded_by
+                - havs_equipment
+            properties:
+                organisation:
+                    type: object
+                    description: The organisation the exposure belongs to.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/OrganisationRelationship'
+                subject:
+                    type: object
+                    description: The person who was exposed.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/UserRelationship'
+                recorded_by:
+                    type: object
+                    description: The person who recorded the exposure. Server-derived, never accepted from a client. Differs from the subject when the exposure was recorded on someone's behalf.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/UserRelationship'
+                havs_equipment:
+                    type: object
+                    description: The HSE Table 1 category of tool used.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/HavsEquipmentRelationship'
+        HavsExposurePPE:
+            type: object
+            description: The personal protective equipment worn during the exposure.
+            required:
+                - mask
+                - ear_defenders
+            properties:
+                mask:
+                    type: boolean
+                    description: Whether a mask was worn.
+                ear_defenders:
+                    type: boolean
+                    description: Whether ear defenders were worn.
+        HavsEquipmentRelationship:
+            type: object
+            description: Represents a relationship to a HAVS equipment category (HSE Table 1)
+            required:
+                - id
+                - type
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the HAVS equipment category
+                type:
+                    type: string
+                    const: havs-equipment
         UserIncludes:
             type: array
             description: Related resources that can be included when a user is returned
@@ -26626,6 +26755,50 @@ components:
                                 data:
                                     $ref: '#/components/schemas/HavsEquipment'
                             - $ref: '#/components/schemas/JSONAPI'
+        ListHavsExposures:
+            description: Get a list of HAVS exposures.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    title: A list of HAVS exposures
+                                    type: array
+                                    items:
+                                        $ref: '#/components/schemas/HavsExposure'
+                            - $ref: '#/components/schemas/DocumentMeta'
+                            - $ref: '#/components/schemas/JSONAPI'
+        GetHavsExposure:
+            description: Get a HAVS exposure.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    $ref: '#/components/schemas/HavsExposure'
+                            - $ref: '#/components/schemas/JSONAPI'
         WhoAmI:
             description: A principal object representing the currently authenticated user.
             headers:
@@ -34353,6 +34526,35 @@ components:
                 type: string
                 format: uuid
             example: a1c4e8d2-9b3f-4a76-8e15-2d7c6b0f4a93
+        havs_exposures_filter:
+            name: filter
+            in: query
+            description: |
+                Filters the response data based on the value provided.
+
+                Available filters:
+
+                - `eq(id,xxx)`: Filter HAVS exposures by ID.
+                - `eq(subject,xxx)`: Filter HAVS exposures by the person exposed.
+                - `eq(recorded_by,xxx)`: Filter HAVS exposures by the person who recorded them.
+                - `eq(havs_equipment,xxx)`: Filter HAVS exposures by HSE Table 1 category.
+                - `start_time`: `ge(start_time,…)` and `le(start_time,…)` bound when exposures started.
+                - `end_time`: `ge(end_time,…)` and `le(end_time,…)` bound when exposures ended.
+
+                For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
+            required: false
+            schema:
+                type: string
+                default: ""
+        havs_exposure_id:
+            name: havs_exposure_id
+            in: path
+            required: true
+            description: The unique identifier for the HAVS exposure.
+            schema:
+                type: string
+                format: uuid
+            example: 3c7e2a91-5b4d-4f6e-8a1c-9d2e7f4b6a10
         users_include:
             name: include
             in: query
@@ -42346,8 +42548,7 @@ components:
             description: |
                 The equipment item to create. `reference`, `serial` and `asset_number` are all
                 required. `asset_number` must be unique within the organisation; duplicate
-                `serial` values within the same organisation are allowed. `vibration_magnitude`
-                is required when `vibration_source` is true and must be omitted otherwise.
+                `serial` values within the same organisation are allowed.
                 `manufacturer` and `model` are both optional, but if `model` is supplied with a
                 non-null `data` then `manufacturer` MUST also be supplied with a non-null `data`
                 and the model must belong to that manufacturer.
@@ -42374,23 +42575,6 @@ components:
                                             - reference
                                             - serial
                                             - asset_number
-                                        allOf:
-                                            - if:
-                                                properties:
-                                                    vibration_source:
-                                                        const: true
-                                                required:
-                                                    - vibration_source
-                                              then:
-                                                required:
-                                                    - vibration_magnitude
-                                                properties:
-                                                    vibration_magnitude:
-                                                        type: number
-                                              else:
-                                                not:
-                                                    required:
-                                                        - vibration_magnitude
                                         properties:
                                             reference:
                                                 type: string
@@ -42417,14 +42601,6 @@ components:
                                                 format: date
                                                 examples:
                                                     - 2024-01-15
-                                            vibration_source:
-                                                type: boolean
-                                            vibration_magnitude:
-                                                type:
-                                                    - "number"
-                                                    - "null"
-                                                examples:
-                                                    - 2.7
                                             description:
                                                 type:
                                                     - "string"
@@ -42522,9 +42698,8 @@ components:
                 separately via the allocation relationship endpoints, not through this body.
                 `reference`, `serial` and `asset_number` are all required. `asset_number` must
                 be unique within the organisation; duplicate `serial` values within the same
-                organisation are allowed. `vibration_magnitude` is required when
-                `vibration_source` is true and must be omitted otherwise. business_area
-                is required and must always be supplied; send `data: null` to clear it.
+                organisation are allowed. business_area is required and must always be
+                supplied; send `data: null` to clear it.
                 `manufacturer` and `model` are both optional, but if `model` is supplied with a
                 non-null `data` then `manufacturer` MUST also be supplied with a non-null `data`
                 and the model must belong to that manufacturer. This applies even when only
@@ -42556,23 +42731,6 @@ components:
                                             - reference
                                             - serial
                                             - asset_number
-                                        allOf:
-                                            - if:
-                                                properties:
-                                                    vibration_source:
-                                                        const: true
-                                                required:
-                                                    - vibration_source
-                                              then:
-                                                required:
-                                                    - vibration_magnitude
-                                                properties:
-                                                    vibration_magnitude:
-                                                        type: number
-                                              else:
-                                                not:
-                                                    required:
-                                                        - vibration_magnitude
                                         properties:
                                             reference:
                                                 type: string
@@ -42599,14 +42757,6 @@ components:
                                                 format: date
                                                 examples:
                                                     - 2024-01-15
-                                            vibration_source:
-                                                type: boolean
-                                            vibration_magnitude:
-                                                type:
-                                                    - "number"
-                                                    - "null"
-                                                examples:
-                                                    - 2.7
                                             description:
                                                 type:
                                                     - "string"
@@ -44453,6 +44603,137 @@ components:
                                                 type: number
                                                 examples:
                                                     - 7
+        CreateHavsExposure:
+            required: true
+            description: The HAVS exposure to record.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                    - attributes
+                                    - relationships
+                                properties:
+                                    type:
+                                        type: string
+                                        const: havs-exposures
+                                    attributes:
+                                        type: object
+                                        required:
+                                            - start_time
+                                            - end_time
+                                            - ppe
+                                        properties:
+                                            start_time:
+                                                type: string
+                                                format: date-time
+                                            end_time:
+                                                type: string
+                                                format: date-time
+                                                description: Must be after the start time and no more than 24 hours after it. The exposure must have ended, so this may be at most 5 minutes later than now. The 5 minutes allows for a device clock running fast.
+                                            ppe:
+                                                $ref: '#/components/schemas/HavsExposurePPE'
+                                            location:
+                                                description: Where the exposure took place. Omit or send null when no position is available. A zero point is rejected as a placeholder. A location naming neither british_national_grid nor lat_long, such as GeoJSON, is rejected.
+                                                oneOf:
+                                                    - $ref: '#/components/schemas/GeoPoint'
+                                                    - type: "null"
+                                    relationships:
+                                        type: object
+                                        required:
+                                            - organisation
+                                            - havs_equipment
+                                        properties:
+                                            organisation:
+                                                type: object
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/OrganisationRelationship'
+                                            havs_equipment:
+                                                type: object
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/HavsEquipmentRelationship'
+                                            subject:
+                                                type: object
+                                                description: The person exposed. Defaults to the caller. Naming anyone else needs the havs-exposures:create-on-behalf permission.
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/UserRelationship'
+        UpdateHavsExposure:
+            required: true
+            description: The HAVS exposure to correct.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                    - id
+                                    - attributes
+                                properties:
+                                    id:
+                                        type: string
+                                        format: uuid
+                                    type:
+                                        type: string
+                                        const: havs-exposures
+                                    attributes:
+                                        type: object
+                                        required:
+                                            - start_time
+                                            - end_time
+                                            - ppe
+                                        properties:
+                                            start_time:
+                                                type: string
+                                                format: date-time
+                                            end_time:
+                                                type: string
+                                                format: date-time
+                                                description: Must be after the start time and no more than 24 hours after it. The exposure must have ended, so this may be at most 5 minutes later than now. The 5 minutes allows for a device clock running fast.
+                                            ppe:
+                                                $ref: '#/components/schemas/HavsExposurePPE'
+                                            location:
+                                                description: Where the exposure took place. Omit or send null to clear it. A zero point is rejected as a placeholder. A location naming neither british_national_grid nor lat_long, such as GeoJSON, is rejected.
+                                                oneOf:
+                                                    - $ref: '#/components/schemas/GeoPoint'
+                                                    - type: "null"
+                                    relationships:
+                                        type: object
+                                        description: Optional. The category and subject are fixed, so any value sent must match the stored one.
+                                        properties:
+                                            havs_equipment:
+                                                type: object
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/HavsEquipmentRelationship'
+                                            subject:
+                                                type: object
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/UserRelationship'
         CreateImage:
             required: true
             description: The image to create.
@@ -62783,6 +63064,161 @@ paths:
             x-mint:
                 metadata:
                     title: Update a HAVS equipment
+    /v3/havs-exposures:
+        get:
+            description: Retrieve a list of hand-arm vibration exposure records. Filter by person with `?filter=eq(subject,xxx)`, and by period with `ge` and `le` on `start_time` and `end_time`.
+            operationId: ListHavsExposures
+            parameters:
+                - $ref: '#/components/parameters/havs_exposures_filter'
+                - $ref: '#/components/parameters/limit'
+                - $ref: '#/components/parameters/offset'
+                - $ref: '#/components/parameters/page'
+            responses:
+                "200":
+                    $ref: '#/components/responses/ListHavsExposures'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - Cookie: []
+                - OAuth2: []
+            summary: List HAVS exposures
+            tags:
+                - Equipment
+            x-ctrl-hub:
+                domain: equipment
+            x-mint:
+                metadata:
+                    title: List HAVS exposures
+        post:
+            description: |
+                Record a completed period of hand-arm vibration exposure against an HSE Table 1 category (`havs-equipment`).
+
+                The category's recommended initial magnitude is copied onto the record, and points, A(8) and the trigger time are derived from it. A later change to the category does not restate the record.
+
+                A category whose recommended initial magnitude is zero or less is refused. Its points, A(8) and trigger time would not be meaningful values.
+
+                The subject defaults to the caller. Recording for someone else needs the `havs-exposures:create-on-behalf` permission, and the record keeps who recorded it.
+            operationId: CreateHavsExposure
+            requestBody:
+                $ref: '#/components/requestBodies/CreateHavsExposure'
+            responses:
+                "201":
+                    $ref: '#/components/responses/GetHavsExposure'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - Cookie: []
+                - OAuth2: []
+            summary: Record a HAVS exposure
+            tags:
+                - Equipment
+            x-ctrl-hub:
+                domain: equipment
+            x-mint:
+                metadata:
+                    title: Record a HAVS exposure
+    /v3/havs-exposures/{havs_exposure_id}:
+        delete:
+            description: Soft delete a HAVS exposure record.
+            operationId: DeleteHavsExposure
+            parameters:
+                - $ref: '#/components/parameters/havs_exposure_id'
+            responses:
+                "204":
+                    description: HAVS exposure deleted successfully.
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - Cookie: []
+                - OAuth2: []
+            summary: Delete a HAVS exposure
+            tags:
+                - Equipment
+            x-ctrl-hub:
+                domain: equipment
+            x-mint:
+                metadata:
+                    title: Delete a HAVS exposure
+        get:
+            description: Retrieve a specific HAVS exposure record by its unique identifier.
+            operationId: GetHavsExposure
+            parameters:
+                - $ref: '#/components/parameters/havs_exposure_id'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetHavsExposure'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - Cookie: []
+                - OAuth2: []
+            summary: Get a HAVS exposure
+            tags:
+                - Equipment
+            x-ctrl-hub:
+                domain: equipment
+            x-mint:
+                metadata:
+                    title: Get a HAVS exposure
+        put:
+            description: |
+                Replace a HAVS exposure's times, PPE and location. Points, A(8) and the trigger time are recomputed from the magnitude copied onto the record when it was created.
+
+                The category and the subject are fixed. A body that names a different category or subject is rejected: a wrong tool means deleting the record and recording it again.
+            operationId: UpdateHavsExposure
+            parameters:
+                - $ref: '#/components/parameters/havs_exposure_id'
+            requestBody:
+                $ref: '#/components/requestBodies/UpdateHavsExposure'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetHavsExposure'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - Cookie: []
+                - OAuth2: []
+            summary: Correct a HAVS exposure
+            tags:
+                - Equipment
+            x-ctrl-hub:
+                domain: equipment
+            x-mint:
+                metadata:
+                    title: Correct a HAVS exposure
     /v3/iam/whoami:
         get:
             description: Get the currently authorised principal.
