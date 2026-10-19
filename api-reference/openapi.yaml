@@ -34950,6 +34950,7 @@ components:
                 Filters the records listed.
 
                 - `eq(organisation,xxx)`: **Required.** The organisation whose members' records are listed.
+                - `eq(shared_role_owner,xxx)`: only the people on job roles this organisation shares into the one being read, and only the records those roles require. It narrows what the caller's grants allow and never widens it. Send it when reading another organisation's records on behalf of a network, since a caller who is also a member of that organisation would otherwise see all of them. Any other operator, or more than one id, is rejected with a 400.
                 - `ge(expires_at,xxx)` and `le(expires_at,xxx)`: the expiry window. Without `ge`, records that have already expired are included.
                 - `in(type,[xxx,yyy])`: the record types. One of `training`, `induction`, `assessment`, `registration`, `scheme_registration` or `category_registration`.
                 - `in(job_role,[xxx,yyy])`: records required by at least one of these job roles.
@@ -35018,6 +35019,7 @@ components:
                 Available filters:
 
                 - `eq(organisation,xxx)`: **Required.** Scope holders to this organisation ID.
+                - `eq(shared_role_owner,xxx)`: only the people on job roles this organisation shares into the one being read, with only those roles in their compliance summary. Holders whose only footprint is a competency record are left out. It narrows what the caller's grants allow and never widens it. Send it when reading another organisation's roster on behalf of a network, since a caller who is also a member of that organisation would otherwise see all of it. Any other operator, or more than one id, is rejected with a 400.
 
                 For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
             required: true
