@@ -31559,6 +31559,10 @@ components:
                     $ref: '#/components/headers/content-length'
                 X-Request-ID:
                     $ref: '#/components/headers/x-request-id'
+                ETag:
+                    $ref: '#/components/headers/etag'
+                Cache-Control:
+                    $ref: '#/components/headers/cache-control'
             content:
                 application/vnd.api+json:
                     schema:
@@ -31583,6 +31587,10 @@ components:
                     $ref: '#/components/headers/content-length'
                 X-Request-ID:
                     $ref: '#/components/headers/x-request-id'
+                ETag:
+                    $ref: '#/components/headers/etag'
+                Cache-Control:
+                    $ref: '#/components/headers/cache-control'
             content:
                 application/vnd.api+json:
                     schema:
@@ -32370,6 +32378,10 @@ components:
                     $ref: '#/components/headers/content-length'
                 X-Request-ID:
                     $ref: '#/components/headers/x-request-id'
+                ETag:
+                    $ref: '#/components/headers/etag'
+                Cache-Control:
+                    $ref: '#/components/headers/cache-control'
             content:
                 application/vnd.api+json:
                     schema:
@@ -32394,6 +32406,10 @@ components:
                     $ref: '#/components/headers/content-length'
                 X-Request-ID:
                     $ref: '#/components/headers/x-request-id'
+                ETag:
+                    $ref: '#/components/headers/etag'
+                Cache-Control:
+                    $ref: '#/components/headers/cache-control'
             content:
                 application/vnd.api+json:
                     schema:
@@ -74184,9 +74200,12 @@ paths:
                 - $ref: '#/components/parameters/limit'
                 - $ref: '#/components/parameters/offset'
                 - $ref: '#/components/parameters/page'
+                - $ref: '#/components/parameters/if_none_match'
             responses:
                 "200":
                     $ref: '#/components/responses/ListPermissions'
+                "304":
+                    $ref: '#/components/responses/NotModified'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -74208,9 +74227,12 @@ paths:
             operationId: GetPermission
             parameters:
                 - $ref: '#/components/parameters/permission_id'
+                - $ref: '#/components/parameters/if_none_match'
             responses:
                 "200":
                     $ref: '#/components/responses/GetPermission'
+                "304":
+                    $ref: '#/components/responses/NotModified'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -76570,9 +76592,12 @@ paths:
                 - $ref: '#/components/parameters/limit'
                 - $ref: '#/components/parameters/offset'
                 - $ref: '#/components/parameters/page'
+                - $ref: '#/components/parameters/if_none_match'
             responses:
                 "200":
                     $ref: '#/components/responses/ListRoles'
+                "304":
+                    $ref: '#/components/responses/NotModified'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -76594,9 +76619,12 @@ paths:
             operationId: GetRole
             parameters:
                 - $ref: '#/components/parameters/role_id'
+                - $ref: '#/components/parameters/if_none_match'
             responses:
                 "200":
                     $ref: '#/components/responses/GetRole'
+                "304":
+                    $ref: '#/components/responses/NotModified'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
