@@ -31559,6 +31559,10 @@ components:
                     $ref: '#/components/headers/content-length'
                 X-Request-ID:
                     $ref: '#/components/headers/x-request-id'
+                ETag:
+                    $ref: '#/components/headers/etag'
+                Cache-Control:
+                    $ref: '#/components/headers/cache-control'
             content:
                 application/vnd.api+json:
                     schema:
@@ -31583,6 +31587,10 @@ components:
                     $ref: '#/components/headers/content-length'
                 X-Request-ID:
                     $ref: '#/components/headers/x-request-id'
+                ETag:
+                    $ref: '#/components/headers/etag'
+                Cache-Control:
+                    $ref: '#/components/headers/cache-control'
             content:
                 application/vnd.api+json:
                     schema:
@@ -32370,6 +32378,10 @@ components:
                     $ref: '#/components/headers/content-length'
                 X-Request-ID:
                     $ref: '#/components/headers/x-request-id'
+                ETag:
+                    $ref: '#/components/headers/etag'
+                Cache-Control:
+                    $ref: '#/components/headers/cache-control'
             content:
                 application/vnd.api+json:
                     schema:
@@ -32394,6 +32406,10 @@ components:
                     $ref: '#/components/headers/content-length'
                 X-Request-ID:
                     $ref: '#/components/headers/x-request-id'
+                ETag:
+                    $ref: '#/components/headers/etag'
+                Cache-Control:
+                    $ref: '#/components/headers/cache-control'
             content:
                 application/vnd.api+json:
                     schema:
@@ -38605,6 +38621,15 @@ components:
                 type: string
                 format: uuid
             example: 8806ffd4-581b-4c70-ace5-79e11189be0e
+        key_id:
+            name: key_id
+            in: path
+            required: true
+            description: The unique identifier for the service account key.
+            schema:
+                type: string
+                format: uuid
+            example: 3f6c1b52-9d0e-4a7b-8c35-2e4a7d91b6f0
         log_id:
             name: log_id
             in: path
@@ -72934,6 +72959,45 @@ paths:
             x-mint:
                 metadata:
                     title: Create a key for a service account
+    /v3/orgs/{org_id}/iam/service-accounts/{service_account_id}/keys/{key_id}:
+        delete:
+            description: |
+                Delete one key of a service account. The key's OAuth client is deleted, and the
+                key is removed from the account. New tokens cannot be issued for the key.
+                Requests made with the key are rejected from then on. A server that did not
+                handle this request can keep accepting the key until its cached entry goes
+                stale, about a minute. The account and its other keys are unchanged.
+
+                A key that does not belong to the service account, a service account of another
+                organisation and a system-scoped service account all return `404 Not Found`.
+            operationId: DeleteServiceAccountKey
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+                - $ref: '#/components/parameters/service_account_id'
+                - $ref: '#/components/parameters/key_id'
+            responses:
+                "204":
+                    description: Service account key deleted successfully.
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Delete a Service Account Key
+            tags:
+                - Service Accounts
+            x-ctrl-hub:
+                domain: iam
+            x-mint:
+                metadata:
+                    title: Delete a key of a service account
     /v3/orgs/{org_id}/iam/service-accounts/{service_account_id}/logs:
         get:
             description: List the logs for a service account.
@@ -74184,9 +74248,12 @@ paths:
                 - $ref: '#/components/parameters/limit'
                 - $ref: '#/components/parameters/offset'
                 - $ref: '#/components/parameters/page'
+                - $ref: '#/components/parameters/if_none_match'
             responses:
                 "200":
                     $ref: '#/components/responses/ListPermissions'
+                "304":
+                    $ref: '#/components/responses/NotModified'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -74208,9 +74275,12 @@ paths:
             operationId: GetPermission
             parameters:
                 - $ref: '#/components/parameters/permission_id'
+                - $ref: '#/components/parameters/if_none_match'
             responses:
                 "200":
                     $ref: '#/components/responses/GetPermission'
+                "304":
+                    $ref: '#/components/responses/NotModified'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -76570,9 +76640,12 @@ paths:
                 - $ref: '#/components/parameters/limit'
                 - $ref: '#/components/parameters/offset'
                 - $ref: '#/components/parameters/page'
+                - $ref: '#/components/parameters/if_none_match'
             responses:
                 "200":
                     $ref: '#/components/responses/ListRoles'
+                "304":
+                    $ref: '#/components/responses/NotModified'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -76594,9 +76667,12 @@ paths:
             operationId: GetRole
             parameters:
                 - $ref: '#/components/parameters/role_id'
+                - $ref: '#/components/parameters/if_none_match'
             responses:
                 "200":
                     $ref: '#/components/responses/GetRole'
+                "304":
+                    $ref: '#/components/responses/NotModified'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
