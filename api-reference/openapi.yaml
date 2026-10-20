@@ -15954,6 +15954,188 @@ components:
                 oneOf:
                     - $ref: '#/components/schemas/Organisation'
                     - $ref: '#/components/schemas/LocationType'
+        ManagementRelationship:
+            type: object
+            description: |
+                A management relationship records that one user manages another in an organisation. Its manager role says what the manager may do for the person.
+            required:
+                - id
+                - type
+                - attributes
+                - meta
+                - relationships
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the management relationship.
+                type:
+                    type: string
+                    const: management-relationships
+                attributes:
+                    $ref: '#/components/schemas/ManagementRelationshipAttributes'
+                meta:
+                    $ref: '#/components/schemas/ManagementRelationshipMeta'
+                relationships:
+                    $ref: '#/components/schemas/ManagementRelationshipRelationships'
+        ManagementRelationshipAttributes:
+            type: object
+            description: Attributes of a management relationship
+            required:
+                - kind
+            properties:
+                kind:
+                    $ref: '#/components/schemas/ManagementRelationshipKind'
+        ManagementRelationshipMeta:
+            type: object
+            description: Metadata for a management relationship.
+            required:
+                - created_at
+                - updated_at
+            properties:
+                created_at:
+                    type: string
+                    format: date-time
+                updated_at:
+                    type: string
+                    format: date-time
+        ManagementRelationshipRelationships:
+            type: object
+            description: Relationships for a management relationship
+            required:
+                - organisation
+                - manager
+                - managed
+            properties:
+                organisation:
+                    type: object
+                    description: The organisation the relationship belongs to.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/OrganisationRelationship'
+                manager:
+                    type: object
+                    description: The user who manages.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/UserRelationship'
+                managed:
+                    type: object
+                    description: The user who is managed.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/UserRelationship'
+                manager_role:
+                    type: object
+                    description: The manager role that says what the manager may do for the person. Absent when an admin has removed the role.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/ManagerRoleRelationship'
+        ManagementRelationshipKind:
+            type: string
+            description: |
+                `primary` or `secondary`. A person has at most one primary manager in an organisation, and any number of secondary managers. A primary manager reaches everyone beneath the person through primary relationships. A secondary manager reaches only this person.
+            enum:
+                - primary
+                - secondary
+        ManagerRoleRelationship:
+            type: object
+            description: Represents a relationship to a manager role
+            required:
+                - id
+                - type
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the manager role
+                type:
+                    type: string
+                    const: manager-roles
+        ManagerRole:
+            type: object
+            description: |
+                A manager role says what a manager may do for the people they manage. Each management relationship carries one. Its permissions can only come from the manager-scopable permissions, because a manager's grants are scoped to the people they manage.
+            required:
+                - id
+                - type
+                - attributes
+                - meta
+                - relationships
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the manager role.
+                type:
+                    type: string
+                    const: manager-roles
+                attributes:
+                    $ref: '#/components/schemas/ManagerRoleAttributes'
+                meta:
+                    $ref: '#/components/schemas/ManagerRoleMeta'
+                relationships:
+                    $ref: '#/components/schemas/ManagerRoleRelationships'
+        ManagerRoleAttributes:
+            type: object
+            description: Attributes of a manager role
+            required:
+                - name
+                - permissions
+                - default
+            properties:
+                name:
+                    type: string
+                    description: The role's name, unique within the organisation, ignoring case.
+                    examples:
+                        - Line manager
+                permissions:
+                    type: array
+                    description: The permissions a manager holding this role has over the people they manage. Each one must be manager-scopable.
+                    items:
+                        type: string
+                    examples:
+                        - - users:view
+                          - havs-exposures:view
+                default:
+                    type: boolean
+                    readOnly: true
+                    description: True for the organisation's Line manager role. It is attached to a management relationship created without a role, and it cannot be deleted.
+        ManagerRoleMeta:
+            type: object
+            description: Metadata for a manager role.
+            required:
+                - created_at
+                - updated_at
+            properties:
+                created_at:
+                    type: string
+                    format: date-time
+                updated_at:
+                    type: string
+                    format: date-time
+        ManagerRoleRelationships:
+            type: object
+            description: Relationships for a manager role
+            required:
+                - organisation
+            properties:
+                organisation:
+                    type: object
+                    description: The organisation the manager role belongs to.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/OrganisationRelationship'
         Meter:
             type: object
             description: A meter
@@ -29654,6 +29836,94 @@ components:
                                 included:
                                     $ref: '#/components/schemas/LocationIncludes'
                             - $ref: '#/components/schemas/JSONAPI'
+        ListManagementRelationships:
+            description: Get a list of management relationships.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    title: A list of management relationships
+                                    type: array
+                                    items:
+                                        $ref: '#/components/schemas/ManagementRelationship'
+                            - $ref: '#/components/schemas/DocumentMeta'
+                            - $ref: '#/components/schemas/JSONAPI'
+        GetManagementRelationship:
+            description: Get a management relationship.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    $ref: '#/components/schemas/ManagementRelationship'
+                            - $ref: '#/components/schemas/JSONAPI'
+        ListManagerRoles:
+            description: Get a list of manager roles.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    title: A list of manager roles
+                                    type: array
+                                    items:
+                                        $ref: '#/components/schemas/ManagerRole'
+                            - $ref: '#/components/schemas/DocumentMeta'
+                            - $ref: '#/components/schemas/JSONAPI'
+        GetManagerRole:
+            description: Get a manager role.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    $ref: '#/components/schemas/ManagerRole'
+                            - $ref: '#/components/schemas/JSONAPI'
         ListMeters:
             description: Get a list of meters.
             headers:
@@ -34950,6 +35220,7 @@ components:
                 Filters the records listed.
 
                 - `eq(organisation,xxx)`: **Required.** The organisation whose members' records are listed.
+                - `eq(shared_role_owner,xxx)`: only the people on job roles this organisation shares into the one being read, and only the records those roles require. It narrows what the caller's grants allow and never widens it. Send it when reading another organisation's records on behalf of a network, since a caller who is also a member of that organisation would otherwise see all of them. Any other operator, or more than one id, is rejected with a 400.
                 - `ge(expires_at,xxx)` and `le(expires_at,xxx)`: the expiry window. Without `ge`, records that have already expired are included.
                 - `in(type,[xxx,yyy])`: the record types. One of `training`, `induction`, `assessment`, `registration`, `scheme_registration` or `category_registration`.
                 - `in(job_role,[xxx,yyy])`: records required by at least one of these job roles.
@@ -35018,6 +35289,7 @@ components:
                 Available filters:
 
                 - `eq(organisation,xxx)`: **Required.** Scope holders to this organisation ID.
+                - `eq(shared_role_owner,xxx)`: only the people on job roles this organisation shares into the one being read, with only those roles in their compliance summary. Holders whose only footprint is a competency record are left out. It narrows what the caller's grants allow and never widens it. Send it when reading another organisation's roster on behalf of a network, since a caller who is also a member of that organisation would otherwise see all of it. Any other operator, or more than one id, is rejected with a 400.
 
                 For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
             required: true
@@ -37708,6 +37980,60 @@ components:
                 type: string
                 format: uuid
             example: 8c7af9c2-13a8-4a9a-86e8-b4fe963fc2f6
+        management_relationships_filter:
+            name: filter
+            in: query
+            description: |
+                Filters the response data based on the value provided.
+
+                Available filters:
+
+                - `eq(id,xxx)`: Filter management relationships by ID.
+                - `eq(manager,xxx)`: Filter by the user who manages.
+                - `eq(managed,xxx)`: Filter by the user who is managed.
+                - `eq(kind,primary)` or `eq(kind,secondary)`: Filter by kind of relationship.
+                - `eq(manager_role,xxx)`: Filter by the manager role the relationship carries.
+
+                For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
+            required: false
+            schema:
+                type: string
+                default: ""
+        management_relationship_id:
+            name: management_relationship_id
+            in: path
+            required: true
+            description: The unique identifier for the management relationship.
+            schema:
+                type: string
+                format: uuid
+            example: 9a3c5e7b-2d4f-4b6a-8c1e-3f5a7b9d1c2e
+        manager_roles_filter:
+            name: filter
+            in: query
+            description: |
+                Filters the response data based on the value provided.
+
+                Available filters:
+
+                - `eq(id,xxx)`: Filter manager roles by ID.
+                - `eq(name,xxx)`: Filter manager roles by name.
+                - `eq(default,true)`: Return only the organisation's default Line manager role.
+
+                For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
+            required: false
+            schema:
+                type: string
+                default: ""
+        manager_role_id:
+            name: manager_role_id
+            in: path
+            required: true
+            description: The unique identifier for the manager role.
+            schema:
+                type: string
+                format: uuid
+            example: 7d4b1e36-92a8-4c5f-b0e3-61f8a2c9d714
         meters_include:
             name: include
             in: query
@@ -49328,6 +49654,218 @@ components:
                                                         oneOf:
                                                             - $ref: '#/components/schemas/LocationTypeRelationship'
                                                             - type: "null"
+        CreateManagementRelationship:
+            required: true
+            description: The management relationship to create.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                    - attributes
+                                    - relationships
+                                properties:
+                                    type:
+                                        type: string
+                                        const: management-relationships
+                                    attributes:
+                                        type: object
+                                        required:
+                                            - kind
+                                        properties:
+                                            kind:
+                                                $ref: '#/components/schemas/ManagementRelationshipKind'
+                                    relationships:
+                                        type: object
+                                        required:
+                                            - organisation
+                                            - manager
+                                            - managed
+                                        properties:
+                                            organisation:
+                                                type: object
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/OrganisationRelationship'
+                                            manager:
+                                                type: object
+                                                description: The user who manages. Must be an active member of the organisation.
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/UserRelationship'
+                                            managed:
+                                                type: object
+                                                description: The user who is managed. Must be an active member of the organisation, and not the manager.
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/UserRelationship'
+                                            manager_role:
+                                                type: object
+                                                description: Optional. Defaults to the organisation's Line manager role. Must belong to the organisation.
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/ManagerRoleRelationship'
+        UpdateManagementRelationship:
+            required: true
+            description: The management relationship to update.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                    - id
+                                    - attributes
+                                    - relationships
+                                properties:
+                                    id:
+                                        type: string
+                                        format: uuid
+                                    type:
+                                        type: string
+                                        const: management-relationships
+                                    attributes:
+                                        type: object
+                                        required:
+                                            - kind
+                                        properties:
+                                            kind:
+                                                $ref: '#/components/schemas/ManagementRelationshipKind'
+                                    relationships:
+                                        type: object
+                                        required:
+                                            - manager
+                                        properties:
+                                            manager:
+                                                type: object
+                                                description: The user who manages. Must be an active member of the organisation.
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/UserRelationship'
+                                            managed:
+                                                type: object
+                                                description: Optional. The managed person is fixed, so any value sent must match the stored one.
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/UserRelationship'
+                                            manager_role:
+                                                type: object
+                                                description: Must belong to the organisation. Omit it to remove the role, which leaves the manager able to do nothing for the person until a role is assigned.
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/ManagerRoleRelationship'
+        CreateManagerRole:
+            required: true
+            description: The manager role to create.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                    - attributes
+                                    - relationships
+                                properties:
+                                    type:
+                                        type: string
+                                        const: manager-roles
+                                    attributes:
+                                        type: object
+                                        required:
+                                            - name
+                                            - permissions
+                                        properties:
+                                            name:
+                                                type: string
+                                                minLength: 1
+                                                maxLength: 100
+                                                description: Unique within the organisation, ignoring case. Line manager is reserved for the default role.
+                                            permissions:
+                                                type: array
+                                                description: Each permission must be manager-scopable. Anything else is refused.
+                                                items:
+                                                    type: string
+                                    relationships:
+                                        type: object
+                                        required:
+                                            - organisation
+                                        properties:
+                                            organisation:
+                                                type: object
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/OrganisationRelationship'
+        UpdateManagerRole:
+            required: true
+            description: The manager role to update.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                    - id
+                                    - attributes
+                                properties:
+                                    id:
+                                        type: string
+                                        format: uuid
+                                    type:
+                                        type: string
+                                        const: manager-roles
+                                    attributes:
+                                        type: object
+                                        required:
+                                            - name
+                                            - permissions
+                                        properties:
+                                            name:
+                                                type: string
+                                                minLength: 1
+                                                maxLength: 100
+                                                description: Unique within the organisation, ignoring case. Only the default role may be named Line manager.
+                                            permissions:
+                                                type: array
+                                                description: Each permission must be manager-scopable. Anything else is refused.
+                                                items:
+                                                    type: string
         CreateMeter:
             required: true
             description: The meter to create.
@@ -69123,6 +69661,338 @@ paths:
             x-mint:
                 metadata:
                     title: Update a location
+    /v3/management-relationships:
+        get:
+            description: |
+                Retrieve the management relationships of the organisations you can see: who manages whom, of which kind, and with which manager role.
+
+                There is no include parameter, so the response has no `included`. Fetch the users and the manager role by their ids.
+            operationId: ListManagementRelationships
+            parameters:
+                - $ref: '#/components/parameters/management_relationships_filter'
+                - $ref: '#/components/parameters/limit'
+                - $ref: '#/components/parameters/offset'
+                - $ref: '#/components/parameters/page'
+            responses:
+                "200":
+                    $ref: '#/components/responses/ListManagementRelationships'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - Cookie: []
+                - OAuth2: []
+            summary: List management relationships
+            tags:
+                - Management
+            x-ctrl-hub:
+                domain: iam
+                domainLiteral: IAM
+            x-mint:
+                metadata:
+                    title: List management relationships
+        post:
+            description: |
+                Record that one user manages another in an organisation.
+
+                Both users must be active members of the organisation, and they must be different people. A person has at most one primary manager in an organisation, so a second primary relationship onto them is refused. Any number of secondary relationships are accepted, but only one relationship of either kind between the same two people.
+
+                The manager role defaults to the organisation's Line manager role. A role named in the request must belong to the organisation.
+            operationId: CreateManagementRelationship
+            requestBody:
+                $ref: '#/components/requestBodies/CreateManagementRelationship'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetManagementRelationship'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "422":
+                    $ref: '#/components/responses/UnprocessableEntity'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - Cookie: []
+                - OAuth2: []
+            summary: Create a management relationship
+            tags:
+                - Management
+            x-ctrl-hub:
+                domain: iam
+                domainLiteral: IAM
+            x-mint:
+                metadata:
+                    title: Create a management relationship
+    /v3/management-relationships/{management_relationship_id}:
+        delete:
+            description: |
+                Soft delete a management relationship. Nobody is moved to another manager: a person left without a primary manager stays unmanaged until an admin assigns one.
+            operationId: DeleteManagementRelationship
+            parameters:
+                - $ref: '#/components/parameters/management_relationship_id'
+            responses:
+                "204":
+                    description: Management relationship deleted successfully.
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - Cookie: []
+                - OAuth2: []
+            summary: Delete a management relationship
+            tags:
+                - Management
+            x-ctrl-hub:
+                domain: iam
+                domainLiteral: IAM
+            x-mint:
+                metadata:
+                    title: Delete a management relationship
+        get:
+            description: |
+                Retrieve a management relationship by its ID.
+            operationId: GetManagementRelationship
+            parameters:
+                - $ref: '#/components/parameters/management_relationship_id'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetManagementRelationship'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - Cookie: []
+                - OAuth2: []
+            summary: Get a management relationship
+            tags:
+                - Management
+            x-ctrl-hub:
+                domain: iam
+                domainLiteral: IAM
+            x-mint:
+                metadata:
+                    title: Get a management relationship
+        put:
+            description: |
+                Replace a management relationship's manager, kind and manager role. The managed person is fixed.
+
+                The same rules apply as on create. Omitting the manager role removes it, so the manager can do nothing for the person until a role is assigned.
+            operationId: UpdateManagementRelationship
+            parameters:
+                - $ref: '#/components/parameters/management_relationship_id'
+            requestBody:
+                $ref: '#/components/requestBodies/UpdateManagementRelationship'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetManagementRelationship'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "422":
+                    $ref: '#/components/responses/UnprocessableEntity'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - Cookie: []
+                - OAuth2: []
+            summary: Update a management relationship
+            tags:
+                - Management
+            x-ctrl-hub:
+                domain: iam
+                domainLiteral: IAM
+            x-mint:
+                metadata:
+                    title: Update a management relationship
+    /v3/manager-roles:
+        get:
+            description: |
+                Retrieve the manager roles of the organisations you can see. Each organisation has one default Line manager role, and may have custom ones.
+
+                There is no include parameter, so the response has no `included`.
+            operationId: ListManagerRoles
+            parameters:
+                - $ref: '#/components/parameters/manager_roles_filter'
+                - $ref: '#/components/parameters/limit'
+                - $ref: '#/components/parameters/offset'
+                - $ref: '#/components/parameters/page'
+            responses:
+                "200":
+                    $ref: '#/components/responses/ListManagerRoles'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - Cookie: []
+                - OAuth2: []
+            summary: List manager roles
+            tags:
+                - Management
+            x-ctrl-hub:
+                domain: iam
+                domainLiteral: IAM
+            x-mint:
+                metadata:
+                    title: List manager roles
+        post:
+            description: |
+                Create a custom manager role in an organisation.
+
+                Every permission must be manager-scopable: `users:view`, or the `havs-exposures` permissions that act on someone else's records (`view`, `create-on-behalf`, `update`, `delete`). A manager's grants are scoped to the people they manage, and any other permission would match nothing. `havs-exposures:create` is refused, because it only ever applies to the caller's own records. The new role is never the default. The name Line manager, in any case, is reserved for the organisation's default role.
+            operationId: CreateManagerRole
+            requestBody:
+                $ref: '#/components/requestBodies/CreateManagerRole'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetManagerRole'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - Cookie: []
+                - OAuth2: []
+            summary: Create a manager role
+            tags:
+                - Management
+            x-ctrl-hub:
+                domain: iam
+                domainLiteral: IAM
+            x-mint:
+                metadata:
+                    title: Create a manager role
+    /v3/manager-roles/{manager_role_id}:
+        delete:
+            description: |
+                Soft delete a custom manager role. The organisation's default Line manager role cannot be deleted.
+            operationId: DeleteManagerRole
+            parameters:
+                - $ref: '#/components/parameters/manager_role_id'
+            responses:
+                "204":
+                    description: Manager role deleted successfully.
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - Cookie: []
+                - OAuth2: []
+            summary: Delete a manager role
+            tags:
+                - Management
+            x-ctrl-hub:
+                domain: iam
+                domainLiteral: IAM
+            x-mint:
+                metadata:
+                    title: Delete a manager role
+        get:
+            description: |
+                Retrieve a manager role by its ID.
+            operationId: GetManagerRole
+            parameters:
+                - $ref: '#/components/parameters/manager_role_id'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetManagerRole'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - Cookie: []
+                - OAuth2: []
+            summary: Get a manager role
+            tags:
+                - Management
+            x-ctrl-hub:
+                domain: iam
+                domainLiteral: IAM
+            x-mint:
+                metadata:
+                    title: Get a manager role
+        put:
+            description: |
+                Replace a manager role's name and permissions. The default Line manager role can be edited this way. The change applies to that organisation only.
+            operationId: UpdateManagerRole
+            parameters:
+                - $ref: '#/components/parameters/manager_role_id'
+            requestBody:
+                $ref: '#/components/requestBodies/UpdateManagerRole'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetManagerRole'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - Cookie: []
+                - OAuth2: []
+            summary: Update a manager role
+            tags:
+                - Management
+            x-ctrl-hub:
+                domain: iam
+                domainLiteral: IAM
+            x-mint:
+                metadata:
+                    title: Update a manager role
     /v3/meters:
         get:
             description: Retrieve a list of meters.
@@ -82025,6 +82895,9 @@ tags:
     - description: |
         Manage teams within an organisation.
       name: Teams
+    - description: |
+        Manage who manages whom within an organisation, and the manager roles that say what a manager may do for their people.
+      name: Management
     - description: |
         Manage job roles within an organisation.
       name: Job Roles
