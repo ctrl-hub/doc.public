@@ -15954,6 +15954,82 @@ components:
                 oneOf:
                     - $ref: '#/components/schemas/Organisation'
                     - $ref: '#/components/schemas/LocationType'
+        ManagerRole:
+            type: object
+            description: |
+                A manager role says what a manager may do for the people they manage. Each management relationship carries one. Its permissions can only come from the manager-scopable permissions, because a manager's grants are scoped to the people they manage.
+            required:
+                - id
+                - type
+                - attributes
+                - meta
+                - relationships
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the manager role.
+                type:
+                    type: string
+                    const: manager-roles
+                attributes:
+                    $ref: '#/components/schemas/ManagerRoleAttributes'
+                meta:
+                    $ref: '#/components/schemas/ManagerRoleMeta'
+                relationships:
+                    $ref: '#/components/schemas/ManagerRoleRelationships'
+        ManagerRoleAttributes:
+            type: object
+            description: Attributes of a manager role
+            required:
+                - name
+                - permissions
+                - default
+            properties:
+                name:
+                    type: string
+                    description: The role's name, unique within the organisation, ignoring case.
+                    examples:
+                        - Line manager
+                permissions:
+                    type: array
+                    description: The permissions a manager holding this role has over the people they manage. Each one must be manager-scopable.
+                    items:
+                        type: string
+                    examples:
+                        - - users:view
+                          - havs-exposures:view
+                default:
+                    type: boolean
+                    readOnly: true
+                    description: True for the organisation's Line manager role. It is attached to a management relationship created without a role, and it cannot be deleted.
+        ManagerRoleMeta:
+            type: object
+            description: Metadata for a manager role.
+            required:
+                - created_at
+                - updated_at
+            properties:
+                created_at:
+                    type: string
+                    format: date-time
+                updated_at:
+                    type: string
+                    format: date-time
+        ManagerRoleRelationships:
+            type: object
+            description: Relationships for a manager role
+            required:
+                - organisation
+            properties:
+                organisation:
+                    type: object
+                    description: The organisation the manager role belongs to.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/OrganisationRelationship'
         Meter:
             type: object
             description: A meter
@@ -29654,6 +29730,50 @@ components:
                                 included:
                                     $ref: '#/components/schemas/LocationIncludes'
                             - $ref: '#/components/schemas/JSONAPI'
+        ListManagerRoles:
+            description: Get a list of manager roles.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    title: A list of manager roles
+                                    type: array
+                                    items:
+                                        $ref: '#/components/schemas/ManagerRole'
+                            - $ref: '#/components/schemas/DocumentMeta'
+                            - $ref: '#/components/schemas/JSONAPI'
+        GetManagerRole:
+            description: Get a manager role.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    $ref: '#/components/schemas/ManagerRole'
+                            - $ref: '#/components/schemas/JSONAPI'
         ListMeters:
             description: Get a list of meters.
             headers:
@@ -34950,6 +35070,7 @@ components:
                 Filters the records listed.
 
                 - `eq(organisation,xxx)`: **Required.** The organisation whose members' records are listed.
+                - `eq(shared_role_owner,xxx)`: only the people on job roles this organisation shares into the one being read, and only the records those roles require. It narrows what the caller's grants allow and never widens it. Send it when reading another organisation's records on behalf of a network, since a caller who is also a member of that organisation would otherwise see all of them. Any other operator, or more than one id, is rejected with a 400.
                 - `ge(expires_at,xxx)` and `le(expires_at,xxx)`: the expiry window. Without `ge`, records that have already expired are included.
                 - `in(type,[xxx,yyy])`: the record types. One of `training`, `induction`, `assessment`, `registration`, `scheme_registration` or `category_registration`.
                 - `in(job_role,[xxx,yyy])`: records required by at least one of these job roles.
@@ -35018,6 +35139,7 @@ components:
                 Available filters:
 
                 - `eq(organisation,xxx)`: **Required.** Scope holders to this organisation ID.
+                - `eq(shared_role_owner,xxx)`: only the people on job roles this organisation shares into the one being read, with only those roles in their compliance summary. Holders whose only footprint is a competency record are left out. It narrows what the caller's grants allow and never widens it. Send it when reading another organisation's roster on behalf of a network, since a caller who is also a member of that organisation would otherwise see all of it. Any other operator, or more than one id, is rejected with a 400.
 
                 For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
             required: true
@@ -37708,6 +37830,32 @@ components:
                 type: string
                 format: uuid
             example: 8c7af9c2-13a8-4a9a-86e8-b4fe963fc2f6
+        manager_roles_filter:
+            name: filter
+            in: query
+            description: |
+                Filters the response data based on the value provided.
+
+                Available filters:
+
+                - `eq(id,xxx)`: Filter manager roles by ID.
+                - `eq(name,xxx)`: Filter manager roles by name.
+                - `eq(default,true)`: Return only the organisation's default Line manager role.
+
+                For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
+            required: false
+            schema:
+                type: string
+                default: ""
+        manager_role_id:
+            name: manager_role_id
+            in: path
+            required: true
+            description: The unique identifier for the manager role.
+            schema:
+                type: string
+                format: uuid
+            example: 7d4b1e36-92a8-4c5f-b0e3-61f8a2c9d714
         meters_include:
             name: include
             in: query
@@ -49328,6 +49476,93 @@ components:
                                                         oneOf:
                                                             - $ref: '#/components/schemas/LocationTypeRelationship'
                                                             - type: "null"
+        CreateManagerRole:
+            required: true
+            description: The manager role to create.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                    - attributes
+                                    - relationships
+                                properties:
+                                    type:
+                                        type: string
+                                        const: manager-roles
+                                    attributes:
+                                        type: object
+                                        required:
+                                            - name
+                                            - permissions
+                                        properties:
+                                            name:
+                                                type: string
+                                                minLength: 1
+                                                maxLength: 100
+                                                description: Unique within the organisation, ignoring case. Line manager is reserved for the default role.
+                                            permissions:
+                                                type: array
+                                                description: Each permission must be manager-scopable. Anything else is refused.
+                                                items:
+                                                    type: string
+                                    relationships:
+                                        type: object
+                                        required:
+                                            - organisation
+                                        properties:
+                                            organisation:
+                                                type: object
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/OrganisationRelationship'
+        UpdateManagerRole:
+            required: true
+            description: The manager role to update.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                    - id
+                                    - attributes
+                                properties:
+                                    id:
+                                        type: string
+                                        format: uuid
+                                    type:
+                                        type: string
+                                        const: manager-roles
+                                    attributes:
+                                        type: object
+                                        required:
+                                            - name
+                                            - permissions
+                                        properties:
+                                            name:
+                                                type: string
+                                                minLength: 1
+                                                maxLength: 100
+                                                description: Unique within the organisation, ignoring case. Only the default role may be named Line manager.
+                                            permissions:
+                                                type: array
+                                                description: Each permission must be manager-scopable. Anything else is refused.
+                                                items:
+                                                    type: string
         CreateMeter:
             required: true
             description: The meter to create.
@@ -69123,6 +69358,167 @@ paths:
             x-mint:
                 metadata:
                     title: Update a location
+    /v3/manager-roles:
+        get:
+            description: |
+                Retrieve the manager roles of the organisations you can see. Each organisation has one default Line manager role, and may have custom ones.
+
+                There is no include parameter, so the response has no `included`.
+            operationId: ListManagerRoles
+            parameters:
+                - $ref: '#/components/parameters/manager_roles_filter'
+                - $ref: '#/components/parameters/limit'
+                - $ref: '#/components/parameters/offset'
+                - $ref: '#/components/parameters/page'
+            responses:
+                "200":
+                    $ref: '#/components/responses/ListManagerRoles'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - Cookie: []
+                - OAuth2: []
+            summary: List manager roles
+            tags:
+                - Management
+            x-ctrl-hub:
+                domain: iam
+                domainLiteral: IAM
+            x-mint:
+                metadata:
+                    title: List manager roles
+        post:
+            description: |
+                Create a custom manager role in an organisation.
+
+                Every permission must be manager-scopable: `users:view`, or the `havs-exposures` permissions that act on someone else's records (`view`, `create-on-behalf`, `update`, `delete`). A manager's grants are scoped to the people they manage, and any other permission would match nothing. `havs-exposures:create` is refused, because it only ever applies to the caller's own records. The new role is never the default. The name Line manager, in any case, is reserved for the organisation's default role.
+            operationId: CreateManagerRole
+            requestBody:
+                $ref: '#/components/requestBodies/CreateManagerRole'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetManagerRole'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - Cookie: []
+                - OAuth2: []
+            summary: Create a manager role
+            tags:
+                - Management
+            x-ctrl-hub:
+                domain: iam
+                domainLiteral: IAM
+            x-mint:
+                metadata:
+                    title: Create a manager role
+    /v3/manager-roles/{manager_role_id}:
+        delete:
+            description: |
+                Soft delete a custom manager role. The organisation's default Line manager role cannot be deleted.
+            operationId: DeleteManagerRole
+            parameters:
+                - $ref: '#/components/parameters/manager_role_id'
+            responses:
+                "204":
+                    description: Manager role deleted successfully.
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - Cookie: []
+                - OAuth2: []
+            summary: Delete a manager role
+            tags:
+                - Management
+            x-ctrl-hub:
+                domain: iam
+                domainLiteral: IAM
+            x-mint:
+                metadata:
+                    title: Delete a manager role
+        get:
+            description: |
+                Retrieve a manager role by its ID.
+            operationId: GetManagerRole
+            parameters:
+                - $ref: '#/components/parameters/manager_role_id'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetManagerRole'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - Cookie: []
+                - OAuth2: []
+            summary: Get a manager role
+            tags:
+                - Management
+            x-ctrl-hub:
+                domain: iam
+                domainLiteral: IAM
+            x-mint:
+                metadata:
+                    title: Get a manager role
+        put:
+            description: |
+                Replace a manager role's name and permissions. The default Line manager role can be edited this way. The change applies to that organisation only.
+            operationId: UpdateManagerRole
+            parameters:
+                - $ref: '#/components/parameters/manager_role_id'
+            requestBody:
+                $ref: '#/components/requestBodies/UpdateManagerRole'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetManagerRole'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - Cookie: []
+                - OAuth2: []
+            summary: Update a manager role
+            tags:
+                - Management
+            x-ctrl-hub:
+                domain: iam
+                domainLiteral: IAM
+            x-mint:
+                metadata:
+                    title: Update a manager role
     /v3/meters:
         get:
             description: Retrieve a list of meters.
@@ -82025,6 +82421,9 @@ tags:
     - description: |
         Manage teams within an organisation.
       name: Teams
+    - description: |
+        Manage who manages whom within an organisation, and the manager roles that say what a manager may do for their people.
+      name: Management
     - description: |
         Manage job roles within an organisation.
       name: Job Roles
