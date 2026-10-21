@@ -2613,6 +2613,12 @@ components:
                         - "null"
                     format: date-time
                     description: The date by which the first assessment is expected. Only relevant when kind is expected_first_assessment.
+                exemption_comment:
+                    type: string
+                    maxLength: 2000
+                    description: Why the record is an exemption, given when it was created. Present only on an exemption that was given one.
+                    examples:
+                        - Office-based role. Never works on the network.
             oneOf:
                 - required:
                     - expected_by
@@ -3268,6 +3274,12 @@ components:
                         - "null"
                     format: date-time
                     description: The date by which the first assessment is expected. Only relevant when kind is expected_first_assessment.
+                exemption_comment:
+                    type: string
+                    maxLength: 2000
+                    description: Why the record is an exemption, given when it was created. Present only on an exemption that was given one.
+                    examples:
+                        - Office-based role. Never works on the network.
         CategoryRegistrationRelationships:
             type: object
             description: Relationships for a category registration
@@ -4934,6 +4946,12 @@ components:
                         - "null"
                     format: date-time
                     description: The date by which the first assessment is expected. Only relevant when kind is expected_first_assessment.
+                exemption_comment:
+                    type: string
+                    maxLength: 2000
+                    description: Why the record is an exemption, given when it was created. Present only on an exemption that was given one.
+                    examples:
+                        - Office-based role. Never works on the network.
             oneOf:
                 - required:
                     - expected_by
@@ -5018,6 +5036,12 @@ components:
                         - "null"
                     format: date-time
                     description: The date by which the first assessment is expected. Only relevant when kind is expected_first_assessment.
+                exemption_comment:
+                    type: string
+                    maxLength: 2000
+                    description: Why the record is an exemption, given when it was created. Present only on an exemption that was given one.
+                    examples:
+                        - Office-based role. Never works on the network.
         InductionCompletionRelationships:
             type: object
             description: Relationships for an induction completion
@@ -5104,6 +5128,12 @@ components:
                         - "null"
                     format: date-time
                     description: The date by which the first assessment is expected. Only relevant when kind is expected_first_assessment.
+                exemption_comment:
+                    type: string
+                    maxLength: 2000
+                    description: Why the record is an exemption, given when it was created. Present only on an exemption that was given one.
+                    examples:
+                        - Office-based role. Never works on the network.
             oneOf:
                 - required:
                     - expected_by
@@ -5197,6 +5227,12 @@ components:
                         - "null"
                     format: date-time
                     description: The date by which the first assessment is expected. Only relevant when kind is expected_first_assessment.
+                exemption_comment:
+                    type: string
+                    maxLength: 2000
+                    description: Why the record is an exemption, given when it was created. Present only on an exemption that was given one.
+                    examples:
+                        - Office-based role. Never works on the network.
             oneOf:
                 - required:
                     - expected_by
@@ -13631,18 +13667,24 @@ components:
                             $ref: '#/components/schemas/AppointmentRelationship'
                 scheme:
                     type: object
+                    description: Null while the operation is unallocated (it has no scheme or work order yet).
                     required:
                         - data
                     properties:
                         data:
-                            $ref: '#/components/schemas/SchemeRelationship'
+                            oneOf:
+                                - $ref: '#/components/schemas/SchemeRelationship'
+                                - type: "null"
                 work_order:
                     type: object
+                    description: Null while the operation is unallocated (it has no scheme or work order yet).
                     required:
                         - data
                     properties:
                         data:
-                            $ref: '#/components/schemas/WorkOrderRelationship'
+                            oneOf:
+                                - $ref: '#/components/schemas/WorkOrderRelationship'
+                                - type: "null"
                 permits:
                     type: object
                     required:
@@ -31559,6 +31601,10 @@ components:
                     $ref: '#/components/headers/content-length'
                 X-Request-ID:
                     $ref: '#/components/headers/x-request-id'
+                ETag:
+                    $ref: '#/components/headers/etag'
+                Cache-Control:
+                    $ref: '#/components/headers/cache-control'
             content:
                 application/vnd.api+json:
                     schema:
@@ -31583,6 +31629,10 @@ components:
                     $ref: '#/components/headers/content-length'
                 X-Request-ID:
                     $ref: '#/components/headers/x-request-id'
+                ETag:
+                    $ref: '#/components/headers/etag'
+                Cache-Control:
+                    $ref: '#/components/headers/cache-control'
             content:
                 application/vnd.api+json:
                     schema:
@@ -32370,6 +32420,10 @@ components:
                     $ref: '#/components/headers/content-length'
                 X-Request-ID:
                     $ref: '#/components/headers/x-request-id'
+                ETag:
+                    $ref: '#/components/headers/etag'
+                Cache-Control:
+                    $ref: '#/components/headers/cache-control'
             content:
                 application/vnd.api+json:
                     schema:
@@ -32394,6 +32448,10 @@ components:
                     $ref: '#/components/headers/content-length'
                 X-Request-ID:
                     $ref: '#/components/headers/x-request-id'
+                ETag:
+                    $ref: '#/components/headers/etag'
+                Cache-Control:
+                    $ref: '#/components/headers/cache-control'
             content:
                 application/vnd.api+json:
                     schema:
@@ -38246,6 +38304,7 @@ components:
                 - `no_end`: Filter operations with no end time
                 - `has_appointment`: Filter operations that have appointments
                 - `no_appointment`: Filter operations that do not have appointments
+                - `eq(unallocated,true)`: Filter for operations with no work order (and so no scheme). `eq(unallocated,false)` returns operations that have a work order. Any other value matches nothing. It combines with other terms inside `and(...)` or `or(...)`, for example `and(eq(unallocated,true),eq(status,todo))`. Inside `or(...)` it narrows only its own term. Unallocated operations can only exist when the organisation has the `governance.unallocated_operations` feature enabled.
                 - `has_property`: Filter operations that have any related property - this does not accept arguments, it just checks for the existence of a related property. You can use `at_properties` to find operations at a specific property.
 
                 Project-role filters (cross-resource lookups against project role assignments):
@@ -38605,6 +38664,15 @@ components:
                 type: string
                 format: uuid
             example: 8806ffd4-581b-4c70-ace5-79e11189be0e
+        key_id:
+            name: key_id
+            in: path
+            required: true
+            description: The unique identifier for the service account key.
+            schema:
+                type: string
+                format: uuid
+            example: 3f6c1b52-9d0e-4a7b-8c35-2e4a7d91b6f0
         log_id:
             name: log_id
             in: path
@@ -42724,6 +42792,16 @@ components:
                                                     - "string"
                                                     - "null"
                                                 format: date-time
+                                            exemption_comment:
+                                                type: string
+                                                maxLength: 2000
+                                                description: >-
+                                                    Why the record is an exemption. Accepted only with kind. The schema checks the comment as sent: it is refused without kind even when blank, and the 2000-character limit counts leading and trailing whitespace. The service then trims it, and stores a blank comment as none. The record keeps the comment for its life: no update body accepts it.
+                                                examples:
+                                                    - Office-based role. Never works on the network.
+                                        dependentRequired:
+                                            exemption_comment:
+                                                - kind
                                         oneOf:
                                             - required:
                                                 - expected_by
@@ -43140,6 +43218,16 @@ components:
                                                     - "string"
                                                     - "null"
                                                 format: date-time
+                                            exemption_comment:
+                                                type: string
+                                                maxLength: 2000
+                                                description: >-
+                                                    Why the record is an exemption. Accepted only with kind. The schema checks the comment as sent: it is refused without kind even when blank, and the 2000-character limit counts leading and trailing whitespace. The service then trims it, and stores a blank comment as none. The record keeps the comment for its life: no update body accepts it.
+                                                examples:
+                                                    - Office-based role. Never works on the network.
+                                        dependentRequired:
+                                            exemption_comment:
+                                                - kind
                                         oneOf:
                                             - required:
                                                 - expected_by
@@ -48459,6 +48547,16 @@ components:
                                                     - "string"
                                                     - "null"
                                                 format: date-time
+                                            exemption_comment:
+                                                type: string
+                                                maxLength: 2000
+                                                description: >-
+                                                    Why the record is an exemption. Accepted only with kind. The schema checks the comment as sent: it is refused without kind even when blank, and the 2000-character limit counts leading and trailing whitespace. The service then trims it, and stores a blank comment as none. The record keeps the comment for its life: no update body accepts it.
+                                                examples:
+                                                    - Office-based role. Never works on the network.
+                                        dependentRequired:
+                                            exemption_comment:
+                                                - kind
                                     relationships:
                                         type: object
                                         required:
@@ -50711,7 +50809,6 @@ components:
                                         type: object
                                         required:
                                             - organisation
-                                            - work_order
                                         properties:
                                             organisation:
                                                 type: object
@@ -50720,6 +50817,10 @@ components:
                                                         $ref: '#/components/schemas/OrganisationRelationship'
                                             work_order:
                                                 type: object
+                                                description: |
+                                                    The work order the operation belongs to. May be omitted only when the organisation has the
+                                                    `governance.unallocated_operations` feature enabled; the operation then has no scheme and no
+                                                    work order until it is allocated.
                                                 properties:
                                                     data:
                                                         $ref: '#/components/schemas/WorkOrderRelationship'
@@ -54873,6 +54974,16 @@ components:
                                                     - "string"
                                                     - "null"
                                                 format: date-time
+                                            exemption_comment:
+                                                type: string
+                                                maxLength: 2000
+                                                description: >-
+                                                    Why the record is an exemption. Accepted only with kind. The schema checks the comment as sent: it is refused without kind even when blank, and the 2000-character limit counts leading and trailing whitespace. The service then trims it, and stores a blank comment as none. The record keeps the comment for its life: no update body accepts it.
+                                                examples:
+                                                    - Office-based role. Never works on the network.
+                                        dependentRequired:
+                                            exemption_comment:
+                                                - kind
                                         oneOf:
                                             - required:
                                                 - expected_by
@@ -55256,6 +55367,16 @@ components:
                                                     - "string"
                                                     - "null"
                                                 format: date-time
+                                            exemption_comment:
+                                                type: string
+                                                maxLength: 2000
+                                                description: >-
+                                                    Why the record is an exemption. Accepted only with kind. The schema checks the comment as sent: it is refused without kind even when blank, and the 2000-character limit counts leading and trailing whitespace. The service then trims it, and stores a blank comment as none. The record keeps the comment for its life: no update body accepts it.
+                                                examples:
+                                                    - Office-based role. Never works on the network.
+                                        dependentRequired:
+                                            exemption_comment:
+                                                - kind
                                     relationships:
                                         type: object
                                         required:
@@ -56383,6 +56504,16 @@ components:
                                                     - "string"
                                                     - "null"
                                                 format: date-time
+                                            exemption_comment:
+                                                type: string
+                                                maxLength: 2000
+                                                description: >-
+                                                    Why the record is an exemption. Accepted only with kind. The schema checks the comment as sent: it is refused without kind even when blank, and the 2000-character limit counts leading and trailing whitespace. The service then trims it, and stores a blank comment as none. The record keeps the comment for its life: no update body accepts it.
+                                                examples:
+                                                    - Office-based role. Never works on the network.
+                                        dependentRequired:
+                                            exemption_comment:
+                                                - kind
                                     relationships:
                                         type: object
                                         required:
@@ -72934,6 +73065,45 @@ paths:
             x-mint:
                 metadata:
                     title: Create a key for a service account
+    /v3/orgs/{org_id}/iam/service-accounts/{service_account_id}/keys/{key_id}:
+        delete:
+            description: |
+                Delete one key of a service account. The key's OAuth client is deleted, and the
+                key is removed from the account. New tokens cannot be issued for the key.
+                Requests made with the key are rejected from then on. A server that did not
+                handle this request can keep accepting the key until its cached entry goes
+                stale, about a minute. The account and its other keys are unchanged.
+
+                A key that does not belong to the service account, a service account of another
+                organisation and a system-scoped service account all return `404 Not Found`.
+            operationId: DeleteServiceAccountKey
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+                - $ref: '#/components/parameters/service_account_id'
+                - $ref: '#/components/parameters/key_id'
+            responses:
+                "204":
+                    description: Service account key deleted successfully.
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Delete a Service Account Key
+            tags:
+                - Service Accounts
+            x-ctrl-hub:
+                domain: iam
+            x-mint:
+                metadata:
+                    title: Delete a key of a service account
     /v3/orgs/{org_id}/iam/service-accounts/{service_account_id}/logs:
         get:
             description: List the logs for a service account.
@@ -74184,9 +74354,12 @@ paths:
                 - $ref: '#/components/parameters/limit'
                 - $ref: '#/components/parameters/offset'
                 - $ref: '#/components/parameters/page'
+                - $ref: '#/components/parameters/if_none_match'
             responses:
                 "200":
                     $ref: '#/components/responses/ListPermissions'
+                "304":
+                    $ref: '#/components/responses/NotModified'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -74208,9 +74381,12 @@ paths:
             operationId: GetPermission
             parameters:
                 - $ref: '#/components/parameters/permission_id'
+                - $ref: '#/components/parameters/if_none_match'
             responses:
                 "200":
                     $ref: '#/components/responses/GetPermission'
+                "304":
+                    $ref: '#/components/responses/NotModified'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -76570,9 +76746,12 @@ paths:
                 - $ref: '#/components/parameters/limit'
                 - $ref: '#/components/parameters/offset'
                 - $ref: '#/components/parameters/page'
+                - $ref: '#/components/parameters/if_none_match'
             responses:
                 "200":
                     $ref: '#/components/responses/ListRoles'
+                "304":
+                    $ref: '#/components/responses/NotModified'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -76594,9 +76773,12 @@ paths:
             operationId: GetRole
             parameters:
                 - $ref: '#/components/parameters/role_id'
+                - $ref: '#/components/parameters/if_none_match'
             responses:
                 "200":
                     $ref: '#/components/responses/GetRole'
+                "304":
+                    $ref: '#/components/responses/NotModified'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
