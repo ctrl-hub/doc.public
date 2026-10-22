@@ -51228,11 +51228,13 @@ components:
                                                     - done_reason
                                     relationships:
                                         type: object
-                                        required:
-                                            - work_order
                                         properties:
                                             work_order:
                                                 type: object
+                                                description: |
+                                                    Ignored. An update never changes the operation's work order or scheme, and an
+                                                    unallocated operation has neither, so this may be omitted. Allocate an
+                                                    unallocated operation with `POST /v3/operations/{operation_id}/allocate`.
                                                 properties:
                                                     data:
                                                         $ref: '#/components/schemas/WorkOrderRelationship'
