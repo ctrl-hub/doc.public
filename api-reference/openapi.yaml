@@ -1017,6 +1017,71 @@ components:
                         endpoints.
                     examples:
                         - active
+                seat_class:
+                    type: string
+                    enum:
+                        - full
+                        - field
+                        - record
+                    description: |
+                        The user's seat class in the organisation in the request URL. Only
+                        populated on org-scoped member endpoints, like `status`; `memberships`
+                        carries it everywhere.
+
+                        - `full`: a member who signs in and manages the organisation.
+                        - `field`: a member who signs in to capture data, usually on mobile.
+                          Nothing stops a field member using the console.
+                        - `record`: a member with no login who is never emailed. A record member
+                          can be the subject of competency records and organisation-level job
+                          roles, and cannot be assigned work.
+
+                        A membership stored before seat classes existed is `full`.
+                    examples:
+                        - full
+                memberships:
+                    type: array
+                    description: |
+                        The user's membership of each organisation they belong to. A removed
+                        membership is left out.
+                    items:
+                        type: object
+                        required:
+                            - organisation
+                            - status
+                            - seat_class
+                        properties:
+                            organisation:
+                                type: string
+                                format: uuid
+                                description: The organisation's id.
+                                examples:
+                                    - 2f1e5a4c-8b7d-4c3e-9a1f-6d5b4c3a2e10
+                            status:
+                                type: string
+                                enum:
+                                    - active
+                                    - inactive
+                                    - pending
+                                    - unknown
+                                description: The membership status in that organisation.
+                                examples:
+                                    - active
+                            seat_class:
+                                type: string
+                                enum:
+                                    - full
+                                    - field
+                                    - record
+                                description: The seat class in that organisation, as `seat_class` describes.
+                                examples:
+                                    - record
+                            external_reference:
+                                type: string
+                                description: |
+                                    The organisation's own reference for the member, such as a staff
+                                    number. Absent when it has none.
+                                examples:
+                                    - GR-0042
                 password_set_at:
                     type:
                         - string
@@ -1247,6 +1312,16 @@ components:
                         format: uuid
                     examples:
                         - ["c000c344-8847-47da-a091-32e75902d3b1"]
+                reach:
+                    type: string
+                    enum:
+                        - direct
+                        - chain
+                        - secondary
+                    description: |
+                        Returned on My people only. How the caller manages this person: `direct` when the caller
+                        is their primary manager, `chain` when the caller is a primary manager higher up their
+                        primary chain, and `secondary` when the caller is one of their secondary managers.
         UserRelationships:
             type: object
             description: Relationships for a user
@@ -2613,6 +2688,12 @@ components:
                         - "null"
                     format: date-time
                     description: The date by which the first assessment is expected. Only relevant when kind is expected_first_assessment.
+                exemption_comment:
+                    type: string
+                    maxLength: 2000
+                    description: Why the record is an exemption, given when it was created. Present only on an exemption that was given one.
+                    examples:
+                        - Office-based role. Never works on the network.
             oneOf:
                 - required:
                     - expected_by
@@ -3268,6 +3349,12 @@ components:
                         - "null"
                     format: date-time
                     description: The date by which the first assessment is expected. Only relevant when kind is expected_first_assessment.
+                exemption_comment:
+                    type: string
+                    maxLength: 2000
+                    description: Why the record is an exemption, given when it was created. Present only on an exemption that was given one.
+                    examples:
+                        - Office-based role. Never works on the network.
         CategoryRegistrationRelationships:
             type: object
             description: Relationships for a category registration
@@ -4934,6 +5021,12 @@ components:
                         - "null"
                     format: date-time
                     description: The date by which the first assessment is expected. Only relevant when kind is expected_first_assessment.
+                exemption_comment:
+                    type: string
+                    maxLength: 2000
+                    description: Why the record is an exemption, given when it was created. Present only on an exemption that was given one.
+                    examples:
+                        - Office-based role. Never works on the network.
             oneOf:
                 - required:
                     - expected_by
@@ -5018,6 +5111,12 @@ components:
                         - "null"
                     format: date-time
                     description: The date by which the first assessment is expected. Only relevant when kind is expected_first_assessment.
+                exemption_comment:
+                    type: string
+                    maxLength: 2000
+                    description: Why the record is an exemption, given when it was created. Present only on an exemption that was given one.
+                    examples:
+                        - Office-based role. Never works on the network.
         InductionCompletionRelationships:
             type: object
             description: Relationships for an induction completion
@@ -5104,6 +5203,12 @@ components:
                         - "null"
                     format: date-time
                     description: The date by which the first assessment is expected. Only relevant when kind is expected_first_assessment.
+                exemption_comment:
+                    type: string
+                    maxLength: 2000
+                    description: Why the record is an exemption, given when it was created. Present only on an exemption that was given one.
+                    examples:
+                        - Office-based role. Never works on the network.
             oneOf:
                 - required:
                     - expected_by
@@ -5197,6 +5302,12 @@ components:
                         - "null"
                     format: date-time
                     description: The date by which the first assessment is expected. Only relevant when kind is expected_first_assessment.
+                exemption_comment:
+                    type: string
+                    maxLength: 2000
+                    description: Why the record is an exemption, given when it was created. Present only on an exemption that was given one.
+                    examples:
+                        - Office-based role. Never works on the network.
             oneOf:
                 - required:
                     - expected_by
@@ -13631,18 +13742,24 @@ components:
                             $ref: '#/components/schemas/AppointmentRelationship'
                 scheme:
                     type: object
+                    description: Null while the operation is unallocated (it has no scheme or work order yet).
                     required:
                         - data
                     properties:
                         data:
-                            $ref: '#/components/schemas/SchemeRelationship'
+                            oneOf:
+                                - $ref: '#/components/schemas/SchemeRelationship'
+                                - type: "null"
                 work_order:
                     type: object
+                    description: Null while the operation is unallocated (it has no scheme or work order yet).
                     required:
                         - data
                     properties:
                         data:
-                            $ref: '#/components/schemas/WorkOrderRelationship'
+                            oneOf:
+                                - $ref: '#/components/schemas/WorkOrderRelationship'
+                                - type: "null"
                 permits:
                     type: object
                     required:
@@ -30929,6 +31046,30 @@ components:
                                 included:
                                     $ref: '#/components/schemas/UserIncludes'
                             - $ref: '#/components/schemas/JSONAPI'
+        ListMyPeople:
+            description: The people the caller manages in an organisation.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    title: The people the caller manages
+                                    type: array
+                                    items:
+                                        $ref: '#/components/schemas/User'
+                            - $ref: '#/components/schemas/DocumentMeta'
+                            - $ref: '#/components/schemas/JSONAPI'
         ListServiceAccountLogs:
             description: Get a list of Service Account Logs.
             headers:
@@ -31559,6 +31700,10 @@ components:
                     $ref: '#/components/headers/content-length'
                 X-Request-ID:
                     $ref: '#/components/headers/x-request-id'
+                ETag:
+                    $ref: '#/components/headers/etag'
+                Cache-Control:
+                    $ref: '#/components/headers/cache-control'
             content:
                 application/vnd.api+json:
                     schema:
@@ -31583,6 +31728,10 @@ components:
                     $ref: '#/components/headers/content-length'
                 X-Request-ID:
                     $ref: '#/components/headers/x-request-id'
+                ETag:
+                    $ref: '#/components/headers/etag'
+                Cache-Control:
+                    $ref: '#/components/headers/cache-control'
             content:
                 application/vnd.api+json:
                     schema:
@@ -32370,6 +32519,10 @@ components:
                     $ref: '#/components/headers/content-length'
                 X-Request-ID:
                     $ref: '#/components/headers/x-request-id'
+                ETag:
+                    $ref: '#/components/headers/etag'
+                Cache-Control:
+                    $ref: '#/components/headers/cache-control'
             content:
                 application/vnd.api+json:
                     schema:
@@ -32394,6 +32547,10 @@ components:
                     $ref: '#/components/headers/content-length'
                 X-Request-ID:
                     $ref: '#/components/headers/x-request-id'
+                ETag:
+                    $ref: '#/components/headers/etag'
+                Cache-Control:
+                    $ref: '#/components/headers/cache-control'
             content:
                 application/vnd.api+json:
                     schema:
@@ -33153,6 +33310,30 @@ components:
                               properties:
                                 data:
                                     $ref: '#/components/schemas/UserInvitation'
+                            - $ref: '#/components/schemas/JSONAPI'
+        ListUsers:
+            description: Get a list of Users.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    title: A list of users
+                                    type: array
+                                    items:
+                                        $ref: '#/components/schemas/User'
+                            - $ref: '#/components/schemas/DocumentMeta'
                             - $ref: '#/components/schemas/JSONAPI'
         GetUser:
             description: Get a User.
@@ -38246,6 +38427,7 @@ components:
                 - `no_end`: Filter operations with no end time
                 - `has_appointment`: Filter operations that have appointments
                 - `no_appointment`: Filter operations that do not have appointments
+                - `eq(unallocated,true)`: Filter for operations with no work order (and so no scheme). `eq(unallocated,false)` returns operations that have a work order. Any other value matches nothing. It combines with other terms inside `and(...)` or `or(...)`, for example `and(eq(unallocated,true),eq(status,todo))`. Inside `or(...)` it narrows only its own term. Unallocated operations can only exist when the organisation has the `governance.unallocated_operations` feature enabled.
                 - `has_property`: Filter operations that have any related property - this does not accept arguments, it just checks for the existence of a related property. You can use `at_properties` to find operations at a specific property.
 
                 Project-role filters (cross-resource lookups against project role assignments):
@@ -38581,6 +38763,9 @@ components:
                 - `name`: Filter by name(s) - filters by first and last name (case insensitive)
                 - `combined`: Filter by name(s) and email address(es) (case insensitive)
                 - `status`: Filter by membership status. One of `active`, `inactive`, `pending`, `unknown`, or `any` (`any` returns all statuses). Defaults to `active` when omitted (org-scoped member listings only).
+                - `seat_class`: Filter by seat class, one or more of `full`, `field` and `record`, such as `seat_class(full,field)`. A membership stored before seat classes existed is `full`. Member listings only.
+                - `organisation`: `GET /v3/users` only. The organisations to list, by id, such as `organisation("<id>")`, the id in quotes.
+                - `unmanaged`: `unmanaged(true)` lists only members with no primary manager in the organisation. It combines with `status`, so by default it lists active members with no primary manager. Org-scoped member listings only, and it needs `management-relationships:view` across the organisation.
 
                 For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
             required: false
@@ -38605,6 +38790,15 @@ components:
                 type: string
                 format: uuid
             example: 8806ffd4-581b-4c70-ace5-79e11189be0e
+        key_id:
+            name: key_id
+            in: path
+            required: true
+            description: The unique identifier for the service account key.
+            schema:
+                type: string
+                format: uuid
+            example: 3f6c1b52-9d0e-4a7b-8c35-2e4a7d91b6f0
         log_id:
             name: log_id
             in: path
@@ -42724,6 +42918,16 @@ components:
                                                     - "string"
                                                     - "null"
                                                 format: date-time
+                                            exemption_comment:
+                                                type: string
+                                                maxLength: 2000
+                                                description: >-
+                                                    Why the record is an exemption. Accepted only with kind. The schema checks the comment as sent: it is refused without kind even when blank, and the 2000-character limit counts leading and trailing whitespace. The service then trims it, and stores a blank comment as none. The record keeps the comment for its life: no update body accepts it.
+                                                examples:
+                                                    - Office-based role. Never works on the network.
+                                        dependentRequired:
+                                            exemption_comment:
+                                                - kind
                                         oneOf:
                                             - required:
                                                 - expected_by
@@ -43140,6 +43344,16 @@ components:
                                                     - "string"
                                                     - "null"
                                                 format: date-time
+                                            exemption_comment:
+                                                type: string
+                                                maxLength: 2000
+                                                description: >-
+                                                    Why the record is an exemption. Accepted only with kind. The schema checks the comment as sent: it is refused without kind even when blank, and the 2000-character limit counts leading and trailing whitespace. The service then trims it, and stores a blank comment as none. The record keeps the comment for its life: no update body accepts it.
+                                                examples:
+                                                    - Office-based role. Never works on the network.
+                                        dependentRequired:
+                                            exemption_comment:
+                                                - kind
                                         oneOf:
                                             - required:
                                                 - expected_by
@@ -48459,6 +48673,16 @@ components:
                                                     - "string"
                                                     - "null"
                                                 format: date-time
+                                            exemption_comment:
+                                                type: string
+                                                maxLength: 2000
+                                                description: >-
+                                                    Why the record is an exemption. Accepted only with kind. The schema checks the comment as sent: it is refused without kind even when blank, and the 2000-character limit counts leading and trailing whitespace. The service then trims it, and stores a blank comment as none. The record keeps the comment for its life: no update body accepts it.
+                                                examples:
+                                                    - Office-based role. Never works on the network.
+                                        dependentRequired:
+                                            exemption_comment:
+                                                - kind
                                     relationships:
                                         type: object
                                         required:
@@ -50711,7 +50935,6 @@ components:
                                         type: object
                                         required:
                                             - organisation
-                                            - work_order
                                         properties:
                                             organisation:
                                                 type: object
@@ -50720,6 +50943,10 @@ components:
                                                         $ref: '#/components/schemas/OrganisationRelationship'
                                             work_order:
                                                 type: object
+                                                description: |
+                                                    The work order the operation belongs to. May be omitted only when the organisation has the
+                                                    `governance.unallocated_operations` feature enabled; the operation then has no scheme and no
+                                                    work order until it is allocated.
                                                 properties:
                                                     data:
                                                         $ref: '#/components/schemas/WorkOrderRelationship'
@@ -51019,6 +51246,42 @@ components:
                                                 properties:
                                                     data:
                                                         $ref: '#/components/schemas/OperationTypeRelationship'
+        AllocateOperation:
+            required: true
+            description: |
+                The work order to allocate an unallocated operation to.
+
+                The request type is `operation-allocations`, but there is no such resource:
+                nothing of that name is stored and nothing can be fetched back by that id. It
+                names the action, and the response is the operation it allocated.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                    - relationships
+                                properties:
+                                    type:
+                                        type: string
+                                        const: operation-allocations
+                                    relationships:
+                                        type: object
+                                        required:
+                                            - work_order
+                                        properties:
+                                            work_order:
+                                                type: object
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/WorkOrderRelationship'
         RemoveLocationsFromOperation:
             required: true
             description: The locations to remove from the operation
@@ -54873,6 +55136,16 @@ components:
                                                     - "string"
                                                     - "null"
                                                 format: date-time
+                                            exemption_comment:
+                                                type: string
+                                                maxLength: 2000
+                                                description: >-
+                                                    Why the record is an exemption. Accepted only with kind. The schema checks the comment as sent: it is refused without kind even when blank, and the 2000-character limit counts leading and trailing whitespace. The service then trims it, and stores a blank comment as none. The record keeps the comment for its life: no update body accepts it.
+                                                examples:
+                                                    - Office-based role. Never works on the network.
+                                        dependentRequired:
+                                            exemption_comment:
+                                                - kind
                                         oneOf:
                                             - required:
                                                 - expected_by
@@ -55256,6 +55529,16 @@ components:
                                                     - "string"
                                                     - "null"
                                                 format: date-time
+                                            exemption_comment:
+                                                type: string
+                                                maxLength: 2000
+                                                description: >-
+                                                    Why the record is an exemption. Accepted only with kind. The schema checks the comment as sent: it is refused without kind even when blank, and the 2000-character limit counts leading and trailing whitespace. The service then trims it, and stores a blank comment as none. The record keeps the comment for its life: no update body accepts it.
+                                                examples:
+                                                    - Office-based role. Never works on the network.
+                                        dependentRequired:
+                                            exemption_comment:
+                                                - kind
                                     relationships:
                                         type: object
                                         required:
@@ -56383,6 +56666,16 @@ components:
                                                     - "string"
                                                     - "null"
                                                 format: date-time
+                                            exemption_comment:
+                                                type: string
+                                                maxLength: 2000
+                                                description: >-
+                                                    Why the record is an exemption. Accepted only with kind. The schema checks the comment as sent: it is refused without kind even when blank, and the 2000-character limit counts leading and trailing whitespace. The service then trims it, and stores a blank comment as none. The record keeps the comment for its life: no update body accepts it.
+                                                examples:
+                                                    - Office-based role. Never works on the network.
+                                        dependentRequired:
+                                            exemption_comment:
+                                                - kind
                                     relationships:
                                         type: object
                                         required:
@@ -56767,15 +57060,39 @@ components:
                                     attributes:
                                         type: object
                                         required:
-                                            - email
                                             - profile
                                         properties:
                                             email:
                                                 type: string
                                                 format: email
-                                                description: The email address of the user.
+                                                description: |
+                                                    The email address of the user. Required unless `seat_class` is
+                                                    `record`. An email another user already holds is refused with
+                                                    409; invite that user instead.
                                                 examples:
                                                     - "john.doe@example.com"
+                                            seat_class:
+                                                type: string
+                                                enum:
+                                                    - full
+                                                    - field
+                                                    - record
+                                                default: full
+                                                description: |
+                                                    The member's seat class in the organisation. `full` and `field`
+                                                    members get a login and the welcome email that sets their
+                                                    password. A `record` member gets no login and is never emailed.
+                                                examples:
+                                                    - record
+                                            external_reference:
+                                                type: string
+                                                description: |
+                                                    The organisation's own reference for the member, such as a staff
+                                                    number. When a member of the organisation already holds it, that
+                                                    member is returned with 200 and nothing is created, so an import
+                                                    can be run again safely.
+                                                examples:
+                                                    - GR-0042
                                             profile:
                                                 type: object
                                                 required:
@@ -57049,6 +57366,61 @@ components:
                                                                 type: string
                                                                 description: Employment start date in YYYY-MM-DD format
                                                                 example: 2018-03-15
+        CreateSeatClassChange:
+            required: true
+            description: The seat class to move the member to, and the organisation it applies in.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                    - attributes
+                                    - relationships
+                                properties:
+                                    type:
+                                        type: string
+                                        const: seat-class-changes
+                                    attributes:
+                                        type: object
+                                        required:
+                                            - seat_class
+                                        properties:
+                                            seat_class:
+                                                type: string
+                                                enum:
+                                                    - full
+                                                    - field
+                                                    - record
+                                                description: The seat class to move the member to.
+                                                examples:
+                                                    - field
+                                            email:
+                                                type: string
+                                                format: email
+                                                description: |
+                                                    The email a record member moving to `field` or `full` signs in
+                                                    with. Used only when the member has no login yet; the stored
+                                                    email is used when it is absent.
+                                                examples:
+                                                    - pat.jones@example.com
+                                    relationships:
+                                        type: object
+                                        required:
+                                            - organisation
+                                        properties:
+                                            organisation:
+                                                type: object
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/OrganisationRelationship'
         SendAccessEmail:
             required: false
             description: |
@@ -70859,6 +71231,53 @@ paths:
             x-mint:
                 metadata:
                     title: Update an operation
+    /v3/operations/{operation_id}/allocate:
+        post:
+            description: |
+                Allocate an unallocated operation to a work order. An operation can be
+                allocated once: this is how an operation logged against a property, with no
+                work order or scheme, is brought into the planned work.
+
+                The operation takes the work order's scheme, and the work order and scheme
+                totals are rebuilt to include it.
+
+                The work order must be in the operation's organisation.
+
+                The request is refused with 409 Conflict if the operation already has a work
+                order, or if the work order already holds a permit for the same Street Manager
+                works as the operation. An operation is never moved between work orders, and
+                never has a permit dropped to make it fit.
+            operationId: AllocateOperation
+            parameters:
+                - $ref: '#/components/parameters/operation_id'
+            requestBody:
+                $ref: '#/components/requestBodies/AllocateOperation'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetOperation'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Allocate an operation to a work order
+            tags:
+                - Operations
+            x-ctrl-hub:
+                domain: projects
+                entity: Operation
+            x-mint:
+                metadata:
+                    title: Allocate an operation
     /v3/operations/{operation_id}/relationships/appointment:
         patch:
             description: Replace existing appointment to the operation
@@ -72788,6 +73207,46 @@ paths:
             x-mint:
                 metadata:
                     title: Update a member
+    /v3/orgs/{org_id}/iam/my-people:
+        get:
+            description: |
+                The people the caller manages in the organisation, each marked in `meta.reach` by how the caller
+                reaches them: as their primary manager, higher up their primary chain, or as a secondary manager.
+
+                A person is listed when one of the caller's live management relationships reaches them and one of
+                the caller's `users:view` grants in the organisation allows them. A manager's grant is scoped to
+                the relationship. A grant never adds anyone outside the caller's reach, so an organisation-wide
+                `users:view` lists only the caller's own people. The list is empty for a caller who manages no one. People are sorted by last name, then first name. There is no `include`
+                parameter, so `included` is absent.
+            operationId: ListMyPeople
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+                - $ref: '#/components/parameters/limit'
+                - $ref: '#/components/parameters/offset'
+                - $ref: '#/components/parameters/page'
+            responses:
+                "200":
+                    $ref: '#/components/responses/ListMyPeople'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            tags:
+                - Organisations
+            x-ctrl-hub:
+                domain: iam
+                domainLiteral: IAM
+                entity: User
+                manual: true
+            x-mint:
+                metadata:
+                    title: List my people
     /v3/orgs/{org_id}/iam/service-accounts:
         get:
             description: List all of the service accounts in an organisation.
@@ -72934,6 +73393,45 @@ paths:
             x-mint:
                 metadata:
                     title: Create a key for a service account
+    /v3/orgs/{org_id}/iam/service-accounts/{service_account_id}/keys/{key_id}:
+        delete:
+            description: |
+                Delete one key of a service account. The key's OAuth client is deleted, and the
+                key is removed from the account. New tokens cannot be issued for the key.
+                Requests made with the key are rejected from then on. A server that did not
+                handle this request can keep accepting the key until its cached entry goes
+                stale, about a minute. The account and its other keys are unchanged.
+
+                A key that does not belong to the service account, a service account of another
+                organisation and a system-scoped service account all return `404 Not Found`.
+            operationId: DeleteServiceAccountKey
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+                - $ref: '#/components/parameters/service_account_id'
+                - $ref: '#/components/parameters/key_id'
+            responses:
+                "204":
+                    description: Service account key deleted successfully.
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Delete a Service Account Key
+            tags:
+                - Service Accounts
+            x-ctrl-hub:
+                domain: iam
+            x-mint:
+                metadata:
+                    title: Delete a key of a service account
     /v3/orgs/{org_id}/iam/service-accounts/{service_account_id}/logs:
         get:
             description: List the logs for a service account.
@@ -74184,9 +74682,12 @@ paths:
                 - $ref: '#/components/parameters/limit'
                 - $ref: '#/components/parameters/offset'
                 - $ref: '#/components/parameters/page'
+                - $ref: '#/components/parameters/if_none_match'
             responses:
                 "200":
                     $ref: '#/components/responses/ListPermissions'
+                "304":
+                    $ref: '#/components/responses/NotModified'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -74208,9 +74709,12 @@ paths:
             operationId: GetPermission
             parameters:
                 - $ref: '#/components/parameters/permission_id'
+                - $ref: '#/components/parameters/if_none_match'
             responses:
                 "200":
                     $ref: '#/components/responses/GetPermission'
+                "304":
+                    $ref: '#/components/responses/NotModified'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -76570,9 +77074,12 @@ paths:
                 - $ref: '#/components/parameters/limit'
                 - $ref: '#/components/parameters/offset'
                 - $ref: '#/components/parameters/page'
+                - $ref: '#/components/parameters/if_none_match'
             responses:
                 "200":
                     $ref: '#/components/responses/ListRoles'
+                "304":
+                    $ref: '#/components/responses/NotModified'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -76594,9 +77101,12 @@ paths:
             operationId: GetRole
             parameters:
                 - $ref: '#/components/parameters/role_id'
+                - $ref: '#/components/parameters/if_none_match'
             responses:
                 "200":
                     $ref: '#/components/responses/GetRole'
+                "304":
+                    $ref: '#/components/responses/NotModified'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -78694,12 +79204,68 @@ paths:
                 metadata:
                     title: Send an invitation
     /v3/users:
+        get:
+            description: |
+                Retrieve the members of the organisations you can view every user in: those you are a member of with
+                `users:view` granted across the whole organisation. A grant scoped to some users, such as the one a
+                shared job role gives a network owner, does not list the organisation.
+
+                Name organisations with `organisation("<id>")` in the filter, the id in quotes, to narrow the list. Naming one you cannot
+                view every user in returns 401. Send the filter whenever you mean one organisation: a caller in two
+                organisations otherwise sees the members of both.
+
+                Each user carries `memberships`, its status and seat class in each organisation. `status` and
+                `seat_class` filter on the membership of a listed organisation.
+
+                There is no include parameter, so the response has no `included`.
+            operationId: ListUsers
+            parameters:
+                - $ref: '#/components/parameters/limit'
+                - $ref: '#/components/parameters/offset'
+                - $ref: '#/components/parameters/page'
+                - $ref: '#/components/parameters/users_sort'
+                - $ref: '#/components/parameters/user_filter'
+            responses:
+                "200":
+                    $ref: '#/components/responses/ListUsers'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: List users
+            tags:
+                - Users
+            x-ctrl-hub:
+                domain: iam
+                domainLiteral: IAM
+                entity: User
+                manual: true
+            x-mint:
+                metadata:
+                    title: List users
         post:
-            description: Create a user managed by an organisation.
+            description: |
+                Create a user managed by an organisation, as an active member with a seat class.
+
+                A `full` or `field` member needs an email. They get a login, and a welcome email
+                that leads them to set a password. A `record` member is for someone whose
+                competencies are tracked but who never signs in: the email is optional, no login
+                is created and no email is sent.
+
+                When `external_reference` is already held by a member of the organisation, that
+                member is returned with 200 and nothing is created.
             operationId: CreateManagedUser
             requestBody:
                 $ref: '#/components/requestBodies/CreateManagedUser'
             responses:
+                "200":
+                    $ref: '#/components/responses/GetUser'
                 "201":
                     $ref: '#/components/responses/GetUser'
                 "400":
@@ -78772,6 +79338,60 @@ paths:
                 - Cookie: []
             tags:
                 - IAM
+    /v3/users/{user_id}/seat-class-changes:
+        post:
+            description: |
+                Change a member's seat class in the organisation the body names. The caller
+                needs permission to update users across that organisation. Only an active or
+                inactive member's class can be changed. A caller cannot change their own
+                class, and is refused with 403.
+
+                - Between `field` and `full`, only the class changes.
+                - From `record` to `field` or `full`, a member who has never had a login gets
+                  one, and is sent the setup email that leads them to set a password. That
+                  needs an email: send `email`, or the member's stored email is used. Without
+                  either the request is refused with 400. An email another user holds is
+                  refused with 409.
+                - To `record`, the member loses access to the organisation within about a
+                  minute. A member whose every active membership is `record` can no longer
+                  sign in to anything.
+
+                Each change is recorded in the member's history and the audit log. The
+                response is the member, carrying the new class in `memberships`.
+            operationId: CreateSeatClassChange
+            parameters:
+                - $ref: '#/components/parameters/user_id'
+            requestBody:
+                $ref: '#/components/requestBodies/CreateSeatClassChange'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetUser'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "403":
+                    $ref: '#/components/responses/Forbidden'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Change a member's seat class
+            tags:
+                - Users
+            x-ctrl-hub:
+                domain: iam
+                entity: User
+                manual: true
+            x-mint:
+                metadata:
+                    title: Change a seat class
     /v3/users/{user_id}/send-access-email:
         post:
             description: |
