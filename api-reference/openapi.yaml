@@ -18825,6 +18825,7 @@ components:
                 - name
                 - description
                 - available_scopes
+                - manager_scopable
             properties:
                 domain:
                     type: string
@@ -18851,6 +18852,11 @@ components:
                     description: Human readable explanation of the permission
                     examples:
                         - Allows new schemes to be created
+                manager_scopable:
+                    type: boolean
+                    description: Whether a manager role may hold this permission. A manager role can only hold manager-scopable permissions, because a manager's grants are scoped to the people they manage.
+                    examples:
+                        - false
                 available_scopes:
                     type: object
                     description: Available scopes that can be applied when granting this permission
@@ -38288,6 +38294,7 @@ components:
                 Available filters:
 
                 - `eq(id,xxx)`: Filter management relationships by ID.
+                - `eq(organisation,xxx)`: Filter management relationships by organisation ID.
                 - `eq(manager,xxx)`: Filter by the user who manages.
                 - `eq(managed,xxx)`: Filter by the user who is managed.
                 - `eq(kind,primary)` or `eq(kind,secondary)`: Filter by kind of relationship.
@@ -38316,6 +38323,7 @@ components:
                 Available filters:
 
                 - `eq(id,xxx)`: Filter manager roles by ID.
+                - `eq(organisation,xxx)`: Filter manager roles by organisation ID.
                 - `eq(name,xxx)`: Filter manager roles by name.
                 - `eq(default,true)`: Return only the organisation's default Line manager role.
 
@@ -70435,6 +70443,8 @@ paths:
                 Create a custom manager role in an organisation.
 
                 Every permission must be manager-scopable: `users:view`, or the `havs-exposures` permissions that act on someone else's records (`view`, `create-on-behalf`, `update`, `delete`). A manager's grants are scoped to the people they manage, and any other permission would match nothing. `havs-exposures:create` is refused, because it only ever applies to the caller's own records. The new role is never the default. The name Line manager, in any case, is reserved for the organisation's default role.
+
+                A role grants its permissions to every manager whose relationship holds it, so the caller must hold each permission organisation-wide in the role's organisation. A permission they cannot grant is refused with 403 `CH.003.065`.
             operationId: CreateManagerRole
             requestBody:
                 $ref: '#/components/requestBodies/CreateManagerRole'
@@ -70445,6 +70455,8 @@ paths:
                     $ref: '#/components/responses/BadRequest'
                 "401":
                     $ref: '#/components/responses/Unauthorised'
+                "403":
+                    $ref: '#/components/responses/Forbidden'
                 "409":
                     $ref: '#/components/responses/Conflict'
                 "500":
@@ -70528,6 +70540,8 @@ paths:
         put:
             description: |
                 Replace a manager role's name and permissions. The default Line manager role can be edited this way. The change applies to that organisation only.
+
+                A permission the role does not already hold must be one the caller holds organisation-wide in the role's organisation, because the role grants it to every manager whose relationship holds it. Otherwise the update is refused with 403 `CH.003.065`. Permissions the role already holds are kept whoever edits it.
             operationId: UpdateManagerRole
             parameters:
                 - $ref: '#/components/parameters/manager_role_id'
@@ -70540,6 +70554,8 @@ paths:
                     $ref: '#/components/responses/BadRequest'
                 "401":
                     $ref: '#/components/responses/Unauthorised'
+                "403":
+                    $ref: '#/components/responses/Forbidden'
                 "404":
                     $ref: '#/components/responses/NotFound'
                 "409":
