@@ -6920,6 +6920,7 @@ components:
                 - `in_progress`: work is actively underway
                 - `on_hold`: work has been paused and is expected to resume
                 - `complete`: all work has been finished
+                - `cancelled`: the work has been called off and will not go ahead
 
                 Any status may move to any other status; there are no restricted
                 transitions. Resources created before this field existed, and resources
@@ -6932,6 +6933,7 @@ components:
                 - in_progress
                 - on_hold
                 - complete
+                - cancelled
         Label:
             type: object
             description: A label object
@@ -22210,6 +22212,66 @@ components:
                     properties:
                         data:
                             $ref: '#/components/schemas/UserRelationship'
+        UserAppVersion:
+            type: object
+            description: |
+                A build of the mobile app that a user has made requests with. The app sends its version, build number and platform in the `X-App-Version`, `X-App-Build` and `X-App-Platform` request headers.
+            required:
+                - id
+                - type
+                - attributes
+                - meta
+            properties:
+                id:
+                    type: string
+                    description: Identifies the build within the user, as `platform:version:build`.
+                    examples:
+                        - ios:1.4.2:317
+                type:
+                    type: string
+                    const: user-app-versions
+                attributes:
+                    $ref: '#/components/schemas/UserAppVersionAttributes'
+                meta:
+                    $ref: '#/components/schemas/UserAppVersionMeta'
+        UserAppVersionAttributes:
+            type: object
+            description: Attributes of an app version
+            required:
+                - version
+                - build
+                - platform
+            properties:
+                version:
+                    type: string
+                    description: The app's version, from the `X-App-Version` header.
+                    examples:
+                        - 1.4.2
+                build:
+                    type: string
+                    description: The app's build number, from the `X-App-Build` header.
+                    examples:
+                        - "317"
+                platform:
+                    type: string
+                    description: The platform the app ran on, from the `X-App-Platform` header, lower-cased.
+                    examples:
+                        - ios
+        UserAppVersionMeta:
+            type: object
+            description: Metadata for an app version.
+            required:
+                - first_seen_at
+                - last_seen_at
+            properties:
+                first_seen_at:
+                    type: string
+                    format: date-time
+                    description: When a request with this build was first recorded.
+                last_seen_at:
+                    type: string
+                    format: date-time
+                    description: When a request with this build was last recorded. Each API pod writes it at most once every 24 hours, so it can be refreshed sooner when another pod serves the request or a pod has dropped the build from its cache.
         VehicleCategory:
             type: object
             description: A vehicle category
@@ -33357,6 +33419,30 @@ components:
                                 included:
                                     $ref: '#/components/schemas/UserIncludes'
                             - $ref: '#/components/schemas/JSONAPI'
+        ListUserAppVersions:
+            description: Get a list of the app versions a user has used.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    title: A list of app versions
+                                    type: array
+                                    items:
+                                        $ref: '#/components/schemas/UserAppVersion'
+                            - $ref: '#/components/schemas/DocumentMeta'
+                            - $ref: '#/components/schemas/JSONAPI'
         GetUserGrants:
             description: The user's hydrated organisations and expanded grant strings.
             headers:
@@ -39046,7 +39132,7 @@ components:
                 - `id_in`: Filter by scheme ID(s)
                 - `organisation_in`: Filter schemes by organisation ID(s)
                 - `eq(contract,xxx)`: Filter schemes that are assigned to the given scheme contract ID.
-                - `eq(status,xxx)`: Filter schemes by lifecycle status. One of `in_planning`, `in_progress`, `on_hold`, `complete`.
+                - `eq(status,xxx)`: Filter schemes by lifecycle status. One of `in_planning`, `in_progress`, `on_hold`, `complete`, `cancelled`.
 
                 Project-role filters (cross-resource lookups against project role assignments):
 
@@ -39956,7 +40042,7 @@ components:
                 - `contains(name,xxx)`: Filter scheme contracts where name contains value.
                 - `eq(organisation,xxx)`: Filter scheme contracts by organisation ID.
                 - `eq(scheme,xxx)`: Filter scheme contracts that contain the given scheme ID.
-                - `eq(status,xxx)`: Filter scheme contracts by lifecycle status. One of `in_planning`, `in_progress`, `on_hold`, `complete`.
+                - `eq(status,xxx)`: Filter scheme contracts by lifecycle status. One of `in_planning`, `in_progress`, `on_hold`, `complete`, `cancelled`.
 
                 For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
             required: false
@@ -41329,7 +41415,7 @@ components:
                 - `in(id,[xxx])`: Filter by work order ID(s)
                 - `in(organisation,[xxx])`: Filter by organisation ID(s)
                 - `in_schemes`: Filter for work orders in scheme(s) by their ID(s)
-                - `eq(status,xxx)`: Filter for work orders by lifecycle status. One of `in_planning`, `in_progress`, `on_hold`, `complete`.
+                - `eq(status,xxx)`: Filter for work orders by lifecycle status. One of `in_planning`, `in_progress`, `on_hold`, `complete`, `cancelled`.
 
                 Project-role filters (cross-resource lookups against project role assignments):
 
@@ -51228,11 +51314,13 @@ components:
                                                     - done_reason
                                     relationships:
                                         type: object
-                                        required:
-                                            - work_order
                                         properties:
                                             work_order:
                                                 type: object
+                                                description: |
+                                                    Ignored. An update never changes the operation's work order or scheme, and an
+                                                    unallocated operation has neither, so this may be omitted. Allocate an
+                                                    unallocated operation with `POST /v3/operations/{operation_id}/allocate`.
                                                 properties:
                                                     data:
                                                         $ref: '#/components/schemas/WorkOrderRelationship'
@@ -79313,6 +79401,41 @@ paths:
             x-mint:
                 metadata:
                     title: Update a user
+    /v3/users/{user_id}/app-versions:
+        get:
+            description: |
+                Retrieve the builds of the mobile app that the user has made requests with, newest first by `last_seen_at`. Each build is one version, build number and platform.
+
+                The caller needs `admin:view` on every organisation. A grant on a single organisation, such as an organisation owner's, is refused with 401.
+
+                There is no include parameter, so the response has no `included`. The list is not paginated.
+            operationId: ListUserAppVersions
+            parameters:
+                - $ref: '#/components/parameters/user_id'
+            responses:
+                "200":
+                    $ref: '#/components/responses/ListUserAppVersions'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - Cookie: []
+                - OAuth2: []
+            summary: List the app versions a user has used
+            tags:
+                - IAM
+            x-ctrl-hub:
+                domain: iam
+                domainLiteral: IAM
+            x-mint:
+                metadata:
+                    title: List the app versions a user has used
     /v3/users/{user_id}/grants:
         get:
             description: |
