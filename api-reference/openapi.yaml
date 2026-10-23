@@ -38288,6 +38288,7 @@ components:
                 Available filters:
 
                 - `eq(id,xxx)`: Filter management relationships by ID.
+                - `eq(organisation,xxx)`: Filter management relationships by organisation ID.
                 - `eq(manager,xxx)`: Filter by the user who manages.
                 - `eq(managed,xxx)`: Filter by the user who is managed.
                 - `eq(kind,primary)` or `eq(kind,secondary)`: Filter by kind of relationship.
@@ -38316,6 +38317,7 @@ components:
                 Available filters:
 
                 - `eq(id,xxx)`: Filter manager roles by ID.
+                - `eq(organisation,xxx)`: Filter manager roles by organisation ID.
                 - `eq(name,xxx)`: Filter manager roles by name.
                 - `eq(default,true)`: Return only the organisation's default Line manager role.
 
