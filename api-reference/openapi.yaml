@@ -6920,6 +6920,7 @@ components:
                 - `in_progress`: work is actively underway
                 - `on_hold`: work has been paused and is expected to resume
                 - `complete`: all work has been finished
+                - `cancelled`: the work has been called off and will not go ahead
 
                 Any status may move to any other status; there are no restricted
                 transitions. Resources created before this field existed, and resources
@@ -6932,6 +6933,7 @@ components:
                 - in_progress
                 - on_hold
                 - complete
+                - cancelled
         Label:
             type: object
             description: A label object
@@ -39046,7 +39048,7 @@ components:
                 - `id_in`: Filter by scheme ID(s)
                 - `organisation_in`: Filter schemes by organisation ID(s)
                 - `eq(contract,xxx)`: Filter schemes that are assigned to the given scheme contract ID.
-                - `eq(status,xxx)`: Filter schemes by lifecycle status. One of `in_planning`, `in_progress`, `on_hold`, `complete`.
+                - `eq(status,xxx)`: Filter schemes by lifecycle status. One of `in_planning`, `in_progress`, `on_hold`, `complete`, `cancelled`.
 
                 Project-role filters (cross-resource lookups against project role assignments):
 
@@ -39956,7 +39958,7 @@ components:
                 - `contains(name,xxx)`: Filter scheme contracts where name contains value.
                 - `eq(organisation,xxx)`: Filter scheme contracts by organisation ID.
                 - `eq(scheme,xxx)`: Filter scheme contracts that contain the given scheme ID.
-                - `eq(status,xxx)`: Filter scheme contracts by lifecycle status. One of `in_planning`, `in_progress`, `on_hold`, `complete`.
+                - `eq(status,xxx)`: Filter scheme contracts by lifecycle status. One of `in_planning`, `in_progress`, `on_hold`, `complete`, `cancelled`.
 
                 For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
             required: false
@@ -41329,7 +41331,7 @@ components:
                 - `in(id,[xxx])`: Filter by work order ID(s)
                 - `in(organisation,[xxx])`: Filter by organisation ID(s)
                 - `in_schemes`: Filter for work orders in scheme(s) by their ID(s)
-                - `eq(status,xxx)`: Filter for work orders by lifecycle status. One of `in_planning`, `in_progress`, `on_hold`, `complete`.
+                - `eq(status,xxx)`: Filter for work orders by lifecycle status. One of `in_planning`, `in_progress`, `on_hold`, `complete`, `cancelled`.
 
                 Project-role filters (cross-resource lookups against project role assignments):
 
@@ -51228,11 +51230,13 @@ components:
                                                     - done_reason
                                     relationships:
                                         type: object
-                                        required:
-                                            - work_order
                                         properties:
                                             work_order:
                                                 type: object
+                                                description: |
+                                                    Ignored. An update never changes the operation's work order or scheme, and an
+                                                    unallocated operation has neither, so this may be omitted. Allocate an
+                                                    unallocated operation with `POST /v3/operations/{operation_id}/allocate`.
                                                 properties:
                                                     data:
                                                         $ref: '#/components/schemas/WorkOrderRelationship'
