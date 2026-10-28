@@ -17185,8 +17185,14 @@ components:
                     propertyName: type
                     mapping:
                         contacts: "#/components/schemas/Contact"
+                        customer-interactions: "#/components/schemas/CustomerInteraction"
+                        organisations: "#/components/schemas/Organisation"
+                        properties: "#/components/schemas/Property"
                 oneOf:
                     - $ref: '#/components/schemas/Contact'
+                    - $ref: '#/components/schemas/CustomerInteraction'
+                    - $ref: '#/components/schemas/Organisation'
+                    - $ref: '#/components/schemas/Property'
         CustomerAccountMeta:
             type: object
             description: Metadata for a customer account
@@ -17278,6 +17284,29 @@ components:
                     $ref: '#/components/schemas/ContactMeta'
                 relationships:
                     $ref: '#/components/schemas/ContactRelationships'
+        CustomerInteraction:
+            type: object
+            description: A customer interaction
+            required:
+                - id
+                - type
+                - attributes
+                - meta
+                - relationships
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the customer interaction.
+                type:
+                    type: string
+                    const: customer-interactions
+                attributes:
+                    $ref: '#/components/schemas/CustomerInteractionAttributes'
+                meta:
+                    $ref: '#/components/schemas/CustomerInteractionMeta'
+                relationships:
+                    $ref: '#/components/schemas/CustomerInteractionRelationships'
         ContactAttributes:
             type: object
             description: Attributes of a contact.
@@ -17387,6 +17416,125 @@ components:
                     properties:
                         data:
                             $ref: '#/components/schemas/OrganisationRelationship'
+        CustomerInteractionAttributes:
+            type: object
+            description: Attributes of a customer interaction.
+            required:
+                - method
+                - direction
+                - date_time
+                - contacted
+                - status
+            properties:
+                method:
+                    type: string
+                    description: The method of the customer interaction.
+                    enum:
+                        - email
+                        - letter
+                        - telephone
+                direction:
+                    type: string
+                    description: The direction of the customer interaction.
+                    enum:
+                        - inbound
+                        - outbound
+                date_time:
+                    type: string
+                    format: date-time
+                    description: The date and time of the customer interaction.
+                contacted:
+                    type: boolean
+                    description: Indicates whether the customer was contacted.
+                status:
+                    type: string
+                    enum:
+                        - scheduled
+                        - attempted
+                        - closed
+                    description: The status of the interaction
+                notes:
+                    type: string
+                    description: Notes about the interaction
+        CustomerInteractionMeta:
+            type: object
+            description: Metadata for a customer interaction
+            required:
+                - created_at
+                - updated_at
+                - modified_at
+            properties:
+                created_at:
+                    type: string
+                    format: date-time
+                    description: The date and time when the customer interaction was created
+                updated_at:
+                    type: string
+                    format: date-time
+                    description: The date and time when the customer interaction was last updated
+                modified_at:
+                    type: string
+                    format: date-time
+                    description: The date and time when the customer interaction was last modified
+        CustomerInteractionRelationships:
+            type: object
+            description: Relationships for a customer interaction
+            required:
+                - author
+                - organisation
+                - representative
+                - account
+                - contact
+                - property
+            properties:
+                author:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/AuthorRelationship'
+                organisation:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/OrganisationRelationship'
+                representative:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/UserRelationship'
+                account:
+                    type: object
+                    description: The customer account associated with this interaction. `data` is `null` for third-party bookings.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            oneOf:
+                                - $ref: '#/components/schemas/CustomerAccountRelationship'
+                                - type: "null"
+                contact:
+                    type: object
+                    description: The customer contact associated with this interaction. `data` is `null` for third-party bookings.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            oneOf:
+                                - $ref: '#/components/schemas/ContactRelationship'
+                                - type: "null"
+                property:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/PropertyRelationship'
         CustomerAppointment:
             type: object
             description: An appointment
@@ -17410,6 +17558,20 @@ components:
                     $ref: '#/components/schemas/CustomerAppointmentMeta'
                 relationships:
                     $ref: '#/components/schemas/CustomerAppointmentRelationships'
+        AppointmentIncludes:
+            type: array
+            description: Related resources that can be included when an appointment is returned
+            items:
+                discriminator:
+                    propertyName: type
+                    mapping:
+                        customer-interactions: "#/components/schemas/CustomerInteraction"
+                        operations: "#/components/schemas/Operation"
+                        organisations: "#/components/schemas/Organisation"
+                oneOf:
+                    - $ref: '#/components/schemas/CustomerInteraction'
+                    - $ref: '#/components/schemas/Operation'
+                    - $ref: '#/components/schemas/Organisation'
         CustomerAppointmentAttributes:
             type: object
             description: Attributes of an appointment.
@@ -17539,148 +17701,38 @@ components:
                     properties:
                         data:
                             $ref: '#/components/schemas/OrganisationRelationship'
-        CustomerInteraction:
-            type: object
-            description: A customer interaction
-            required:
-                - id
-                - type
-                - attributes
-                - meta
-                - relationships
-            properties:
-                id:
-                    type: string
-                    format: uuid
-                    description: The unique identifier of the customer interaction.
-                type:
-                    type: string
-                    const: customer-interactions
-                attributes:
-                    $ref: '#/components/schemas/CustomerInteractionAttributes'
-                meta:
-                    $ref: '#/components/schemas/CustomerInteractionMeta'
-                relationships:
-                    $ref: '#/components/schemas/CustomerInteractionRelationships'
-        CustomerInteractionAttributes:
-            type: object
-            description: Attributes of a customer interaction.
-            required:
-                - method
-                - direction
-                - date_time
-                - contacted
-                - status
-            properties:
-                method:
-                    type: string
-                    description: The method of the customer interaction.
-                    enum:
-                        - email
-                        - letter
-                        - telephone
-                direction:
-                    type: string
-                    description: The direction of the customer interaction.
-                    enum:
-                        - inbound
-                        - outbound
-                date_time:
-                    type: string
-                    format: date-time
-                    description: The date and time of the customer interaction.
-                contacted:
-                    type: boolean
-                    description: Indicates whether the customer was contacted.
-                status:
-                    type: string
-                    enum:
-                        - scheduled
-                        - attempted
-                        - closed
-                    description: The status of the interaction
-                notes:
-                    type: string
-                    description: Notes about the interaction
-        CustomerInteractionMeta:
-            type: object
-            description: Metadata for a customer interaction
-            required:
-                - created_at
-                - updated_at
-                - modified_at
-            properties:
-                created_at:
-                    type: string
-                    format: date-time
-                    description: The date and time when the customer interaction was created
-                updated_at:
-                    type: string
-                    format: date-time
-                    description: The date and time when the customer interaction was last updated
-                modified_at:
-                    type: string
-                    format: date-time
-                    description: The date and time when the customer interaction was last modified
-        CustomerInteractionRelationships:
-            type: object
-            description: Relationships for a customer interaction
-            required:
-                - author
-                - organisation
-                - representative
-                - account
-                - contact
-                - property
-            properties:
-                author:
-                    type: object
-                    required:
-                        - data
-                    properties:
-                        data:
-                            $ref: '#/components/schemas/AuthorRelationship'
-                organisation:
-                    type: object
-                    required:
-                        - data
-                    properties:
-                        data:
-                            $ref: '#/components/schemas/OrganisationRelationship'
-                representative:
-                    type: object
-                    required:
-                        - data
-                    properties:
-                        data:
-                            $ref: '#/components/schemas/UserRelationship'
-                account:
-                    type: object
-                    description: The customer account associated with this interaction. `data` is `null` for third-party bookings.
-                    required:
-                        - data
-                    properties:
-                        data:
-                            oneOf:
-                                - $ref: '#/components/schemas/CustomerAccountRelationship'
-                                - type: "null"
-                contact:
-                    type: object
-                    description: The customer contact associated with this interaction. `data` is `null` for third-party bookings.
-                    required:
-                        - data
-                    properties:
-                        data:
-                            oneOf:
-                                - $ref: '#/components/schemas/ContactRelationship'
-                                - type: "null"
-                property:
-                    type: object
-                    required:
-                        - data
-                    properties:
-                        data:
-                            $ref: '#/components/schemas/PropertyRelationship'
+        ContactIncludes:
+            type: array
+            description: Related resources that can be included when a contact is returned
+            items:
+                discriminator:
+                    propertyName: type
+                    mapping:
+                        customer-accounts: "#/components/schemas/CustomerAccount"
+                        customer-interactions: "#/components/schemas/CustomerInteraction"
+                        organisations: "#/components/schemas/Organisation"
+                oneOf:
+                    - $ref: '#/components/schemas/CustomerAccount'
+                    - $ref: '#/components/schemas/CustomerInteraction'
+                    - $ref: '#/components/schemas/Organisation'
+        CustomerInteractionIncludes:
+            type: array
+            description: Related resources that can be included when a customer interaction is returned
+            items:
+                discriminator:
+                    propertyName: type
+                    mapping:
+                        contacts: "#/components/schemas/Contact"
+                        customer-accounts: "#/components/schemas/CustomerAccount"
+                        organisations: "#/components/schemas/Organisation"
+                        properties: "#/components/schemas/Property"
+                        users: "#/components/schemas/User"
+                oneOf:
+                    - $ref: '#/components/schemas/Contact'
+                    - $ref: '#/components/schemas/CustomerAccount'
+                    - $ref: '#/components/schemas/Organisation'
+                    - $ref: '#/components/schemas/Property'
+                    - $ref: '#/components/schemas/User'
         RoleGroupIncludes:
             type: array
             description: Related resources that can be included when a form is returned
@@ -30823,6 +30875,8 @@ components:
                                     type: array
                                     items:
                                         $ref: '#/components/schemas/CustomerAppointment'
+                                included:
+                                    $ref: '#/components/schemas/AppointmentIncludes'
                             - $ref: '#/components/schemas/DocumentMeta'
                             - $ref: '#/components/schemas/JSONAPI'
         GetAppointment:
@@ -30844,6 +30898,8 @@ components:
                               properties:
                                 data:
                                     $ref: '#/components/schemas/CustomerAppointment'
+                                included:
+                                    $ref: '#/components/schemas/AppointmentIncludes'
                             - $ref: '#/components/schemas/JSONAPI'
         ReplaceAppointmentRelationshipToInteraction:
             description: Replace existing relationship from the appointment to the interaction.
@@ -30894,6 +30950,8 @@ components:
                                     type: array
                                     items:
                                         $ref: '#/components/schemas/Contact'
+                                included:
+                                    $ref: '#/components/schemas/ContactIncludes'
                             - $ref: '#/components/schemas/DocumentMeta'
                             - $ref: '#/components/schemas/JSONAPI'
         GetContact:
@@ -30915,6 +30973,8 @@ components:
                               properties:
                                 data:
                                     $ref: '#/components/schemas/Contact'
+                                included:
+                                    $ref: '#/components/schemas/ContactIncludes'
                             - $ref: '#/components/schemas/JSONAPI'
         ListCustomerInteractions:
             description: Get a list of customer interactions.
@@ -30938,6 +30998,8 @@ components:
                                     type: array
                                     items:
                                         $ref: '#/components/schemas/CustomerInteraction'
+                                included:
+                                    $ref: '#/components/schemas/CustomerInteractionIncludes'
                             - $ref: '#/components/schemas/DocumentMeta'
                             - $ref: '#/components/schemas/JSONAPI'
         GetCustomerInteraction:
@@ -30959,6 +31021,8 @@ components:
                               properties:
                                 data:
                                     $ref: '#/components/schemas/CustomerInteraction'
+                                included:
+                                    $ref: '#/components/schemas/CustomerInteractionIncludes'
                             - $ref: '#/components/schemas/JSONAPI'
         ReplaceCustomerInteractionRelationshipToAccount:
             description: Replace existing relationship from the customer interaction to the account.
@@ -71173,9 +71237,12 @@ paths:
                 - $ref: '#/components/parameters/offset'
                 - $ref: '#/components/parameters/page'
                 - $ref: '#/components/parameters/operations_sort'
+                - $ref: '#/components/parameters/if_none_match'
             responses:
                 "200":
                     $ref: '#/components/responses/ListOperations'
+                "304":
+                    $ref: '#/components/responses/NotModified'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -74283,9 +74350,12 @@ paths:
                 - $ref: '#/components/parameters/limit'
                 - $ref: '#/components/parameters/offset'
                 - $ref: '#/components/parameters/page'
+                - $ref: '#/components/parameters/if_none_match'
             responses:
                 "200":
                     $ref: '#/components/responses/ListSchemes'
+                "304":
+                    $ref: '#/components/responses/NotModified'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -77733,9 +77803,12 @@ paths:
                 - $ref: '#/components/parameters/limit'
                 - $ref: '#/components/parameters/offset'
                 - $ref: '#/components/parameters/page'
+                - $ref: '#/components/parameters/if_none_match'
             responses:
                 "200":
                     $ref: '#/components/responses/ListSchemes'
+                "304":
+                    $ref: '#/components/responses/NotModified'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -82736,9 +82809,12 @@ paths:
                 - $ref: '#/components/parameters/limit'
                 - $ref: '#/components/parameters/offset'
                 - $ref: '#/components/parameters/page'
+                - $ref: '#/components/parameters/if_none_match'
             responses:
                 "200":
                     $ref: '#/components/responses/ListWorkOrders'
+                "304":
+                    $ref: '#/components/responses/NotModified'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
