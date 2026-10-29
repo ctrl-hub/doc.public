@@ -35086,6 +35086,12 @@ components:
                 - `ge(due_at,xxx)` / `le(due_at,xxx)`: Filter by due date range. Use the
                   function-style `ge`/`le` operators (not `gte`/`lte`).
 
+                Terms separated by commas must all match. Wrap terms in `or(...)` to match any
+                one of them, alongside the other terms. For the actions assigned to a user or to
+                any of their teams, send
+                `eq(organisation,xxx),eq(state,open),or(eq(assigned_user,xxx),eq(assigned_team,xxx))`.
+                An `or(...)` may hold only plain terms, and none on `organisation`.
+
                 For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
             required: false
             schema:
