@@ -20599,6 +20599,7 @@ components:
             description: Relationships for a query
             required:
                 - organisation
+                - author
             properties:
                 organisation:
                     type: object
@@ -20625,6 +20626,14 @@ components:
                                         format: uuid
                                 - type: "null"
                             description: The form this query targets (for the form-submissions dataset). Null for dataset-level queries.
+                author:
+                    type: object
+                    description: The user or service account that created the query.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/AuthorRelationship'
         RegistrationIncludes:
             type: array
             description: Related resources that can be included when a registration is returned
@@ -35085,6 +35094,12 @@ components:
                 - `eq(triggering_job_role,xxx)`: Filter by the triggering job role ID.
                 - `ge(due_at,xxx)` / `le(due_at,xxx)`: Filter by due date range. Use the
                   function-style `ge`/`le` operators (not `gte`/`lte`).
+
+                Terms separated by commas must all match. Wrap terms in `or(...)` to match any
+                one of them, alongside the other terms. For the actions assigned to a user or to
+                any of their teams, send
+                `eq(organisation,xxx),eq(state,open),or(eq(assigned_user,xxx),eq(assigned_team,xxx))`.
+                An `or(...)` may hold only plain terms, and none on `organisation`.
 
                 For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
             required: false
