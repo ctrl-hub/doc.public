@@ -70496,6 +70496,8 @@ paths:
                 Replace a management relationship's manager, kind and manager role. The managed person is fixed.
 
                 The same rules apply as on create. Omitting the manager role removes it, so the manager can do nothing for the person until a role is assigned.
+
+                Changing the manager ends this relationship and creates a new one with a new id, which the response returns. The people it reached lose the old line before the response, so the previous manager can no longer read them, even before their grants are rebuilt. HAVS exposure records are re-stamped after the change commits. One whose re-stamp fails keeps the old line until the management lines reconciler repairs it. Changing only the kind or the manager role keeps the id.
             operationId: UpdateManagementRelationship
             parameters:
                 - $ref: '#/components/parameters/management_relationship_id'
