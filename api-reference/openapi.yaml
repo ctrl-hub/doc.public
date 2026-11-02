@@ -16942,7 +16942,7 @@ components:
                         - invited
                         - mentioned
                     description: >-
-                        Why this person received the notification. `assigned` means they are an approver or assignee, `participating` that they requested, uploaded or previously downloaded it, `nominated` that they hold a job role that was nominated, `invited` that they were invited to join an organisation, and `mentioned` is reserved.
+                        Why this person received the notification. `assigned` means they are an approver or assignee, `participating` that they requested, uploaded or previously downloaded it, `nominated` that they hold a nominated job role or belong to a team the organisation chose to tell, `invited` that they were invited to join an organisation, and `mentioned` is reserved.
                 channels:
                     type: array
                     description: >-
