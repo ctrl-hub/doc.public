@@ -292,247 +292,6 @@ components:
                 type:
                     type: string
                     const: customer-accounts
-        Error:
-            type: object
-            description: An error response
-            properties:
-                id:
-                    description: >-
-                        A unique identifier for this particular occurrence of the problem. If you encounter this, please provide us with the error ID and we can investigate it on our side.
-                    type: string
-                    format: uuid
-                    examples:
-                        - "05fc9c8d-73b9-4697-9337-57f7a567a48f"
-                status:
-                    description: >-
-                        The status code for the error. This might not match the HTTP status code if there are more that one errors to return with different status codes.
-                    type: string
-                    examples:
-                        - "401"
-                        - "500"
-                title:
-                    description: >-
-                        A human readable title for the error.
-                    type: string
-                    examples:
-                        - "You are not authorised to access this resource"
-                detail:
-                    description: >-
-                        Where there is more detail that we can provide outside of the title, we will provide it here.
-                    type: string
-                    examples:
-                        - "In order to access this resource, you need the 'admin' role."
-                code:
-                    description: >-
-                        A unique code for the error that may help us to diagnose the issue. Not all errors have codes, so this is usually empty.
-
-                        `CH.003.080` (403) means the organisation in `meta.organisation_id` requires two-factor authentication and the caller's session does not satisfy it. The caller must set up or use a second factor, or sign in through their organisation's SAML single sign-on. Other OIDC sign-ins do not count.
-                    type: string
-                    examples:
-                        - "AUTH.001"
-                        - "CH.003.080"
-                source:
-                    description: >-
-                        A JSON object containing additional information about the error.
-                    type: object
-                    properties:
-                        pointer:
-                            description: >-
-                                A JSON Pointer to the value in the request that caused the error.
-                            type: string
-                            examples:
-                                - "/data/attributes/email"
-                        parameter:
-                            description: >-
-                                A string indicating which query parameter in the request caused the error.
-                            type: string
-                            examples:
-                                - "include"
-                meta:
-                    description: >-
-                        A JSON object containing additional information about the error.
-
-                        When a parameter caused the error, there will be a `resource` property with the name of the resource that caused the error.
-
-                        When `code` is `CH.003.080`, `organisation_id` names the organisation that requires two-factor authentication, which the caller's session does not satisfy.
-                    type: object
-                    properties:
-                        resource:
-                            type: string
-                            description: The resource a parameter error relates to, such as an unsupported include.
-                        organisation_id:
-                            type: string
-                            format: uuid
-                            examples:
-                                - "c000c344-8847-47da-a091-32e75902d3b1"
-                    additionalProperties: true
-            required:
-                - id
-                - status
-                - title
-        Identity:
-            type: object
-            description: A person's login, as the identity provider, Polis and this API hold it
-            required:
-                - id
-                - type
-                - attributes
-            properties:
-                id:
-                    type: string
-                    format: uuid
-                    description: |
-                        The identity provider's identity id, or the id of the identity the user holds when the identity provider
-                        has none, or the user's own id when the user holds no identity. The last is not an identity id, so
-                        `GET /admin/v3/identities/{id}` does not find it.
-                type:
-                    type: string
-                    const: identities
-                attributes:
-                    $ref: '#/components/schemas/IdentityAttributes'
-        JSONAPI:
-            type: object
-            description: JSON API response object
-            required:
-                - jsonapi
-            properties:
-                jsonapi:
-                    type: object
-                    required:
-                        - version
-                    properties:
-                        version:
-                            type: string
-                            description: The version of the JSON API specification
-                            examples:
-                                - "1.0"
-        IdentityAttributes:
-            type: object
-            description: |
-                What each system holds for one person. Every field is copied from a chosen set: no password hash, OIDC token,
-                authenticator or recovery secret, directory webhook or SCIM secret, or Polis raw record is ever included.
-            required:
-                - email
-                - state
-                - identity
-                - user
-                - polis
-            properties:
-                email:
-                    type: string
-                    description: The email address the lookup was made for.
-                    examples:
-                        - someone@example.com
-                state:
-                    type: string
-                    description: Which of the identity provider and this API hold a record for the person.
-                    enum:
-                        - healthy
-                        - identity_only
-                        - user_only
-                identity:
-                    type: object
-                    description: The identity provider's identity.
-                    required:
-                        - present
-                    properties:
-                        present:
-                            type: boolean
-                            description: Whether the identity provider holds an identity.
-                        state:
-                            type: string
-                            description: The identity's state in the identity provider.
-                            examples:
-                                - active
-                        created_at:
-                            type: string
-                            format: date-time
-                        verifiable_addresses:
-                            type: array
-                            items:
-                                type: object
-                                required:
-                                    - value
-                                    - via
-                                    - verified
-                                properties:
-                                    value:
-                                        type: string
-                                    via:
-                                        type: string
-                                        examples:
-                                            - email
-                                    verified:
-                                        type: boolean
-                        credential_types:
-                            type: array
-                            description: The kinds of credential the identity holds. Their contents are never returned.
-                            items:
-                                type: string
-                                examples:
-                                    - password
-                user:
-                    type: object
-                    description: The user in this API.
-                    required:
-                        - present
-                    properties:
-                        present:
-                            type: boolean
-                            description: Whether this API holds a user for the person.
-                        id:
-                            type: string
-                            format: uuid
-                        email:
-                            type: string
-                        holds_identity:
-                            type: boolean
-                            description: |
-                                Whether the user holds the identity that was found. It is false for a user who has the email but holds
-                                a different identity, or none, and the identity can then be deleted.
-                polis:
-                    type: object
-                    description: The person's record in the Polis directories of the organisation whose SSO provider claims the email's domain.
-                    required:
-                        - present
-                        - status
-                    properties:
-                        present:
-                            type: boolean
-                            description: Whether a directory lists the person. It is false when Polis was unavailable or not asked.
-                        status:
-                            type: string
-                            description: |
-                                `found`: a directory lists the person. `not_found`: Polis answered and none does. `unavailable`: Polis
-                                could not be asked, so the person may be listed. `no_sso_provider`: no SSO provider claims the domain,
-                                so Polis was not asked.
-                            enum:
-                                - found
-                                - not_found
-                                - unavailable
-                                - no_sso_provider
-                        message:
-                            type: string
-                            description: A sentence saying what the status means, such as "no SSO provider for this domain".
-                        matches:
-                            type: array
-                            description: The directory users that have the email, when the status is `found`.
-                            items:
-                                type: object
-                                required:
-                                    - active
-                                    - directory_id
-                                    - directory_name
-                                    - tenant
-                                properties:
-                                    active:
-                                        type: boolean
-                                    directory_id:
-                                        type: string
-                                    directory_name:
-                                        type: string
-                                    tenant:
-                                        type: string
         ServiceAccount:
             type: object
             description: A service account
@@ -569,6 +328,22 @@ components:
                             $ref: '#/components/schemas/Features'
                         pagination:
                             $ref: '#/components/schemas/Pagination'
+        JSONAPI:
+            type: object
+            description: JSON API response object
+            required:
+                - jsonapi
+            properties:
+                jsonapi:
+                    type: object
+                    required:
+                        - version
+                    properties:
+                        version:
+                            type: string
+                            description: The version of the JSON API specification
+                            examples:
+                                - "1.0"
         ServiceAccountAttributes:
             type: object
             description: Attributes for a service account
@@ -756,6 +531,84 @@ components:
                             type: integer
                             examples:
                                 - 0
+        Error:
+            type: object
+            description: An error response
+            properties:
+                id:
+                    description: >-
+                        A unique identifier for this particular occurrence of the problem. If you encounter this, please provide us with the error ID and we can investigate it on our side.
+                    type: string
+                    format: uuid
+                    examples:
+                        - "05fc9c8d-73b9-4697-9337-57f7a567a48f"
+                status:
+                    description: >-
+                        The status code for the error. This might not match the HTTP status code if there are more that one errors to return with different status codes.
+                    type: string
+                    examples:
+                        - "401"
+                        - "500"
+                title:
+                    description: >-
+                        A human readable title for the error.
+                    type: string
+                    examples:
+                        - "You are not authorised to access this resource"
+                detail:
+                    description: >-
+                        Where there is more detail that we can provide outside of the title, we will provide it here.
+                    type: string
+                    examples:
+                        - "In order to access this resource, you need the 'admin' role."
+                code:
+                    description: >-
+                        A unique code for the error that may help us to diagnose the issue. Not all errors have codes, so this is usually empty.
+
+                        `CH.003.080` (403) means the organisation in `meta.organisation_id` requires two-factor authentication and the caller's session does not satisfy it. The caller must set up or use a second factor, or sign in through their organisation's SAML single sign-on. Other OIDC sign-ins do not count.
+                    type: string
+                    examples:
+                        - "AUTH.001"
+                        - "CH.003.080"
+                source:
+                    description: >-
+                        A JSON object containing additional information about the error.
+                    type: object
+                    properties:
+                        pointer:
+                            description: >-
+                                A JSON Pointer to the value in the request that caused the error.
+                            type: string
+                            examples:
+                                - "/data/attributes/email"
+                        parameter:
+                            description: >-
+                                A string indicating which query parameter in the request caused the error.
+                            type: string
+                            examples:
+                                - "include"
+                meta:
+                    description: >-
+                        A JSON object containing additional information about the error.
+
+                        When a parameter caused the error, there will be a `resource` property with the name of the resource that caused the error.
+
+                        When `code` is `CH.003.080`, `organisation_id` names the organisation that requires two-factor authentication, which the caller's session does not satisfy.
+                    type: object
+                    properties:
+                        resource:
+                            type: string
+                            description: The resource a parameter error relates to, such as an unsupported include.
+                        organisation_id:
+                            type: string
+                            format: uuid
+                            examples:
+                                - "c000c344-8847-47da-a091-32e75902d3b1"
+                    additionalProperties: true
+            required:
+                - id
+                - status
+                - title
         Action:
             type: object
             description: |
@@ -9088,10 +8941,13 @@ components:
                     const: dashboards
                 attributes:
                     $ref: '#/components/schemas/DashboardAttributes'
+                meta:
+                    $ref: '#/components/schemas/DashboardMeta'
         DashboardAttributes:
             type: object
             required:
                 - scope
+                - shared
                 - name
                 - order
                 - cards
@@ -9124,6 +8980,7 @@ components:
                     items:
                         type: object
                         additionalProperties: true
+                        x-go-type: json.RawMessage
                 date_range:
                     type:
                         - object
@@ -9151,16 +9008,24 @@ components:
                             description: Operator parameters (e.g. `["30"]` for last_n_days, or the two bounds for between). Cardinality is validated at run time.
                             items:
                                 type: string
+        DashboardMeta:
+            type: object
+            description: Meta information for a dashboard
+            properties:
                 created_at:
                     type: string
                     format: date-time
                     description: When the dashboard was created.
                     readOnly: true
+                    examples:
+                        - 2025-07-16T12:42:40Z
                 updated_at:
                     type: string
                     format: date-time
                     description: When the dashboard was last updated.
                     readOnly: true
+                    examples:
+                        - 2025-07-16T12:42:44Z
         DeviceBackup:
             type: object
             description: |
@@ -12228,6 +12093,10 @@ components:
                     const: feature-configurations
                 attributes:
                     type: object
+                    required:
+                        - domain
+                        - component
+                        - enabled
                     properties:
                         domain:
                             type: string
@@ -26452,6 +26321,122 @@ components:
                     - $ref: '#/components/schemas/Organisation'
                     - $ref: '#/components/schemas/User'
     responses:
+        ListServiceAccounts:
+            description: Get a list of Service Accounts.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    title: A list of service accounts
+                                    type: array
+                                    items:
+                                        $ref: '#/components/schemas/ServiceAccount'
+                            - $ref: '#/components/schemas/DocumentMeta'
+                            - $ref: '#/components/schemas/JSONAPI'
+        Unauthorised:
+            description: Authentication failed
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        properties:
+                            errors:
+                                type: array
+                                items:
+                                    $ref: '#/components/schemas/Error'
+                    example:
+                        id: 05fc9c8d-73b9-4697-9337-57f7a567a48f
+                        status: "401"
+                        title: You are not authorised to access this resource
+                        detail: In order to access this resource, you need the 'admin' role.
+                        code: AUTH.001
+        Forbidden:
+            description: The authenticated principal does not hold the grant required for this action
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        properties:
+                            errors:
+                                type: array
+                                items:
+                                    $ref: '#/components/schemas/Error'
+                    example:
+                        errors:
+                            - id: 1b3f2c30-2d56-4d3a-9c44-9be9c2cbf2f0
+                              status: "403"
+                              title: Forbidden
+                              detail: You do not hold the grant required for this action.
+                              code: AUTH.002
+        InternalServerError:
+            description: There was a problem handling the request on the server side
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        properties:
+                            errors:
+                                type: array
+                                items:
+                                    $ref: '#/components/schemas/Error'
+                    example:
+                        id: fe9d9a69-f0a7-4fdc-bb2c-176027f316c5
+                        status: "500"
+                        title: Internal Server Error
+                        detail: An unexpected error occurred on the server.
+        GetServiceAccount:
+            description: Get a Service Account.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    $ref: '#/components/schemas/ServiceAccount'
+                            - $ref: '#/components/schemas/JSONAPI'
         BadRequest:
             description: |
                 There was an error with the request - this could be due to an invalid body, query parameters,
@@ -26480,54 +26465,6 @@ components:
                             parameter: include
                         meta:
                             resource: wrong_value
-        Unauthorised:
-            description: Authentication failed
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        type: object
-                        properties:
-                            errors:
-                                type: array
-                                items:
-                                    $ref: '#/components/schemas/Error'
-                    example:
-                        id: 05fc9c8d-73b9-4697-9337-57f7a567a48f
-                        status: "401"
-                        title: You are not authorised to access this resource
-                        detail: In order to access this resource, you need the 'admin' role.
-                        code: AUTH.001
-        NotFound:
-            description: The requested resource could not be found
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        type: object
-                        properties:
-                            errors:
-                                type: array
-                                items:
-                                    $ref: '#/components/schemas/Error'
-                    example:
-                        id: 7b4c8f12-3e9a-4d5b-8c6f-1a2b3c4d5e6f
-                        status: "404"
-                        title: Resource not found
-                        detail: The requested resource could not be found or does not exist.
-                        code: NOT_FOUND.001
         Conflict:
             description: The request conflicts with the current state of the resource
             headers:
@@ -26552,8 +26489,8 @@ components:
                         title: Conflict
                         detail: The request conflicts with the current state of the resource.
                         code: CONFLICT.001
-        InternalServerError:
-            description: There was a problem handling the request on the server side
+        NotFound:
+            description: The requested resource could not be found
             headers:
                 Content-Type:
                     $ref: '#/components/headers/content-type'
@@ -26571,99 +26508,11 @@ components:
                                 items:
                                     $ref: '#/components/schemas/Error'
                     example:
-                        id: fe9d9a69-f0a7-4fdc-bb2c-176027f316c5
-                        status: "500"
-                        title: Internal Server Error
-                        detail: An unexpected error occurred on the server.
-        GetIdentity:
-            description: Get a login identity.
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        allOf:
-                            - type: object
-                              required:
-                                - data
-                              properties:
-                                data:
-                                    $ref: '#/components/schemas/Identity'
-                            - $ref: '#/components/schemas/JSONAPI'
-        ListServiceAccounts:
-            description: Get a list of Service Accounts.
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        allOf:
-                            - type: object
-                              required:
-                                - data
-                              properties:
-                                data:
-                                    title: A list of service accounts
-                                    type: array
-                                    items:
-                                        $ref: '#/components/schemas/ServiceAccount'
-                            - $ref: '#/components/schemas/DocumentMeta'
-                            - $ref: '#/components/schemas/JSONAPI'
-        Forbidden:
-            description: The authenticated principal does not hold the grant required for this action
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        type: object
-                        properties:
-                            errors:
-                                type: array
-                                items:
-                                    $ref: '#/components/schemas/Error'
-                    example:
-                        errors:
-                            - id: 1b3f2c30-2d56-4d3a-9c44-9be9c2cbf2f0
-                              status: "403"
-                              title: Forbidden
-                              detail: You do not hold the grant required for this action.
-                              code: AUTH.002
-        GetServiceAccount:
-            description: Get a Service Account.
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        allOf:
-                            - type: object
-                              required:
-                                - data
-                              properties:
-                                data:
-                                    $ref: '#/components/schemas/ServiceAccount'
-                            - $ref: '#/components/schemas/JSONAPI'
+                        id: 7b4c8f12-3e9a-4d5b-8c6f-1a2b3c4d5e6f
+                        status: "404"
+                        title: Resource not found
+                        detail: The requested resource could not be found or does not exist.
+                        code: NOT_FOUND.001
         GetServiceAccountKey:
             description: Get a Service Account Key.
             headers:
@@ -35257,26 +35106,6 @@ components:
                             - $ref: '#/components/schemas/JSONAPI'
                             - $ref: '#/components/schemas/DocumentMeta'
     parameters:
-        identity_id:
-            name: identity_id
-            in: path
-            required: true
-            description: The unique identifier of the login identity, as the identity provider holds it.
-            schema:
-                type: string
-                format: uuid
-            example: 9d1f3a52-6c0e-4b7a-8f21-3e4d5c6b7a80
-        identity_email:
-            name: email
-            in: query
-            description: The email address of the person whose login to look up. It is matched exactly.
-            required: true
-            schema:
-                type: string
-                minLength: 3
-                maxLength: 254
-                examples:
-                    - someone@example.com
         limit:
             name: limit
             in: query
@@ -45766,6 +45595,7 @@ components:
                                                 items:
                                                     type: object
                                                     additionalProperties: true
+                                                    x-go-type: json.RawMessage
                                             date_range:
                                                 type:
                                                     - object
@@ -45833,12 +45663,12 @@ components:
                                     attributes:
                                         type: object
                                         required:
-                                            - scope
                                             - name
                                             - cards
                                         properties:
                                             scope:
                                                 type: string
+                                                description: Ignored. A dashboard keeps the scope it was created with.
                                             name:
                                                 type: string
                                             order:
@@ -45849,6 +45679,7 @@ components:
                                                 items:
                                                     type: object
                                                     additionalProperties: true
+                                                    x-go-type: json.RawMessage
                                             date_range:
                                                 type:
                                                     - object
@@ -47421,97 +47252,6 @@ components:
                                                 properties:
                                                     data:
                                                         $ref: '#/components/schemas/PreConstructionInformationRelationship'
-        CreateFeatureConfiguration:
-            required: true
-            description: The feature configuration to create.
-            content:
-                application/vnd.api+json:
-                    schema:
-                        type: object
-                        required:
-                            - data
-                        properties:
-                            data:
-                                type: object
-                                required:
-                                    - type
-                                    - attributes
-                                    - relationships
-                                properties:
-                                    type:
-                                        type: string
-                                        const: feature-configurations
-                                    attributes:
-                                        type: object
-                                        required:
-                                            - domain
-                                            - component
-                                            - enabled
-                                        properties:
-                                            domain:
-                                                type: string
-                                                description: The domain the feature belongs to.
-                                                examples:
-                                                    - data-capture
-                                            component:
-                                                type: string
-                                                description: The component the feature applies to.
-                                                examples:
-                                                    - insights
-                                            enabled:
-                                                type: boolean
-                                                description: Whether the feature is enabled.
-                                    relationships:
-                                        type: object
-                                        required:
-                                            - organisation
-                                        properties:
-                                            organisation:
-                                                type: object
-                                                required:
-                                                    - data
-                                                properties:
-                                                    data:
-                                                        $ref: '#/components/schemas/OrganisationRelationship'
-        UpdateFeatureConfiguration:
-            required: true
-            description: The feature configuration to update.
-            content:
-                application/vnd.api+json:
-                    schema:
-                        type: object
-                        required:
-                            - data
-                        properties:
-                            data:
-                                type: object
-                                required:
-                                    - id
-                                    - type
-                                properties:
-                                    id:
-                                        type: string
-                                        format: uuid
-                                        description: The unique identifier of the feature configuration.
-                                    type:
-                                        type: string
-                                        const: feature-configurations
-                                    attributes:
-                                        type: object
-                                        properties:
-                                            domain:
-                                                type: string
-                                                description: The domain the feature belongs to.
-                                                examples:
-                                                    - data-capture
-                                            component:
-                                                type: string
-                                                description: The component the feature applies to.
-                                                examples:
-                                                    - insights
-                                            enabled:
-                                                type: boolean
-                                                description: Whether the feature is enabled.
         CreateFolder:
             required: true
             description: The folder to create.
@@ -60457,128 +60197,6 @@ info:
     version: 1.0.0
 openapi: 3.1.0
 paths:
-    /admin/v3/identities/{identity_id}:
-        delete:
-            description: |
-                Deletes a login identity from the identity provider, with its credentials and sessions, and records an audit
-                event naming the caller and the identity. The event is filed under no organisation, as the audit events of system
-                service accounts are, so it is not found under the system organisation. Requires `identities:delete`, which the
-                Admin Editor role holds.
-
-                It is refused with a 409 while any user holds the identity: deleting it would stop that user signing in. It is
-                for a leftover identity that no user holds. A 404 means the identity provider holds no such identity.
-            operationId: DeleteIdentity
-            parameters:
-                - $ref: '#/components/parameters/identity_id'
-            responses:
-                "204":
-                    description: The identity was deleted.
-                "400":
-                    $ref: '#/components/responses/BadRequest'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "404":
-                    $ref: '#/components/responses/NotFound'
-                "409":
-                    $ref: '#/components/responses/Conflict'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - OAuth2: []
-                - Cookie: []
-            summary: Delete a login identity
-            tags:
-                - Identities
-            x-excluded: true
-            x-mint:
-                metadata:
-                    title: Delete a login identity
-        get:
-            description: |
-                Reads one login identity by id, with the Polis directory user and the user in this API for its email, in the
-                same shape as the lookup by email. Requires `identities:view`.
-
-                A 404 means neither the identity provider nor a user holds the id. An id that only a user holds is
-                `user_only`. `included` is absent: the resource has no relationships.
-            operationId: GetIdentity
-            parameters:
-                - $ref: '#/components/parameters/identity_id'
-            responses:
-                "200":
-                    $ref: '#/components/responses/GetIdentity'
-                "400":
-                    $ref: '#/components/responses/BadRequest'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "404":
-                    $ref: '#/components/responses/NotFound'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - OAuth2: []
-                - Cookie: []
-            summary: Get a login identity
-            tags:
-                - Identities
-            x-excluded: true
-            x-mint:
-                metadata:
-                    title: Get a login identity
-    /admin/v3/identity-lookups:
-        get:
-            description: |
-                Looks up one person's login by email address, in the identity provider, in Polis and among this API's users.
-                Requires `identities:view`, which the Admin Viewer and Admin Editor roles hold.
-
-                The `email` is matched exactly, as the identity provider matches a login identifier. A 404 means neither the
-                identity provider nor a user holds the email.
-
-                An identity that signs in only through single sign-on has no email among its login identifiers, so the identity
-                provider cannot find it by email. It is found through the user that holds it. An identity like that which no user
-                holds cannot be found by email, and is read with `GET /admin/v3/identities/{id}` when its id is known.
-
-                The `state` attribute says which records exist:
-
-                - `healthy`: an identity, held by a user
-                - `identity_only`: an identity that no user holds, which can be deleted
-                - `user_only`: a user, and no identity
-
-                The `id` is the identity provider's identity id, or the id of the identity the user holds when the identity
-                provider has none.
-
-                The Polis part is `unavailable` when Polis could not be asked, which says nothing about whether the person is
-                listed. It is `no_sso_provider` when no SSO provider claims the email's domain, and Polis is not asked then.
-                The rest of the lookup is returned either way. An email that only Polis lists is a 404.
-
-                No credential, directory secret or Polis raw record is ever returned. `included` is absent: the resource has
-                no relationships.
-            operationId: LookupIdentity
-            parameters:
-                - $ref: '#/components/parameters/identity_email'
-            responses:
-                "200":
-                    $ref: '#/components/responses/GetIdentity'
-                "400":
-                    $ref: '#/components/responses/BadRequest'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "404":
-                    $ref: '#/components/responses/NotFound'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - OAuth2: []
-                - Cookie: []
-            summary: Look up a login identity by email
-            tags:
-                - Identities
-            x-excluded: true
-            x-mint:
-                metadata:
-                    title: Look up a login identity
     /admin/v3/service-accounts:
         get:
             description: |
@@ -64577,8 +64195,6 @@ paths:
                 - Cookie: []
             tags:
                 - Dashboards
-            x-ctrl-hub:
-                domain: dashboards
             x-mint:
                 metadata:
                     title: List dashboards
@@ -64603,8 +64219,6 @@ paths:
             summary: Create a new dashboard
             tags:
                 - Dashboards
-            x-ctrl-hub:
-                domain: dashboards
             x-mint:
                 metadata:
                     title: Create a dashboard
@@ -64632,8 +64246,6 @@ paths:
             summary: Delete a dashboard
             tags:
                 - Dashboards
-            x-ctrl-hub:
-                domain: dashboards
             x-mint:
                 metadata:
                     title: Delete a dashboard
@@ -64659,8 +64271,6 @@ paths:
                 - Cookie: []
             tags:
                 - Dashboards
-            x-ctrl-hub:
-                domain: dashboards
             x-mint:
                 metadata:
                     title: Get a dashboard
@@ -64689,8 +64299,6 @@ paths:
             summary: Update an existing dashboard
             tags:
                 - Dashboards
-            x-ctrl-hub:
-                domain: dashboards
             x-mint:
                 metadata:
                     title: Update a dashboard
@@ -67334,67 +66942,7 @@ paths:
             x-mint:
                 metadata:
                     title: List feature configurations
-        post:
-            description: Create a new feature configuration.
-            operationId: CreateFeatureConfiguration
-            requestBody:
-                $ref: '#/components/requestBodies/CreateFeatureConfiguration'
-            responses:
-                "201":
-                    $ref: '#/components/responses/GetFeatureConfiguration'
-                "400":
-                    $ref: '#/components/responses/BadRequest'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "409":
-                    $ref: '#/components/responses/Conflict'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - OAuth2: []
-                - Cookie: []
-            summary: Create a new feature configuration
-            tags:
-                - Feature Configurations
-            x-ctrl-hub:
-                domain: iam
-                domainLiteral: IAM
-            x-mint:
-                metadata:
-                    title: Create a feature configuration
     /v3/feature-configurations/{feature_configuration_id}:
-        delete:
-            description: Delete a feature configuration.
-            operationId: DeleteFeatureConfiguration
-            parameters:
-                - $ref: '#/components/parameters/feature_configuration_id'
-            responses:
-                "204":
-                    description: Feature configuration deleted successfully.
-                "400":
-                    $ref: '#/components/responses/BadRequest'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "404":
-                    $ref: '#/components/responses/NotFound'
-                "409":
-                    $ref: '#/components/responses/Conflict'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - OAuth2: []
-                - Cookie: []
-            summary: Delete a feature configuration
-            tags:
-                - Feature Configurations
-            x-ctrl-hub:
-                domain: iam
-                domainLiteral: IAM
-            x-mint:
-                metadata:
-                    title: Delete a feature configuration
         get:
             description: Get an individual feature configuration by id.
             operationId: GetFeatureConfiguration
@@ -67423,37 +66971,6 @@ paths:
             x-mint:
                 metadata:
                     title: Get a feature configuration
-        put:
-            description: Update an existing feature configuration.
-            operationId: UpdateFeatureConfiguration
-            parameters:
-                - $ref: '#/components/parameters/feature_configuration_id'
-            requestBody:
-                $ref: '#/components/requestBodies/UpdateFeatureConfiguration'
-            responses:
-                "200":
-                    $ref: '#/components/responses/GetFeatureConfiguration'
-                "400":
-                    $ref: '#/components/responses/BadRequest'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "404":
-                    $ref: '#/components/responses/NotFound'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - OAuth2: []
-                - Cookie: []
-            summary: Update an existing feature configuration
-            tags:
-                - Feature Configurations
-            x-ctrl-hub:
-                domain: iam
-                domainLiteral: IAM
-            x-mint:
-                metadata:
-                    title: Update a feature configuration
     /v3/features:
         get:
             description: Retrieve a list of registered features
@@ -84138,10 +83655,6 @@ tags:
     - description: |
         IAM role groups can be assigned to principals to manage authorisation centrally.
       name: IAM Role Groups
-    - description: |
-        Platform administrators look up the login identity held by the identity provider for an email address,
-        with the Polis directory user and the user in this API, and delete an identity that no user holds.
-      name: Identities
     - description: |
         Manage service accounts which can access the API programmatically.
       name: Service Accounts
