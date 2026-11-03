@@ -3403,6 +3403,9 @@ components:
                             type: string
                             description: The client user agent
                     description: Additional context about the request
+                reason:
+                    type: string
+                    description: Why the change was made. Present only on a change that requires a reason.
         AuditEventMeta:
             type: object
             description: Metadata for an audit event
