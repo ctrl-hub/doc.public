@@ -42610,104 +42610,6 @@ components:
                                                                     type: string
                                                                     format: uuid
                                                             - type: "null"
-        CreateAgentTemplate:
-            required: true
-            description: The agent template to create.
-            content:
-                application/vnd.api+json:
-                    schema:
-                        type: object
-                        required:
-                            - data
-                        properties:
-                            data:
-                                type: object
-                                required:
-                                    - type
-                                    - attributes
-                                properties:
-                                    type:
-                                        type: string
-                                        const: agent-templates
-                                    attributes:
-                                        type: object
-                                        required:
-                                            - name
-                                            - role
-                                        properties:
-                                            name:
-                                                type: string
-                                                description: The display name of the template.
-                                            role:
-                                                type: string
-                                                description: The functional role this template defines.
-                                            persona:
-                                                type: string
-                                                description: The system prompt text.
-                                            suggested_tools:
-                                                type: array
-                                                items:
-                                                    type: string
-                                                description: List of suggested tool identifiers.
-                                            description:
-                                                type: string
-                                                description: A human-readable description of this template.
-                                            status:
-                                                type: string
-                                                enum:
-                                                    - draft
-                                                    - published
-                                                description: Whether this template is available for use.
-        UpdateAgentTemplate:
-            required: true
-            description: The agent template to update.
-            content:
-                application/vnd.api+json:
-                    schema:
-                        type: object
-                        required:
-                            - data
-                        properties:
-                            data:
-                                type: object
-                                required:
-                                    - type
-                                    - id
-                                    - attributes
-                                properties:
-                                    id:
-                                        type: string
-                                        format: uuid
-                                        description: The ID of the agent template to update.
-                                    type:
-                                        type: string
-                                        const: agent-templates
-                                    attributes:
-                                        type: object
-                                        properties:
-                                            name:
-                                                type: string
-                                                description: The display name of the template.
-                                            role:
-                                                type: string
-                                                description: The functional role this template defines.
-                                            persona:
-                                                type: string
-                                                description: The system prompt text.
-                                            suggested_tools:
-                                                type: array
-                                                items:
-                                                    type: string
-                                                description: List of suggested tool identifiers.
-                                            description:
-                                                type: string
-                                                description: A human-readable description of this template.
-                                            status:
-                                                type: string
-                                                enum:
-                                                    - draft
-                                                    - published
-                                                description: Whether this template is available for use.
         CreateAgent:
             required: true
             description: The agent to create.
@@ -60393,32 +60295,6 @@ paths:
             x-mint:
                 metadata:
                     title: List agent templates
-        post:
-            description: Create a new AI agent template.
-            operationId: CreateAgentTemplate
-            requestBody:
-                $ref: '#/components/requestBodies/CreateAgentTemplate'
-            responses:
-                "201":
-                    $ref: '#/components/responses/GetAgentTemplate'
-                "400":
-                    $ref: '#/components/responses/BadRequest'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - Cookie: []
-                - OAuth2: []
-            summary: Create a new agent template
-            tags:
-                - Agent Templates
-            x-ctrl-hub:
-                domain: plane
-            x-mint:
-                metadata:
-                    title: Create an agent template
     /v3/agent-templates/{agent_template_id}:
         get:
             description: Retrieve a specific agent template by its unique identifier.
@@ -60447,36 +60323,6 @@ paths:
             x-mint:
                 metadata:
                     title: Get an agent template
-        patch:
-            description: Update an existing AI agent template.
-            operationId: UpdateAgentTemplate
-            parameters:
-                - $ref: '#/components/parameters/agent_template_id'
-            requestBody:
-                $ref: '#/components/requestBodies/UpdateAgentTemplate'
-            responses:
-                "200":
-                    $ref: '#/components/responses/GetAgentTemplate'
-                "400":
-                    $ref: '#/components/responses/BadRequest'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "404":
-                    $ref: '#/components/responses/NotFound'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - Cookie: []
-                - OAuth2: []
-            summary: Update an agent template
-            tags:
-                - Agent Templates
-            x-ctrl-hub:
-                domain: plane
-            x-mint:
-                metadata:
-                    title: Update an agent template
     /v3/agents:
         get:
             description: Retrieve a list of agents for the given organisation.
