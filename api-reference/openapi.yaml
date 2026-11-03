@@ -3403,6 +3403,9 @@ components:
                             type: string
                             description: The client user agent
                     description: Additional context about the request
+                reason:
+                    type: string
+                    description: Why the change was made. Present only on a change that requires a reason.
         AuditEventMeta:
             type: object
             description: Metadata for an audit event
@@ -14967,16 +14970,19 @@ components:
                         - 100 - 180 mm
                 range_low:
                     type: number
+                    format: double
                     description: The lower bound of the observed vibration magnitude range (m/s²).
                     examples:
                         - 3
                 range_high:
                     type: number
+                    format: double
                     description: The upper bound of the observed vibration magnitude range (m/s²).
                     examples:
                         - 10
                 recommended_initial:
                     type: number
+                    format: double
                     description: The recommended initial value (m/s²) to use for risk assessment when no measured data is available.
                     examples:
                         - 7
@@ -48707,106 +48713,6 @@ components:
                                             expires_at:
                                                 type: string
                                                 format: date-time
-        CreateHavsEquipment:
-            required: true
-            description: The HAVS equipment record to create.
-            content:
-                application/vnd.api+json:
-                    schema:
-                        type: object
-                        required:
-                            - data
-                        properties:
-                            data:
-                                type: object
-                                required:
-                                    - type
-                                    - attributes
-                                properties:
-                                    type:
-                                        type: string
-                                        const: havs-equipment
-                                    attributes:
-                                        type: object
-                                        required:
-                                            - tool_type
-                                            - range_low
-                                            - range_high
-                                            - recommended_initial
-                                        properties:
-                                            tool_type:
-                                                type: string
-                                                minLength: 1
-                                                examples:
-                                                    - Grinders - Angle
-                                            characteristic:
-                                                type: string
-                                                examples:
-                                                    - 100 - 180 mm
-                                            range_low:
-                                                type: number
-                                                examples:
-                                                    - 3
-                                            range_high:
-                                                type: number
-                                                examples:
-                                                    - 10
-                                            recommended_initial:
-                                                type: number
-                                                examples:
-                                                    - 7
-        UpdateHavsEquipment:
-            required: true
-            description: The HAVS equipment record to update.
-            content:
-                application/vnd.api+json:
-                    schema:
-                        type: object
-                        required:
-                            - data
-                        properties:
-                            data:
-                                type: object
-                                required:
-                                    - type
-                                    - id
-                                    - attributes
-                                properties:
-                                    id:
-                                        type: string
-                                        format: uuid
-                                    type:
-                                        type: string
-                                        const: havs-equipment
-                                    attributes:
-                                        type: object
-                                        required:
-                                            - tool_type
-                                            - range_low
-                                            - range_high
-                                            - recommended_initial
-                                        properties:
-                                            tool_type:
-                                                type: string
-                                                minLength: 1
-                                                examples:
-                                                    - Grinders - Angle
-                                            characteristic:
-                                                type: string
-                                                examples:
-                                                    - 100 - 180 mm
-                                            range_low:
-                                                type: number
-                                                examples:
-                                                    - 3
-                                            range_high:
-                                                type: number
-                                                examples:
-                                                    - 10
-                                            recommended_initial:
-                                                type: number
-                                                examples:
-                                                    - 7
         CreateHavsExposure:
             required: true
             description: The HAVS exposure to record.
@@ -68918,63 +68824,7 @@ paths:
             x-mint:
                 metadata:
                     title: List HAVS equipment
-        post:
-            description: Create a new HAVS equipment reference record.
-            operationId: CreateHavsEquipment
-            requestBody:
-                $ref: '#/components/requestBodies/CreateHavsEquipment'
-            responses:
-                "201":
-                    $ref: '#/components/responses/GetHavsEquipment'
-                "400":
-                    $ref: '#/components/responses/BadRequest'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "409":
-                    $ref: '#/components/responses/Conflict'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - Cookie: []
-                - OAuth2: []
-            summary: Create a new HAVS equipment record
-            tags:
-                - Equipment
-            x-ctrl-hub:
-                domain: equipment
-            x-mint:
-                metadata:
-                    title: Create a HAVS equipment
     /v3/havs-equipment/{havs_equipment_id}:
-        delete:
-            description: Delete a HAVS equipment reference record.
-            operationId: DeleteHavsEquipment
-            parameters:
-                - $ref: '#/components/parameters/havs_equipment_id'
-            responses:
-                "204":
-                    description: HAVS equipment record deleted successfully.
-                "400":
-                    $ref: '#/components/responses/BadRequest'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "404":
-                    $ref: '#/components/responses/NotFound'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - Cookie: []
-                - OAuth2: []
-            summary: Delete a HAVS equipment record
-            tags:
-                - Equipment
-            x-ctrl-hub:
-                domain: equipment
-            x-mint:
-                metadata:
-                    title: Delete a HAVS equipment
         get:
             description: Retrieve a specific HAVS equipment reference record by its unique identifier.
             operationId: GetHavsEquipment
@@ -69002,38 +68852,6 @@ paths:
             x-mint:
                 metadata:
                     title: Get a HAVS equipment
-        put:
-            description: Replace a HAVS equipment reference record.
-            operationId: UpdateHavsEquipment
-            parameters:
-                - $ref: '#/components/parameters/havs_equipment_id'
-            requestBody:
-                $ref: '#/components/requestBodies/UpdateHavsEquipment'
-            responses:
-                "200":
-                    $ref: '#/components/responses/GetHavsEquipment'
-                "400":
-                    $ref: '#/components/responses/BadRequest'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "404":
-                    $ref: '#/components/responses/NotFound'
-                "409":
-                    $ref: '#/components/responses/Conflict'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - Cookie: []
-                - OAuth2: []
-            summary: Update a HAVS equipment record
-            tags:
-                - Equipment
-            x-ctrl-hub:
-                domain: equipment
-            x-mint:
-                metadata:
-                    title: Update a HAVS equipment
     /v3/havs-exposures:
         get:
             description: Retrieve a list of hand-arm vibration exposure records. Filter by person with `?filter=eq(subject,xxx)`, and by period with `ge` and `le` on `start_time` and `end_time`.
