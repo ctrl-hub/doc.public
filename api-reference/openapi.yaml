@@ -9088,10 +9088,13 @@ components:
                     const: dashboards
                 attributes:
                     $ref: '#/components/schemas/DashboardAttributes'
+                meta:
+                    $ref: '#/components/schemas/DashboardMeta'
         DashboardAttributes:
             type: object
             required:
                 - scope
+                - shared
                 - name
                 - order
                 - cards
@@ -9124,6 +9127,7 @@ components:
                     items:
                         type: object
                         additionalProperties: true
+                        x-go-type: json.RawMessage
                 date_range:
                     type:
                         - object
@@ -9151,16 +9155,24 @@ components:
                             description: Operator parameters (e.g. `["30"]` for last_n_days, or the two bounds for between). Cardinality is validated at run time.
                             items:
                                 type: string
+        DashboardMeta:
+            type: object
+            description: Meta information for a dashboard
+            properties:
                 created_at:
                     type: string
                     format: date-time
                     description: When the dashboard was created.
                     readOnly: true
+                    examples:
+                        - 2025-07-16T12:42:40Z
                 updated_at:
                     type: string
                     format: date-time
                     description: When the dashboard was last updated.
                     readOnly: true
+                    examples:
+                        - 2025-07-16T12:42:44Z
         DeviceBackup:
             type: object
             description: |
@@ -12228,6 +12240,10 @@ components:
                     const: feature-configurations
                 attributes:
                     type: object
+                    required:
+                        - domain
+                        - component
+                        - enabled
                     properties:
                         domain:
                             type: string
@@ -45766,6 +45782,7 @@ components:
                                                 items:
                                                     type: object
                                                     additionalProperties: true
+                                                    x-go-type: json.RawMessage
                                             date_range:
                                                 type:
                                                     - object
@@ -45833,12 +45850,12 @@ components:
                                     attributes:
                                         type: object
                                         required:
-                                            - scope
                                             - name
                                             - cards
                                         properties:
                                             scope:
                                                 type: string
+                                                description: Ignored. A dashboard keeps the scope it was created with.
                                             name:
                                                 type: string
                                             order:
@@ -45849,6 +45866,7 @@ components:
                                                 items:
                                                     type: object
                                                     additionalProperties: true
+                                                    x-go-type: json.RawMessage
                                             date_range:
                                                 type:
                                                     - object
@@ -47421,97 +47439,6 @@ components:
                                                 properties:
                                                     data:
                                                         $ref: '#/components/schemas/PreConstructionInformationRelationship'
-        CreateFeatureConfiguration:
-            required: true
-            description: The feature configuration to create.
-            content:
-                application/vnd.api+json:
-                    schema:
-                        type: object
-                        required:
-                            - data
-                        properties:
-                            data:
-                                type: object
-                                required:
-                                    - type
-                                    - attributes
-                                    - relationships
-                                properties:
-                                    type:
-                                        type: string
-                                        const: feature-configurations
-                                    attributes:
-                                        type: object
-                                        required:
-                                            - domain
-                                            - component
-                                            - enabled
-                                        properties:
-                                            domain:
-                                                type: string
-                                                description: The domain the feature belongs to.
-                                                examples:
-                                                    - data-capture
-                                            component:
-                                                type: string
-                                                description: The component the feature applies to.
-                                                examples:
-                                                    - insights
-                                            enabled:
-                                                type: boolean
-                                                description: Whether the feature is enabled.
-                                    relationships:
-                                        type: object
-                                        required:
-                                            - organisation
-                                        properties:
-                                            organisation:
-                                                type: object
-                                                required:
-                                                    - data
-                                                properties:
-                                                    data:
-                                                        $ref: '#/components/schemas/OrganisationRelationship'
-        UpdateFeatureConfiguration:
-            required: true
-            description: The feature configuration to update.
-            content:
-                application/vnd.api+json:
-                    schema:
-                        type: object
-                        required:
-                            - data
-                        properties:
-                            data:
-                                type: object
-                                required:
-                                    - id
-                                    - type
-                                properties:
-                                    id:
-                                        type: string
-                                        format: uuid
-                                        description: The unique identifier of the feature configuration.
-                                    type:
-                                        type: string
-                                        const: feature-configurations
-                                    attributes:
-                                        type: object
-                                        properties:
-                                            domain:
-                                                type: string
-                                                description: The domain the feature belongs to.
-                                                examples:
-                                                    - data-capture
-                                            component:
-                                                type: string
-                                                description: The component the feature applies to.
-                                                examples:
-                                                    - insights
-                                            enabled:
-                                                type: boolean
-                                                description: Whether the feature is enabled.
         CreateFolder:
             required: true
             description: The folder to create.
@@ -64577,8 +64504,6 @@ paths:
                 - Cookie: []
             tags:
                 - Dashboards
-            x-ctrl-hub:
-                domain: dashboards
             x-mint:
                 metadata:
                     title: List dashboards
@@ -64603,8 +64528,6 @@ paths:
             summary: Create a new dashboard
             tags:
                 - Dashboards
-            x-ctrl-hub:
-                domain: dashboards
             x-mint:
                 metadata:
                     title: Create a dashboard
@@ -64632,8 +64555,6 @@ paths:
             summary: Delete a dashboard
             tags:
                 - Dashboards
-            x-ctrl-hub:
-                domain: dashboards
             x-mint:
                 metadata:
                     title: Delete a dashboard
@@ -64659,8 +64580,6 @@ paths:
                 - Cookie: []
             tags:
                 - Dashboards
-            x-ctrl-hub:
-                domain: dashboards
             x-mint:
                 metadata:
                     title: Get a dashboard
@@ -64689,8 +64608,6 @@ paths:
             summary: Update an existing dashboard
             tags:
                 - Dashboards
-            x-ctrl-hub:
-                domain: dashboards
             x-mint:
                 metadata:
                     title: Update a dashboard
@@ -67334,67 +67251,7 @@ paths:
             x-mint:
                 metadata:
                     title: List feature configurations
-        post:
-            description: Create a new feature configuration.
-            operationId: CreateFeatureConfiguration
-            requestBody:
-                $ref: '#/components/requestBodies/CreateFeatureConfiguration'
-            responses:
-                "201":
-                    $ref: '#/components/responses/GetFeatureConfiguration'
-                "400":
-                    $ref: '#/components/responses/BadRequest'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "409":
-                    $ref: '#/components/responses/Conflict'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - OAuth2: []
-                - Cookie: []
-            summary: Create a new feature configuration
-            tags:
-                - Feature Configurations
-            x-ctrl-hub:
-                domain: iam
-                domainLiteral: IAM
-            x-mint:
-                metadata:
-                    title: Create a feature configuration
     /v3/feature-configurations/{feature_configuration_id}:
-        delete:
-            description: Delete a feature configuration.
-            operationId: DeleteFeatureConfiguration
-            parameters:
-                - $ref: '#/components/parameters/feature_configuration_id'
-            responses:
-                "204":
-                    description: Feature configuration deleted successfully.
-                "400":
-                    $ref: '#/components/responses/BadRequest'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "404":
-                    $ref: '#/components/responses/NotFound'
-                "409":
-                    $ref: '#/components/responses/Conflict'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - OAuth2: []
-                - Cookie: []
-            summary: Delete a feature configuration
-            tags:
-                - Feature Configurations
-            x-ctrl-hub:
-                domain: iam
-                domainLiteral: IAM
-            x-mint:
-                metadata:
-                    title: Delete a feature configuration
         get:
             description: Get an individual feature configuration by id.
             operationId: GetFeatureConfiguration
@@ -67423,37 +67280,6 @@ paths:
             x-mint:
                 metadata:
                     title: Get a feature configuration
-        put:
-            description: Update an existing feature configuration.
-            operationId: UpdateFeatureConfiguration
-            parameters:
-                - $ref: '#/components/parameters/feature_configuration_id'
-            requestBody:
-                $ref: '#/components/requestBodies/UpdateFeatureConfiguration'
-            responses:
-                "200":
-                    $ref: '#/components/responses/GetFeatureConfiguration'
-                "400":
-                    $ref: '#/components/responses/BadRequest'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "404":
-                    $ref: '#/components/responses/NotFound'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - OAuth2: []
-                - Cookie: []
-            summary: Update an existing feature configuration
-            tags:
-                - Feature Configurations
-            x-ctrl-hub:
-                domain: iam
-                domainLiteral: IAM
-            x-mint:
-                metadata:
-                    title: Update a feature configuration
     /v3/features:
         get:
             description: Retrieve a list of registered features
