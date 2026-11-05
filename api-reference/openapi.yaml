@@ -18913,620 +18913,6 @@ components:
                     properties:
                         data:
                             $ref: '#/components/schemas/OrganisationRelationship'
-        StandardMapping:
-            type: object
-            description: How one of an organisation's forms answers a performance standard. Saving it generates a saved query over the form that reads the mapped answers.
-            required:
-                - id
-                - type
-                - attributes
-            properties:
-                id:
-                    type: string
-                    format: uuid
-                    description: The unique identifier of the standard mapping.
-                type:
-                    type: string
-                    const: standard-mappings
-                attributes:
-                    $ref: '#/components/schemas/StandardMappingAttributes'
-                meta:
-                    $ref: '#/components/schemas/StandardMappingMeta'
-        StandardMappingAttributes:
-            type: object
-            required:
-                - standard
-                - form_id
-                - inputs
-                - query_id
-            properties:
-                standard:
-                    type: string
-                    description: The key of the standard, such as `gsop-3`.
-                form_id:
-                    type: string
-                    format: uuid
-                    description: The form whose submissions answer the standard.
-                inputs:
-                    type: object
-                    description: Maps each of the standard's input keys to the query key that answers it. A key is a form field ID, or `<field id>.property_psr` for the Priority Services Register status of the property or operation a field references, as recorded when the submission arrived. A listed input may be left out.
-                    additionalProperties:
-                        type: string
-                yes_options:
-                    type: object
-                    description: For a yes or no input mapped to a choice field, the option that means yes, keyed by input key. Any other option means no. An input mapped to a boolean field takes none.
-                    additionalProperties:
-                        type: string
-                nation:
-                    type: string
-                    description: Whose bank holidays a rule counts working days against. Absent when the mapping takes the standard's default.
-                    enum:
-                        - england-and-wales
-                        - scotland
-                        - northern-ireland
-                query_id:
-                    type: string
-                    format: uuid
-                    readOnly: true
-                    description: The saved query generated from the mapping. It is left out of the queries list, and changes only when the mapping does.
-        StandardMappingMeta:
-            type: object
-            description: Meta information for a standard mapping
-            properties:
-                created_at:
-                    type: string
-                    format: date-time
-                    description: When the mapping was created.
-                    readOnly: true
-                    examples:
-                        - 2026-11-03T12:42:40Z
-                updated_at:
-                    type: string
-                    format: date-time
-                    description: When the mapping was last changed.
-                    readOnly: true
-                    examples:
-                        - 2026-11-03T12:42:44Z
-        StandardPayment:
-            type: object
-            description: The payment record of one job under a standard mapping.
-            required:
-                - id
-                - type
-                - attributes
-            properties:
-                id:
-                    type: string
-                    format: uuid
-                    description: The unique identifier of the payment record.
-                type:
-                    type: string
-                    const: standard-payments
-                attributes:
-                    $ref: '#/components/schemas/StandardPaymentAttributes'
-                meta:
-                    $ref: '#/components/schemas/StandardPaymentMeta'
-        StandardPaymentAttributes:
-            type: object
-            description: Whether a payment was made for one job's breach of a standard. A paid record has a date and an amount, a record of no payment owed has a reason, and a pending or withdrawn record has neither. A note is allowed with any status. A withdrawn record was taken back, such as one recorded by mistake, and its job reads as having no record.
-            required:
-                - submission_id
-                - status
-            properties:
-                submission_id:
-                    type: string
-                    format: uuid
-                    readOnly: true
-                    description: The submission that is the job.
-                status:
-                    type: string
-                    description: Where the payment stands.
-                    enum:
-                        - paid
-                        - not_owed
-                        - pending
-                        - withdrawn
-                paid_on:
-                    type: string
-                    format: date
-                    description: The date the payment was made. Only a paid record has one.
-                    examples:
-                        - "2026-10-30"
-                amount:
-                    allOf:
-                        - $ref: '#/components/schemas/Money'
-                    description: The amount paid. Only a paid record has one, and it is more than zero.
-                reason:
-                    type: string
-                    maxLength: 1000
-                    description: Why no payment is owed. Only a record of no payment owed has one.
-                note:
-                    type: string
-                    maxLength: 1000
-                    description: Free text, such as a payment reference.
-        StandardPaymentMeta:
-            type: object
-            description: Meta information for a payment record
-            properties:
-                created_at:
-                    type: string
-                    format: date-time
-                    description: When the payment was first recorded for the job.
-                    readOnly: true
-                    examples:
-                        - 2026-11-03T12:42:40Z
-                updated_at:
-                    type: string
-                    format: date-time
-                    description: When the record was last changed.
-                    readOnly: true
-                    examples:
-                        - 2026-11-03T12:42:44Z
-        StandardPaymentHistory:
-            type: object
-            description: One change to a job's payment record under a standard mapping.
-            required:
-                - id
-                - type
-                - attributes
-            properties:
-                id:
-                    type: string
-                    format: uuid
-                    description: The unique identifier of the history entry.
-                type:
-                    type: string
-                    const: standard-payment-history
-                attributes:
-                    $ref: '#/components/schemas/StandardPaymentHistoryAttributes'
-        StandardPaymentHistoryAttributes:
-            type: object
-            description: What one change did to a job's payment record, and the record's fields as the change left them. A field the record did not hold after the change is absent.
-            required:
-                - standard_mapping_id
-                - submission_id
-                - payment_id
-                - operation
-                - status
-                - author
-                - created_at
-            properties:
-                standard_mapping_id:
-                    type: string
-                    format: uuid
-                    readOnly: true
-                    description: The standard mapping the record is under.
-                submission_id:
-                    type: string
-                    format: uuid
-                    readOnly: true
-                    description: The submission that is the job.
-                payment_id:
-                    type: string
-                    format: uuid
-                    readOnly: true
-                    description: The payment record that was changed.
-                operation:
-                    type: string
-                    description: What the change did. `created` is the job's first record, `updated` a change to it, and `withdrawn` a change that left it withdrawn.
-                    enum:
-                        - created
-                        - updated
-                        - withdrawn
-                status:
-                    type: string
-                    description: Where the payment stood after the change.
-                    enum:
-                        - paid
-                        - not_owed
-                        - pending
-                        - withdrawn
-                paid_on:
-                    type: string
-                    format: date
-                    description: The date the payment was made. Only a paid record has one.
-                    examples:
-                        - "2026-10-30"
-                amount:
-                    allOf:
-                        - $ref: '#/components/schemas/Money'
-                    description: The amount paid. Only a paid record has one.
-                reason:
-                    type: string
-                    description: Why no payment is owed. Only a record of no payment owed has one.
-                note:
-                    type: string
-                    description: Free text, such as a payment reference or why the record was withdrawn.
-                author:
-                    type: object
-                    description: Who made the change.
-                    required:
-                        - id
-                        - type
-                    properties:
-                        id:
-                            type: string
-                            format: uuid
-                        type:
-                            type: string
-                            description: The kind of principal, such as `users`.
-                created_at:
-                    type: string
-                    format: date-time
-                    description: When the change was made.
-                    examples:
-                        - 2026-11-03T12:42:44Z
-        StandardResults:
-            type: object
-            description: A standard's results over a period, read through one standard mapping. Its id is the mapping's.
-            required:
-                - id
-                - type
-                - attributes
-            properties:
-                id:
-                    type: string
-                    format: uuid
-                    description: The ID of the standard mapping the results were read through.
-                type:
-                    type: string
-                    const: standard-results
-                attributes:
-                    $ref: '#/components/schemas/StandardResultsAttributes'
-        StandardResultsAttributes:
-            type: object
-            required:
-                - standard
-                - bucket
-                - counts
-                - series
-                - jobs
-                - truncated
-                - payments_shown
-            properties:
-                standard:
-                    type: string
-                    description: The key of the standard, such as `gsop-3`.
-                bucket:
-                    type: string
-                    description: The length of the periods the series counts jobs in.
-                    enum:
-                        - day
-                        - week
-                        - month
-                        - quarter
-                        - year
-                truncated:
-                    type: boolean
-                    description: True when the period held more jobs than a run evaluates, so the results cover only some of them.
-                skipped:
-                    type: integer
-                    minimum: 0
-                    description: How many of the period's rows were left out because they had no usable submission id. They are in neither the jobs nor the counts. The results CSV export refuses a period with any.
-                counts:
-                    $ref: '#/components/schemas/StandardResultCounts'
-                series:
-                    type: array
-                    description: The counts per bucket, in order. Only a bucket with at least one job is listed, and a job with no period date is in none.
-                    items:
-                        type: object
-                        required:
-                            - start
-                            - counts
-                        properties:
-                            start:
-                                type: string
-                                format: date
-                                description: The first day of the bucket, in Europe/London.
-                                examples:
-                                    - "2026-07-13"
-                            counts:
-                                $ref: '#/components/schemas/StandardResultCounts'
-                jobs:
-                    type: array
-                    description: Each job's result, in order of its period date.
-                    items:
-                        $ref: '#/components/schemas/StandardResultJob'
-                payments_shown:
-                    type: boolean
-                    description: True when the jobs carry their payment records. A caller who views some forms' mappings only, as a contractor does, gets the results without payments.
-                expected_total:
-                    allOf:
-                        - $ref: '#/components/schemas/Money'
-                    description: The jobs' expected payments added up. Present only when the results show payments.
-                paid_total:
-                    allOf:
-                        - $ref: '#/components/schemas/Money'
-                    description: The amounts of the jobs' paid records added up, in GBP. Present only when the results show payments.
-        StandardResultCounts:
-            type: object
-            description: How many jobs had each result.
-            required:
-                - met
-                - breached
-                - exempt
-                - not_applicable
-                - incomplete
-            properties:
-                met:
-                    type: integer
-                breached:
-                    type: integer
-                exempt:
-                    type: integer
-                not_applicable:
-                    type: integer
-                incomplete:
-                    type: integer
-        StandardResultJob:
-            type: object
-            description: One job's result under a standard.
-            required:
-                - submission_id
-                - result
-                - reasons
-                - missing
-                - inputs
-            properties:
-                submission_id:
-                    type: string
-                    format: uuid
-                submitted_at:
-                    type: string
-                    format: date-time
-                    description: When the submission was recorded.
-                period_date:
-                    type: string
-                    format: date-time
-                    description: The value of the standard's period input. Absent when the job has none.
-                result:
-                    type: string
-                    enum:
-                        - met
-                        - breached
-                        - exempt
-                        - not_applicable
-                        - incomplete
-                reasons:
-                    type: array
-                    description: Why the job has its result, for a reader to check it.
-                    items:
-                        type: string
-                missing:
-                    type: array
-                    description: The inputs an incomplete result is waiting on.
-                    items:
-                        type: string
-                inputs:
-                    type: object
-                    description: The value of each input the job had, keyed by input key. A date is an RFC 3339 date-time, a yes or no answer a boolean, and a list of choices an array of strings. An input with no value is left out.
-                    additionalProperties: true
-                payment:
-                    allOf:
-                        - $ref: '#/components/schemas/StandardPaymentAttributes'
-                    description: The job's payment record. Absent when the job has none, or when the results do not show payments.
-                expected_payment:
-                    allOf:
-                        - $ref: '#/components/schemas/StandardExpectedPayment'
-                    description: The payment the job is predicted to owe. Absent when the job is not breached, or when the results do not show payments.
-        StandardExpectedPayment:
-            type: object
-            description: The payment a breached job is predicted to owe. Every customer is priced as domestic.
-            required:
-                - priced
-                - amount
-                - total
-                - reasons
-            properties:
-                priced:
-                    type: boolean
-                    description: False when no rates were in effect on the job's date, or the job's payment is recorded as not owed. The amounts are then zero, and the reasons say why.
-                amount:
-                    allOf:
-                        - $ref: '#/components/schemas/Money'
-                    description: What the breach owes, before any late payment.
-                late_payment:
-                    allOf:
-                        - $ref: '#/components/schemas/Money'
-                    description: What paying late adds. Absent when the payment is not late, or not yet due.
-                total:
-                    allOf:
-                        - $ref: '#/components/schemas/Money'
-                    description: The amount and the late payment together.
-                source:
-                    type: string
-                    description: Which rates priced the payment. Absent when it was not priced.
-                    enum:
-                        - platform
-                        - organisation
-                effective_from:
-                    type: string
-                    format: date
-                    description: The date the rates that priced the payment took effect. Absent when it was not priced.
-                due_by:
-                    type: string
-                    format: date
-                    description: The last day the payment can be made without being late. Absent when it could not be counted.
-                reasons:
-                    type: array
-                    description: The working, for a reader to check.
-                    items:
-                        type: string
-        Standard:
-            type: object
-            description: A performance standard the platform defines, such as gas Guaranteed Standard of Performance 3. An organisation answers it by mapping its form fields to the standard's inputs.
-            required:
-                - id
-                - type
-                - attributes
-            properties:
-                id:
-                    type: string
-                    description: The standard's key.
-                    examples:
-                        - gsop-3
-                type:
-                    type: string
-                    const: standards
-                attributes:
-                    $ref: '#/components/schemas/StandardAttributes'
-        StandardAttributes:
-            type: object
-            required:
-                - name
-                - description
-                - version
-                - inputs
-                - period_input
-                - defaults
-            properties:
-                name:
-                    type: string
-                    examples:
-                        - GSOP 3
-                description:
-                    type: string
-                version:
-                    type: integer
-                    description: Changes whenever the standard's rule changes, so a result can say which rule produced it.
-                inputs:
-                    type: array
-                    description: What the standard reads about each job. Every input but a listed or optional one must be mapped before the standard can be run.
-                    items:
-                        type: object
-                        required:
-                            - key
-                            - label
-                            - type
-                            - required
-                            - listed
-                            - optional
-                        properties:
-                            key:
-                                type: string
-                                examples:
-                                    - gas_off_at
-                            label:
-                                type: string
-                                examples:
-                                    - Gas off
-                            type:
-                                type: string
-                                description: The kind of value the input takes, and so which fields can be mapped to it. A `property-psr` input is mapped to `<field id>.property_psr` for a field that references a property or an operation. A `boolean` input takes a yes or no field, or a choice field with the mapping's yes option.
-                                enum:
-                                    - datetime
-                                    - date
-                                    - boolean
-                                    - property-psr
-                                    - choices
-                            required:
-                                type: boolean
-                                description: Whether every job needs a value for the input. A job without one is incomplete. An input that is not required is still mapped, unless it is listed or optional, and the rule reports it missing only where it decides the result.
-                            listed:
-                                type: boolean
-                                description: Whether the input is only listed in the results and never read by the rule. A mapping may leave a listed input unmapped.
-                            optional:
-                                type: boolean
-                                description: Whether the rule judges a job without the input when it is not mapped. A mapping may leave an optional input unmapped.
-                period_input:
-                    type: string
-                    description: The input whose date places a job in a reporting period.
-                    examples:
-                        - gas_off_at
-                defaults:
-                    type: object
-                    description: The settings a mapping takes when it chooses none.
-                    properties:
-                        nation:
-                            type: string
-                            description: Whose bank holidays a working-day count uses.
-                        convention:
-                            type: string
-                            description: Whether a working-day count includes its first and last days.
-                            enum:
-                                - exclude-start-include-end
-                                - exclude-both
-                                - include-both
-        StandardRates:
-            type: object
-            description: The rates a standard's payments are priced from in one organisation. Its id is the standard's key.
-            required:
-                - id
-                - type
-                - attributes
-            properties:
-                id:
-                    type: string
-                    description: The key of the standard the rates are for.
-                    examples:
-                        - gsop-3
-                type:
-                    type: string
-                    const: standard-rates
-                attributes:
-                    $ref: '#/components/schemas/StandardRatesAttributes'
-        StandardRatesAttributes:
-            type: object
-            required:
-                - standard
-                - platform_sets
-                - sets
-            properties:
-                standard:
-                    type: string
-                    readOnly: true
-                    description: The key of the standard, such as `gsop-3`.
-                platform_sets:
-                    type: array
-                    readOnly: true
-                    description: The platform's rates, each set from the date it takes effect. They apply on any date none of the organisation's sets is in effect.
-                    items:
-                        $ref: '#/components/schemas/StandardRateSet'
-                sets:
-                    type: array
-                    description: The organisation's own rates, each set from the date it takes effect, in date order. They take precedence over the platform's on any date one of them is in effect. Empty when the organisation uses the platform's rates alone.
-                    items:
-                        $ref: '#/components/schemas/StandardRateSet'
-        StandardRateSet:
-            type: object
-            description: A standard's rates from the date they take effect. A job is priced from the set in effect on its period date.
-            required:
-                - effective_from
-                - domestic
-                - non_domestic
-            properties:
-                effective_from:
-                    type: string
-                    format: date
-                    description: The first day the rates apply to, by a job's period date.
-                    examples:
-                        - "2025-04-01"
-                domestic:
-                    $ref: '#/components/schemas/StandardRateBand'
-                non_domestic:
-                    $ref: '#/components/schemas/StandardRateBand'
-                late_payment:
-                    allOf:
-                        - $ref: '#/components/schemas/Money'
-                    description: What a late payment adds, as gas Guaranteed Standard 12 requires. Absent when lateness pays nothing.
-        StandardRateBand:
-            type: object
-            description: What a breach of a standard pays one kind of customer.
-            required:
-                - base
-            properties:
-                base:
-                    allOf:
-                        - $ref: '#/components/schemas/Money'
-                    description: What the breach itself pays.
-                per_period:
-                    allOf:
-                        - $ref: '#/components/schemas/Money'
-                    description: What each complete further period the breach runs adds. Absent for a standard paid once.
-                cap:
-                    allOf:
-                        - $ref: '#/components/schemas/Money'
-                    description: The most a breach pays, before any late payment. Absent when there is no cap.
         Owner:
             type: object
             description: An owner
@@ -22515,6 +21901,677 @@ components:
                 oidc_identifier:
                     type: string
                     description: The identifier of the OIDC provider to use
+        StandardMapping:
+            type: object
+            description: How one of an organisation's forms answers a performance standard. Saving it generates a saved query over the form that reads the mapped answers.
+            required:
+                - id
+                - type
+                - attributes
+                - relationships
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the standard mapping.
+                type:
+                    type: string
+                    const: standard-mappings
+                attributes:
+                    $ref: '#/components/schemas/StandardMappingAttributes'
+                relationships:
+                    $ref: '#/components/schemas/StandardMappingRelationships'
+                meta:
+                    $ref: '#/components/schemas/StandardMappingMeta'
+        StandardMappingAttributes:
+            type: object
+            required:
+                - standard
+                - form_id
+                - inputs
+                - query_id
+            properties:
+                standard:
+                    type: string
+                    description: The key of the standard, such as `gsop-3`.
+                form_id:
+                    type: string
+                    format: uuid
+                    description: The form whose submissions answer the standard.
+                inputs:
+                    type: object
+                    description: Maps each of the standard's input keys to the query key that answers it. A key is a form field ID, or `<field id>.property_psr` for the Priority Services Register status of the property or operation a field references, as recorded when the submission arrived. A listed input may be left out.
+                    additionalProperties:
+                        type: string
+                yes_options:
+                    type: object
+                    description: For a yes or no input mapped to a choice field, the option that means yes, keyed by input key. Any other option means no. An input mapped to a boolean field takes none.
+                    additionalProperties:
+                        type: string
+                nation:
+                    type: string
+                    description: Whose bank holidays a rule counts working days against. Absent when the mapping takes the standard's default.
+                    enum:
+                        - england-and-wales
+                        - scotland
+                        - northern-ireland
+                query_id:
+                    type: string
+                    format: uuid
+                    readOnly: true
+                    description: The saved query generated from the mapping. It is left out of the queries list, and changes only when the mapping does.
+        StandardMappingRelationships:
+            type: object
+            description: Relationships for a standard mapping
+            required:
+                - organisation
+            properties:
+                organisation:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/OrganisationRelationship'
+        StandardMappingMeta:
+            type: object
+            description: Meta information for a standard mapping
+            properties:
+                created_at:
+                    type: string
+                    format: date-time
+                    description: When the mapping was created.
+                    readOnly: true
+                    examples:
+                        - 2026-11-03T12:42:40Z
+                updated_at:
+                    type: string
+                    format: date-time
+                    description: When the mapping was last changed.
+                    readOnly: true
+                    examples:
+                        - 2026-11-03T12:42:44Z
+        StandardPayment:
+            type: object
+            description: The payment record of one job under a standard mapping.
+            required:
+                - id
+                - type
+                - attributes
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the payment record.
+                type:
+                    type: string
+                    const: standard-payments
+                attributes:
+                    $ref: '#/components/schemas/StandardPaymentAttributes'
+                meta:
+                    $ref: '#/components/schemas/StandardPaymentMeta'
+        StandardPaymentAttributes:
+            type: object
+            description: Whether a payment was made for one job's breach of a standard. A paid record has a date and an amount, a record of no payment owed has a reason, and a pending or withdrawn record has neither. A note is allowed with any status. A withdrawn record was taken back, such as one recorded by mistake, and its job reads as having no record.
+            required:
+                - submission_id
+                - status
+            properties:
+                submission_id:
+                    type: string
+                    format: uuid
+                    readOnly: true
+                    description: The submission that is the job.
+                status:
+                    type: string
+                    description: Where the payment stands.
+                    enum:
+                        - paid
+                        - not_owed
+                        - pending
+                        - withdrawn
+                paid_on:
+                    type: string
+                    format: date
+                    description: The date the payment was made. Only a paid record has one.
+                    examples:
+                        - "2026-10-30"
+                amount:
+                    allOf:
+                        - $ref: '#/components/schemas/Money'
+                    description: The amount paid. Only a paid record has one, and it is more than zero.
+                reason:
+                    type: string
+                    maxLength: 1000
+                    description: Why no payment is owed. Only a record of no payment owed has one.
+                note:
+                    type: string
+                    maxLength: 1000
+                    description: Free text, such as a payment reference.
+        StandardPaymentMeta:
+            type: object
+            description: Meta information for a payment record
+            properties:
+                created_at:
+                    type: string
+                    format: date-time
+                    description: When the payment was first recorded for the job.
+                    readOnly: true
+                    examples:
+                        - 2026-11-03T12:42:40Z
+                updated_at:
+                    type: string
+                    format: date-time
+                    description: When the record was last changed.
+                    readOnly: true
+                    examples:
+                        - 2026-11-03T12:42:44Z
+        StandardPaymentHistory:
+            type: object
+            description: One change to a job's payment record under a standard mapping.
+            required:
+                - id
+                - type
+                - attributes
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the history entry.
+                type:
+                    type: string
+                    const: standard-payment-history
+                attributes:
+                    $ref: '#/components/schemas/StandardPaymentHistoryAttributes'
+        StandardPaymentHistoryAttributes:
+            type: object
+            description: What one change did to a job's payment record, and the record's fields as the change left them. A field the record did not hold after the change is absent.
+            required:
+                - standard_mapping_id
+                - submission_id
+                - payment_id
+                - operation
+                - status
+                - author
+                - author_name
+                - created_at
+            properties:
+                standard_mapping_id:
+                    type: string
+                    format: uuid
+                    readOnly: true
+                    description: The standard mapping the record is under.
+                submission_id:
+                    type: string
+                    format: uuid
+                    readOnly: true
+                    description: The submission that is the job.
+                payment_id:
+                    type: string
+                    format: uuid
+                    readOnly: true
+                    description: The payment record that was changed.
+                operation:
+                    type: string
+                    description: What the change did. `created` is the job's first record, `updated` a change to it, and `withdrawn` a change that left it withdrawn.
+                    enum:
+                        - created
+                        - updated
+                        - withdrawn
+                status:
+                    type: string
+                    description: Where the payment stood after the change.
+                    enum:
+                        - paid
+                        - not_owed
+                        - pending
+                        - withdrawn
+                paid_on:
+                    type: string
+                    format: date
+                    description: The date the payment was made. Only a paid record has one.
+                    examples:
+                        - "2026-10-30"
+                amount:
+                    allOf:
+                        - $ref: '#/components/schemas/Money'
+                    description: The amount paid. Only a paid record has one.
+                reason:
+                    type: string
+                    description: Why no payment is owed. Only a record of no payment owed has one.
+                note:
+                    type: string
+                    description: Free text, such as a payment reference or why the record was withdrawn.
+                author:
+                    type: object
+                    description: Who made the change.
+                    required:
+                        - id
+                        - type
+                    properties:
+                        id:
+                            type: string
+                            format: uuid
+                        type:
+                            type: string
+                            description: The kind of principal, such as `users`.
+                author_name:
+                    type: string
+                    readOnly: true
+                    description: The author's name when the history is read. A user is named by their display name and a service account by its own name. Any other author, or one who can no longer be found, is labelled by kind, such as `Agent` or `Unknown user`.
+                    examples:
+                        - Jane Smith
+                created_at:
+                    type: string
+                    format: date-time
+                    description: When the change was made.
+                    examples:
+                        - 2026-11-03T12:42:44Z
+        StandardResults:
+            type: object
+            description: A standard's results over a period, read through one standard mapping. Its id is the mapping's.
+            required:
+                - id
+                - type
+                - attributes
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The ID of the standard mapping the results were read through.
+                type:
+                    type: string
+                    const: standard-results
+                attributes:
+                    $ref: '#/components/schemas/StandardResultsAttributes'
+        StandardResultsAttributes:
+            type: object
+            required:
+                - standard
+                - bucket
+                - counts
+                - series
+                - jobs
+                - truncated
+                - payments_shown
+            properties:
+                standard:
+                    type: string
+                    description: The key of the standard, such as `gsop-3`.
+                bucket:
+                    type: string
+                    description: The length of the periods the series counts jobs in.
+                    enum:
+                        - day
+                        - week
+                        - month
+                        - quarter
+                        - year
+                truncated:
+                    type: boolean
+                    description: True when the period held more jobs than a run evaluates, so the results cover only some of them.
+                skipped:
+                    type: integer
+                    minimum: 0
+                    description: How many of the period's rows were left out because they had no usable submission id. They are in neither the jobs nor the counts. The results CSV export refuses a period with any.
+                counts:
+                    $ref: '#/components/schemas/StandardResultCounts'
+                series:
+                    type: array
+                    description: The counts per bucket, in order. Only a bucket with at least one job is listed, and a job with no period date is in none.
+                    items:
+                        type: object
+                        required:
+                            - start
+                            - counts
+                        properties:
+                            start:
+                                type: string
+                                format: date
+                                description: The first day of the bucket, in Europe/London.
+                                examples:
+                                    - "2026-07-13"
+                            counts:
+                                $ref: '#/components/schemas/StandardResultCounts'
+                jobs:
+                    type: array
+                    description: Each job's result, in order of its period date.
+                    items:
+                        $ref: '#/components/schemas/StandardResultJob'
+                payments_shown:
+                    type: boolean
+                    description: True when the jobs carry their payment records. A caller who views some forms' mappings only, as a contractor does, gets the results without payments.
+                expected_total:
+                    allOf:
+                        - $ref: '#/components/schemas/Money'
+                    description: The jobs' expected payments added up. Present only when the results show payments.
+                paid_total:
+                    allOf:
+                        - $ref: '#/components/schemas/Money'
+                    description: The amounts of the jobs' paid records added up, in GBP. Present only when the results show payments.
+        StandardResultCounts:
+            type: object
+            description: How many jobs had each result.
+            required:
+                - met
+                - breached
+                - exempt
+                - not_applicable
+                - incomplete
+            properties:
+                met:
+                    type: integer
+                breached:
+                    type: integer
+                exempt:
+                    type: integer
+                not_applicable:
+                    type: integer
+                incomplete:
+                    type: integer
+        StandardResultJob:
+            type: object
+            description: One job's result under a standard.
+            required:
+                - submission_id
+                - result
+                - reasons
+                - missing
+                - inputs
+            properties:
+                submission_id:
+                    type: string
+                    format: uuid
+                submitted_at:
+                    type: string
+                    format: date-time
+                    description: When the submission was recorded.
+                period_date:
+                    type: string
+                    format: date-time
+                    description: The value of the standard's period input. Absent when the job has none.
+                result:
+                    type: string
+                    enum:
+                        - met
+                        - breached
+                        - exempt
+                        - not_applicable
+                        - incomplete
+                reasons:
+                    type: array
+                    description: Why the job has its result, for a reader to check it.
+                    items:
+                        type: string
+                missing:
+                    type: array
+                    description: The inputs an incomplete result is waiting on.
+                    items:
+                        type: string
+                inputs:
+                    type: object
+                    description: The value of each input the job had, keyed by input key. A date is an RFC 3339 date-time, a yes or no answer a boolean, and a list of choices an array of strings. An input with no value is left out.
+                    additionalProperties: true
+                payment:
+                    allOf:
+                        - $ref: '#/components/schemas/StandardPaymentAttributes'
+                    description: The job's payment record. Absent when the job has none, or when the results do not show payments.
+                expected_payment:
+                    allOf:
+                        - $ref: '#/components/schemas/StandardExpectedPayment'
+                    description: The payment the job is predicted to owe. Absent when the job is not breached, or when the results do not show payments.
+        StandardExpectedPayment:
+            type: object
+            description: The payment a breached job is predicted to owe. Every customer is priced as domestic.
+            required:
+                - priced
+                - amount
+                - total
+                - reasons
+            properties:
+                priced:
+                    type: boolean
+                    description: False when no rates were in effect on the job's date, or the job's payment is recorded as not owed. The amounts are then zero, and the reasons say why.
+                amount:
+                    allOf:
+                        - $ref: '#/components/schemas/Money'
+                    description: What the breach owes, before any late payment.
+                late_payment:
+                    allOf:
+                        - $ref: '#/components/schemas/Money'
+                    description: What paying late adds. Absent when the payment is not late, or not yet due.
+                total:
+                    allOf:
+                        - $ref: '#/components/schemas/Money'
+                    description: The amount and the late payment together.
+                source:
+                    type: string
+                    description: Which rates priced the payment. Absent when it was not priced.
+                    enum:
+                        - platform
+                        - organisation
+                effective_from:
+                    type: string
+                    format: date
+                    description: The date the rates that priced the payment took effect. Absent when it was not priced.
+                due_by:
+                    type: string
+                    format: date
+                    description: The last day the payment can be made without being late. Absent when it could not be counted.
+                reasons:
+                    type: array
+                    description: The working, for a reader to check.
+                    items:
+                        type: string
+        StandardRates:
+            type: object
+            description: An organisation's own rates for one performance standard. They take precedence over the standard's platform rates on any date one of their sets is in effect. An organisation has at most one record per standard.
+            required:
+                - id
+                - type
+                - attributes
+                - relationships
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the organisation's rates for the standard.
+                type:
+                    type: string
+                    const: standard-rates
+                attributes:
+                    $ref: '#/components/schemas/StandardRatesAttributes'
+                relationships:
+                    $ref: '#/components/schemas/StandardRatesRelationships'
+                meta:
+                    $ref: '#/components/schemas/StandardRatesMeta'
+        StandardRatesAttributes:
+            type: object
+            required:
+                - standard
+                - sets
+            properties:
+                standard:
+                    type: string
+                    description: The key of the standard, such as `gsop-3`. It is set when the rates are created and never changes.
+                sets:
+                    type: array
+                    description: The organisation's own rates, each set from the date it takes effect, in date order. They take precedence over the standard's platform rates on any date one of them is in effect. Empty when the organisation uses the platform's rates alone.
+                    items:
+                        $ref: '#/components/schemas/StandardRateSet'
+        StandardRatesRelationships:
+            type: object
+            description: Relationships for an organisation's standard rates
+            required:
+                - organisation
+            properties:
+                organisation:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/OrganisationRelationship'
+        StandardRatesMeta:
+            type: object
+            description: Meta information for an organisation's standard rates
+            properties:
+                created_at:
+                    type: string
+                    format: date-time
+                    description: When the rates were created.
+                    readOnly: true
+                    examples:
+                        - 2026-11-03T12:42:40Z
+                updated_at:
+                    type: string
+                    format: date-time
+                    description: When the rates were last changed.
+                    readOnly: true
+                    examples:
+                        - 2026-11-03T12:42:44Z
+        StandardRateSet:
+            type: object
+            description: A standard's rates from the date they take effect. A job is priced from the set in effect on its period date.
+            required:
+                - effective_from
+                - domestic
+                - non_domestic
+            properties:
+                effective_from:
+                    type: string
+                    format: date
+                    description: The first day the rates apply to, by a job's period date.
+                    examples:
+                        - "2025-04-01"
+                domestic:
+                    $ref: '#/components/schemas/StandardRateBand'
+                non_domestic:
+                    $ref: '#/components/schemas/StandardRateBand'
+                late_payment:
+                    allOf:
+                        - $ref: '#/components/schemas/Money'
+                    description: What a late payment adds, as gas Guaranteed Standard 12 requires. Absent when lateness pays nothing.
+        StandardRateBand:
+            type: object
+            description: What a breach of a standard pays one kind of customer.
+            required:
+                - base
+            properties:
+                base:
+                    allOf:
+                        - $ref: '#/components/schemas/Money'
+                    description: What the breach itself pays.
+                per_period:
+                    allOf:
+                        - $ref: '#/components/schemas/Money'
+                    description: What each complete further period the breach runs adds. Absent for a standard paid once.
+                cap:
+                    allOf:
+                        - $ref: '#/components/schemas/Money'
+                    description: The most a breach pays, before any late payment. Absent when there is no cap.
+        Standard:
+            type: object
+            description: A performance standard the platform defines, such as gas Guaranteed Standard of Performance 3. An organisation answers it by mapping its form fields to the standard's inputs.
+            required:
+                - id
+                - type
+                - attributes
+            properties:
+                id:
+                    type: string
+                    description: The standard's key.
+                    examples:
+                        - gsop-3
+                type:
+                    type: string
+                    const: standards
+                attributes:
+                    $ref: '#/components/schemas/StandardAttributes'
+        StandardAttributes:
+            type: object
+            required:
+                - name
+                - description
+                - version
+                - inputs
+                - period_input
+                - defaults
+                - platform_rates
+            properties:
+                name:
+                    type: string
+                    examples:
+                        - GSOP 3
+                description:
+                    type: string
+                version:
+                    type: integer
+                    description: Changes whenever the standard's rule changes, so a result can say which rule produced it.
+                inputs:
+                    type: array
+                    description: What the standard reads about each job. Every input but a listed or optional one must be mapped before the standard can be run.
+                    items:
+                        type: object
+                        required:
+                            - key
+                            - label
+                            - type
+                            - required
+                            - listed
+                            - optional
+                        properties:
+                            key:
+                                type: string
+                                examples:
+                                    - gas_off_at
+                            label:
+                                type: string
+                                examples:
+                                    - Gas off
+                            type:
+                                type: string
+                                description: The kind of value the input takes, and so which fields can be mapped to it. A `property-psr` input is mapped to `<field id>.property_psr` for a field that references a property or an operation. A `boolean` input takes a yes or no field, or a choice field with the mapping's yes option.
+                                enum:
+                                    - datetime
+                                    - date
+                                    - boolean
+                                    - property-psr
+                                    - choices
+                            required:
+                                type: boolean
+                                description: Whether every job needs a value for the input. A job without one is incomplete. An input that is not required is still mapped, unless it is listed or optional, and the rule reports it missing only where it decides the result.
+                            listed:
+                                type: boolean
+                                description: Whether the input is only listed in the results and never read by the rule. A mapping may leave a listed input unmapped.
+                            optional:
+                                type: boolean
+                                description: Whether the rule judges a job without the input when it is not mapped. A mapping may leave an optional input unmapped.
+                period_input:
+                    type: string
+                    description: The input whose date places a job in a reporting period.
+                    examples:
+                        - gas_off_at
+                defaults:
+                    type: object
+                    description: The settings a mapping takes when it chooses none.
+                    properties:
+                        nation:
+                            type: string
+                            description: Whose bank holidays a working-day count uses.
+                        convention:
+                            type: string
+                            description: Whether a working-day count includes its first and last days.
+                            enum:
+                                - exclude-start-include-end
+                                - exclude-both
+                                - include-both
+                platform_rates:
+                    type: array
+                    readOnly: true
+                    description: The platform's rates for the standard's payments, each set from the date it takes effect, in date order. An organisation's own rates (`standard-rates`) take precedence on any date one of their sets is in effect, and these apply on any other date. Empty for a standard the platform prices nothing for.
+                    items:
+                        $ref: '#/components/schemas/StandardRateSet'
         StreetManagerPermitVersion:
             type: object
             description: A street manager permit version
@@ -32526,175 +32583,6 @@ components:
                                 data:
                                     $ref: '#/components/schemas/TimeBand'
                             - $ref: '#/components/schemas/JSONAPI'
-        ListStandardMappings:
-            description: Get a list of the organisation's standard mappings.
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        allOf:
-                            - type: object
-                              required:
-                                - data
-                              properties:
-                                data:
-                                    type: array
-                                    items:
-                                        $ref: '#/components/schemas/StandardMapping'
-                            - $ref: '#/components/schemas/DocumentMeta'
-                            - $ref: '#/components/schemas/JSONAPI'
-        GetStandardMapping:
-            description: Get a standard mapping.
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        allOf:
-                            - type: object
-                              required:
-                                - data
-                              properties:
-                                data:
-                                    $ref: '#/components/schemas/StandardMapping'
-                            - $ref: '#/components/schemas/JSONAPI'
-        GetStandardPayment:
-            description: Get a job's payment record.
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        allOf:
-                            - type: object
-                              required:
-                                - data
-                              properties:
-                                data:
-                                    $ref: '#/components/schemas/StandardPayment'
-                            - $ref: '#/components/schemas/JSONAPI'
-        ListStandardPaymentHistory:
-            description: Every change made to a job's payment record, newest first.
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        allOf:
-                            - type: object
-                              required:
-                                - data
-                              properties:
-                                data:
-                                    type: array
-                                    items:
-                                        $ref: '#/components/schemas/StandardPaymentHistory'
-                            - $ref: '#/components/schemas/DocumentMeta'
-                            - $ref: '#/components/schemas/JSONAPI'
-        GetStandardResults:
-            description: A standard's results over a period.
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        allOf:
-                            - type: object
-                              required:
-                                - data
-                              properties:
-                                data:
-                                    $ref: '#/components/schemas/StandardResults'
-                            - $ref: '#/components/schemas/JSONAPI'
-        ListStandards:
-            description: Get a list of the performance standards.
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        allOf:
-                            - type: object
-                              required:
-                                - data
-                              properties:
-                                data:
-                                    type: array
-                                    items:
-                                        $ref: '#/components/schemas/Standard'
-                            - $ref: '#/components/schemas/DocumentMeta'
-                            - $ref: '#/components/schemas/JSONAPI'
-        GetStandard:
-            description: Get a performance standard.
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        allOf:
-                            - type: object
-                              required:
-                                - data
-                              properties:
-                                data:
-                                    $ref: '#/components/schemas/Standard'
-                            - $ref: '#/components/schemas/JSONAPI'
-        GetStandardRates:
-            description: A standard's payment rates, the platform's and the organisation's own.
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        allOf:
-                            - type: object
-                              required:
-                                - data
-                              properties:
-                                data:
-                                    $ref: '#/components/schemas/StandardRates'
-                            - $ref: '#/components/schemas/JSONAPI'
         ListOwners:
             description: Get a list of owners.
             headers:
@@ -34060,6 +33948,198 @@ components:
                               properties:
                                 data:
                                     $ref: '#/components/schemas/SSOProvider'
+                            - $ref: '#/components/schemas/JSONAPI'
+        ListStandardMappings:
+            description: Get a list of the organisation's standard mappings.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    type: array
+                                    items:
+                                        $ref: '#/components/schemas/StandardMapping'
+                            - $ref: '#/components/schemas/DocumentMeta'
+                            - $ref: '#/components/schemas/JSONAPI'
+        GetStandardMapping:
+            description: Get a standard mapping.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    $ref: '#/components/schemas/StandardMapping'
+                            - $ref: '#/components/schemas/JSONAPI'
+        GetStandardPayment:
+            description: Get a job's payment record.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    $ref: '#/components/schemas/StandardPayment'
+                            - $ref: '#/components/schemas/JSONAPI'
+        ListStandardPaymentHistory:
+            description: Every change made to a job's payment record, newest first.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    type: array
+                                    items:
+                                        $ref: '#/components/schemas/StandardPaymentHistory'
+                            - $ref: '#/components/schemas/DocumentMeta'
+                            - $ref: '#/components/schemas/JSONAPI'
+        GetStandardResults:
+            description: A standard's results over a period.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    $ref: '#/components/schemas/StandardResults'
+                            - $ref: '#/components/schemas/JSONAPI'
+        ListStandardRates:
+            description: Get a list of organisations' own rates for standards.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    type: array
+                                    items:
+                                        $ref: '#/components/schemas/StandardRates'
+                            - $ref: '#/components/schemas/DocumentMeta'
+                            - $ref: '#/components/schemas/JSONAPI'
+        GetStandardRates:
+            description: An organisation's own rates for a standard.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    $ref: '#/components/schemas/StandardRates'
+                            - $ref: '#/components/schemas/JSONAPI'
+        ListStandards:
+            description: Get a list of the performance standards.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    type: array
+                                    items:
+                                        $ref: '#/components/schemas/Standard'
+                            - $ref: '#/components/schemas/DocumentMeta'
+                            - $ref: '#/components/schemas/JSONAPI'
+        GetStandard:
+            description: Get a performance standard.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    $ref: '#/components/schemas/Standard'
                             - $ref: '#/components/schemas/JSONAPI'
         ListStatus:
             description: 200 when everything is OK.
@@ -40185,97 +40265,6 @@ components:
                 type: string
                 format: uuid
             example: 925820cf-8414-4fc9-997e-ff93cda344ae
-        standard_mappings_filter:
-            name: filter
-            in: query
-            description: |
-                Filters the response data based on the value provided.
-
-                Available filters:
-
-                - `standard`: Filter by the standard's key, such as `gsop-3`.
-                - `form`: Filter by form ID.
-                - `query`: Filter by the ID of the generated query.
-
-                For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
-            required: false
-            schema:
-                type: string
-                default: ""
-        standard_mapping_id:
-            name: standard_mapping_id
-            in: path
-            required: true
-            description: The unique identifier for the standard mapping.
-            schema:
-                type: string
-                format: uuid
-            example: 5f3c2a1e-8b4d-4e6f-9a7c-2d1b0e3f4a5c
-        standard_results_date_op:
-            name: date_op
-            in: query
-            description: >-
-                The period to evaluate, as the operator of a range on the mapping's period input. Relative presets (`today`, `yesterday`, `last_n_days`, `this_week`, `this_month`, `this_quarter`, `this_year`, and the previous full `last_week`, `last_fortnight`, `last_month` and `last_quarter`) are resolved against the Europe/London timezone when the results are read. `between` takes two dates, and `before` and `after` one, in `date_values`. Omit it for the last 30 days.
-            required: false
-            schema:
-                type: string
-                enum:
-                    - today
-                    - yesterday
-                    - last_n_days
-                    - this_week
-                    - this_month
-                    - this_quarter
-                    - this_year
-                    - last_week
-                    - last_fortnight
-                    - last_month
-                    - last_quarter
-                    - between
-                    - before
-                    - after
-        standard_results_date_values:
-            name: date_values
-            in: query
-            description: >-
-                The values `date_op` takes, comma separated: the number of days for `last_n_days`, the two ends of a `between`, or the one date of a `before` or `after`. A date, such as `2026-11-02`, or a date and time, such as `2026-11-02 09:00:00`, is read in Europe/London. An RFC 3339 time, such as `2026-11-02T09:00:00Z`, keeps its own offset. A `between` includes both ends, and a date as its upper bound covers that whole day. `before` a date excludes that day, and `after` a date starts on the day after it.
-            required: false
-            style: form
-            explode: false
-            schema:
-                type: array
-                items:
-                    type: string
-        standard_results_bucket:
-            name: bucket
-            in: query
-            description: The length of the periods the series counts jobs in. A week starts on Monday. Omit it for weeks.
-            required: false
-            schema:
-                type: string
-                enum:
-                    - day
-                    - week
-                    - month
-                    - quarter
-                    - year
-        standard_results_submission_id:
-            name: submission_id
-            in: query
-            description: Evaluate this one submission instead of a period. It takes no `date_op`, `date_values` or `bucket`.
-            required: false
-            schema:
-                type: string
-                format: uuid
-            example: f6dc7651-426f-4e66-a71e-aa99457e7b4a
-        standard_key:
-            name: standard_key
-            in: path
-            required: true
-            description: The key of the performance standard, such as `gsop-3`.
-            schema:
-                type: string
-            example: gsop-3
         owners_filter:
             name: filter
             in: query
@@ -41476,6 +41465,123 @@ components:
                 type: string
                 format: uuid
             example: 8e05b8fc-ef1c-447b-81fe-9738b2dc2c9b
+        standard_mappings_filter:
+            name: filter
+            in: query
+            description: |
+                Filters the response data based on the value provided.
+
+                Available filters:
+
+                - `organisation`: Filter by the organisation's ID.
+                - `standard`: Filter by the standard's key, such as `gsop-3`.
+                - `form`: Filter by form ID.
+                - `query`: Filter by the ID of the generated query.
+
+                For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
+            required: false
+            schema:
+                type: string
+                default: ""
+        standard_mapping_id:
+            name: standard_mapping_id
+            in: path
+            required: true
+            description: The unique identifier for the standard mapping.
+            schema:
+                type: string
+                format: uuid
+            example: 5f3c2a1e-8b4d-4e6f-9a7c-2d1b0e3f4a5c
+        standard_results_date_op:
+            name: date_op
+            in: query
+            description: >-
+                The period to evaluate, as the operator of a range on the mapping's period input. Relative presets (`today`, `yesterday`, `last_n_days`, `this_week`, `this_month`, `this_quarter`, `this_year`, and the previous full `last_week`, `last_fortnight`, `last_month` and `last_quarter`) are resolved against the Europe/London timezone when the results are read. `between` takes two dates, and `before` and `after` one, in `date_values`. Omit it for the last 30 days.
+            required: false
+            schema:
+                type: string
+                enum:
+                    - today
+                    - yesterday
+                    - last_n_days
+                    - this_week
+                    - this_month
+                    - this_quarter
+                    - this_year
+                    - last_week
+                    - last_fortnight
+                    - last_month
+                    - last_quarter
+                    - between
+                    - before
+                    - after
+        standard_results_date_values:
+            name: date_values
+            in: query
+            description: >-
+                The values `date_op` takes, comma separated: the number of days for `last_n_days`, the two ends of a `between`, or the one date of a `before` or `after`. A date, such as `2026-11-02`, or a date and time, such as `2026-11-02 09:00:00`, is read in Europe/London. An RFC 3339 time, such as `2026-11-02T09:00:00Z`, keeps its own offset. A `between` includes both ends, and a date as its upper bound covers that whole day. `before` a date excludes that day, and `after` a date starts on the day after it.
+            required: false
+            style: form
+            explode: false
+            schema:
+                type: array
+                items:
+                    type: string
+        standard_results_bucket:
+            name: bucket
+            in: query
+            description: The length of the periods the series counts jobs in. A week starts on Monday. Omit it for weeks.
+            required: false
+            schema:
+                type: string
+                enum:
+                    - day
+                    - week
+                    - month
+                    - quarter
+                    - year
+        standard_results_submission_id:
+            name: submission_id
+            in: query
+            description: Evaluate this one submission instead of a period. It takes no `date_op`, `date_values` or `bucket`.
+            required: false
+            schema:
+                type: string
+                format: uuid
+            example: f6dc7651-426f-4e66-a71e-aa99457e7b4a
+        standard_rates_filter:
+            name: filter
+            in: query
+            description: |
+                Filters the response data based on the value provided.
+
+                Available filters:
+
+                - `organisation`: Filter by the organisation's ID.
+                - `standard`: Filter by the standard's key, such as `gsop-3`.
+
+                For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
+            required: false
+            schema:
+                type: string
+                default: ""
+        standard_rates_id:
+            name: standard_rates_id
+            in: path
+            required: true
+            description: The unique identifier of an organisation's rates for a standard.
+            schema:
+                type: string
+                format: uuid
+            example: 8a4e1c2b-3d5f-4a6b-9c7d-1e2f3a4b5c6d
+        standard_key:
+            name: standard_key
+            in: path
+            required: true
+            description: The key of the performance standard, such as `gsop-3`.
+            schema:
+                type: string
+            example: gsop-3
         street_manager_permits_include:
             name: include
             in: query
@@ -42506,6 +42612,8 @@ components:
                 - `in_schemes`: Filter for work orders in scheme(s) by their ID(s)
                 - `eq(status,xxx)`: Filter for work orders by lifecycle status. One of `in_planning`, `in_progress`, `on_hold`, `complete`, `cancelled`.
 
+                - `modified_at`: Filter by the date a work order last changed, which includes a change to its operations, assignees, teams, permits or status counts, not only an edit to the work order itself (the `updated_at` attribute does not move for those). Accepts an RFC 3339 timestamp and supports the range operators `ge`, `le`, `gt`, `lt` (and `eq`). Example (changed since a given time): `ge(modified_at,2026-07-01T00:00:00Z)`. Combine with `sort=modified_at` to read the changes oldest first. A work order edited while a client pages through the changes moves to the end of that order and shifts every later row back one place, so offset paging can skip a work order that was not yet read. Start the next sync a margin of a few minutes earlier than the time this one began, not from the newest `modified_at` received, and expect to read the same work order more than once. The margin is needed because a change is stamped before its write commits, so one stamped just before a sync starts can commit after that sync has read. Take the sync's start time from the server's clock, such as the `Date` header of its first response, because the clock of a device adds its own drift. A work order that has been deleted is never returned, so a client that needs to learn of deletions reads the full list.
+
                 Project-role filters (cross-resource lookups against project role assignments):
 
                 - `has_role(<project_role_id>)`: Filter for work orders that have at least one active assignment for the given project role. Example: `has_role(11111111-1111-1111-1111-111111111111)`.
@@ -42517,6 +42625,23 @@ components:
             schema:
                 type: string
                 default: ""
+        work_orders_sort:
+            in: query
+            name: sort
+            description: The field to sort by. Only one field is accepted, because each sort is served by an index on that field alone. A work order list with no sort has no defined order.
+            required: false
+            style: form
+            explode: false
+            schema:
+                type: array
+                maxItems: 1
+                items:
+                    type: string
+                    enum:
+                        - created_at
+                        - -created_at
+                        - modified_at
+                        - -modified_at
         work_order_id:
             name: work_order_id
             in: path
@@ -54253,179 +54378,6 @@ components:
                                                 description: The end time of the time band.
                                                 examples:
                                                     - "13:00-0700"
-        CreateStandardMapping:
-            required: true
-            description: The standard mapping to create. Its organisation is the one in the path.
-            content:
-                application/vnd.api+json:
-                    schema:
-                        type: object
-                        required:
-                            - data
-                        properties:
-                            data:
-                                type: object
-                                required:
-                                    - type
-                                    - attributes
-                                properties:
-                                    type:
-                                        type: string
-                                        const: standard-mappings
-                                    attributes:
-                                        type: object
-                                        required:
-                                            - standard
-                                            - form_id
-                                            - inputs
-                                        properties:
-                                            standard:
-                                                type: string
-                                                description: The key of the standard, such as `gsop-3`.
-                                            form_id:
-                                                type: string
-                                                format: uuid
-                                                description: The form whose submissions answer the standard.
-                                            inputs:
-                                                type: object
-                                                description: Maps each of the standard's input keys to the query key that answers it. A key is a form field ID, or `<field id>.property_psr` for the Priority Services Register status of the property or operation a field references, as recorded when the submission arrived. A listed input may be left out.
-                                                additionalProperties:
-                                                    type: string
-                                            yes_options:
-                                                type: object
-                                                description: For a yes or no input mapped to a choice field, the option that means yes, keyed by input key. Any other option means no. An input mapped to a boolean field takes none.
-                                                additionalProperties:
-                                                    type: string
-                                            nation:
-                                                type: string
-                                                description: Whose bank holidays a rule counts working days against. Leave it out for the standard's default.
-                                                enum:
-                                                    - england-and-wales
-                                                    - scotland
-                                                    - northern-ireland
-        UpdateStandardMapping:
-            required: true
-            description: The standard mapping's new inputs and nation. They replace the stored ones.
-            content:
-                application/vnd.api+json:
-                    schema:
-                        type: object
-                        required:
-                            - data
-                        properties:
-                            data:
-                                type: object
-                                required:
-                                    - type
-                                    - id
-                                    - attributes
-                                properties:
-                                    id:
-                                        type: string
-                                        format: uuid
-                                        description: The ID of the standard mapping to update.
-                                    type:
-                                        type: string
-                                        const: standard-mappings
-                                    attributes:
-                                        type: object
-                                        required:
-                                            - inputs
-                                        properties:
-                                            inputs:
-                                                type: object
-                                                description: Maps each of the standard's input keys to the query key that answers it. A key is a form field ID, or `<field id>.property_psr` for the Priority Services Register status of the property or operation a field references, as recorded when the submission arrived. A listed input may be left out.
-                                                additionalProperties:
-                                                    type: string
-                                            yes_options:
-                                                type: object
-                                                description: For a yes or no input mapped to a choice field, the option that means yes, keyed by input key. Any other option means no. An input mapped to a boolean field takes none. Leave it out to keep the mapping's options for the inputs still mapped to the same field. Send an empty object to clear them.
-                                                additionalProperties:
-                                                    type: string
-                                            nation:
-                                                type: string
-                                                description: Whose bank holidays a rule counts working days against. Leave it out for the standard's default.
-                                                enum:
-                                                    - england-and-wales
-                                                    - scotland
-                                                    - northern-ireland
-        RecordStandardPayment:
-            required: true
-            description: The job's payment record. It replaces any record the job already has, so a field left out is cleared. Send the status `withdrawn`, with an optional note, to withdraw the record.
-            content:
-                application/vnd.api+json:
-                    schema:
-                        type: object
-                        required:
-                            - data
-                        properties:
-                            data:
-                                type: object
-                                required:
-                                    - type
-                                    - attributes
-                                properties:
-                                    type:
-                                        type: string
-                                        const: standard-payments
-                                    attributes:
-                                        type: object
-                                        required:
-                                            - status
-                                        properties:
-                                            status:
-                                                type: string
-                                                description: Where the payment stands. `withdrawn` takes back a record the job has, and takes a note only. A withdrawn job reads as having no record, so it is unpaid and priced as owing. A withdrawn record can be recorded again with any other status.
-                                                enum:
-                                                    - paid
-                                                    - not_owed
-                                                    - pending
-                                                    - withdrawn
-                                            paid_on:
-                                                type: string
-                                                format: date
-                                                description: The date the payment was made. Required when paid, and refused otherwise. It cannot be later than today in the UK.
-                                            amount:
-                                                allOf:
-                                                    - $ref: '#/components/schemas/Money'
-                                                description: The amount paid, more than zero. Required when paid, and refused otherwise.
-                                            reason:
-                                                type: string
-                                                maxLength: 1000
-                                                description: Why no payment is owed. Required when not owed, and refused otherwise.
-                                            note:
-                                                type: string
-                                                maxLength: 1000
-                                                description: Free text, such as a payment reference.
-        ReplaceStandardRates:
-            required: true
-            description: The organisation's own rate sets for the standard. They replace any it has, and an empty list removes them.
-            content:
-                application/vnd.api+json:
-                    schema:
-                        type: object
-                        required:
-                            - data
-                        properties:
-                            data:
-                                type: object
-                                required:
-                                    - type
-                                    - attributes
-                                properties:
-                                    type:
-                                        type: string
-                                        const: standard-rates
-                                    attributes:
-                                        type: object
-                                        required:
-                                            - sets
-                                        properties:
-                                            sets:
-                                                type: array
-                                                description: Each set of rates and the date it takes effect. No two sets may take effect on the same date, and every amount is more than zero and in GBP.
-                                                items:
-                                                    $ref: '#/components/schemas/StandardRateSet'
         CreateOwner:
             required: true
             description: The owner to create.
@@ -57260,6 +57212,243 @@ components:
                                                             id:
                                                                 type: string
                                                                 description: The ID of the role.
+        CreateStandardMapping:
+            required: true
+            description: The standard mapping to create, in the organisation its `organisation` relationship names.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                    - attributes
+                                    - relationships
+                                properties:
+                                    type:
+                                        type: string
+                                        const: standard-mappings
+                                    attributes:
+                                        type: object
+                                        required:
+                                            - standard
+                                            - form_id
+                                            - inputs
+                                        properties:
+                                            standard:
+                                                type: string
+                                                description: The key of the standard, such as `gsop-3`.
+                                            form_id:
+                                                type: string
+                                                format: uuid
+                                                description: The form whose submissions answer the standard.
+                                            inputs:
+                                                type: object
+                                                description: Maps each of the standard's input keys to the query key that answers it. A key is a form field ID, or `<field id>.property_psr` for the Priority Services Register status of the property or operation a field references, as recorded when the submission arrived. A listed input may be left out.
+                                                additionalProperties:
+                                                    type: string
+                                            yes_options:
+                                                type: object
+                                                description: For a yes or no input mapped to a choice field, the option that means yes, keyed by input key. Any other option means no. An input mapped to a boolean field takes none.
+                                                additionalProperties:
+                                                    type: string
+                                            nation:
+                                                type: string
+                                                description: Whose bank holidays a rule counts working days against. Leave it out for the standard's default.
+                                                enum:
+                                                    - england-and-wales
+                                                    - scotland
+                                                    - northern-ireland
+                                    relationships:
+                                        type: object
+                                        required:
+                                            - organisation
+                                        properties:
+                                            organisation:
+                                                type: object
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/OrganisationRelationship'
+        UpdateStandardMapping:
+            required: true
+            description: The standard mapping's new inputs and nation. They replace the stored ones.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                    - id
+                                    - attributes
+                                properties:
+                                    id:
+                                        type: string
+                                        format: uuid
+                                        description: The ID of the standard mapping to update.
+                                    type:
+                                        type: string
+                                        const: standard-mappings
+                                    attributes:
+                                        type: object
+                                        required:
+                                            - inputs
+                                        properties:
+                                            inputs:
+                                                type: object
+                                                description: Maps each of the standard's input keys to the query key that answers it. A key is a form field ID, or `<field id>.property_psr` for the Priority Services Register status of the property or operation a field references, as recorded when the submission arrived. A listed input may be left out.
+                                                additionalProperties:
+                                                    type: string
+                                            yes_options:
+                                                type: object
+                                                description: For a yes or no input mapped to a choice field, the option that means yes, keyed by input key. Any other option means no. An input mapped to a boolean field takes none. Leave it out to keep the mapping's options for the inputs still mapped to the same field. Send an empty object to clear them.
+                                                additionalProperties:
+                                                    type: string
+                                            nation:
+                                                type: string
+                                                description: Whose bank holidays a rule counts working days against. Leave it out for the standard's default.
+                                                enum:
+                                                    - england-and-wales
+                                                    - scotland
+                                                    - northern-ireland
+        RecordStandardPayment:
+            required: true
+            description: The job's payment record. It replaces any record the job already has, so a field left out is cleared. Send the status `withdrawn`, with an optional note, to withdraw the record.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                    - attributes
+                                properties:
+                                    type:
+                                        type: string
+                                        const: standard-payments
+                                    attributes:
+                                        type: object
+                                        required:
+                                            - status
+                                        properties:
+                                            status:
+                                                type: string
+                                                description: Where the payment stands. `withdrawn` takes back a record the job has, and takes a note only. A withdrawn job reads as having no record, so it is unpaid and priced as owing. A withdrawn record can be recorded again with any other status.
+                                                enum:
+                                                    - paid
+                                                    - not_owed
+                                                    - pending
+                                                    - withdrawn
+                                            paid_on:
+                                                type: string
+                                                format: date
+                                                description: The date the payment was made. Required when paid, and refused otherwise. It cannot be later than today in the UK.
+                                            amount:
+                                                allOf:
+                                                    - $ref: '#/components/schemas/Money'
+                                                description: The amount paid, more than zero. Required when paid, and refused otherwise.
+                                            reason:
+                                                type: string
+                                                maxLength: 1000
+                                                description: Why no payment is owed. Required when not owed, and refused otherwise.
+                                            note:
+                                                type: string
+                                                maxLength: 1000
+                                                description: Free text, such as a payment reference.
+        CreateStandardRates:
+            required: true
+            description: An organisation's own rate sets for a standard, in the organisation the `organisation` relationship names.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                    - attributes
+                                    - relationships
+                                properties:
+                                    type:
+                                        type: string
+                                        const: standard-rates
+                                    attributes:
+                                        type: object
+                                        required:
+                                            - standard
+                                            - sets
+                                        properties:
+                                            standard:
+                                                type: string
+                                                description: The key of the standard, such as `gsop-3`.
+                                            sets:
+                                                type: array
+                                                description: Each set of rates and the date it takes effect. No two sets may take effect on the same date, and every amount is more than zero and in GBP.
+                                                items:
+                                                    $ref: '#/components/schemas/StandardRateSet'
+                                    relationships:
+                                        type: object
+                                        required:
+                                            - organisation
+                                        properties:
+                                            organisation:
+                                                type: object
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/OrganisationRelationship'
+        ReplaceStandardRates:
+            required: true
+            description: The organisation's new rate sets for the standard. They replace the stored ones, and an empty list leaves the platform's rates to apply on every date.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                    - id
+                                    - attributes
+                                properties:
+                                    id:
+                                        type: string
+                                        format: uuid
+                                        description: The ID of the standard rates to replace.
+                                    type:
+                                        type: string
+                                        const: standard-rates
+                                    attributes:
+                                        type: object
+                                        required:
+                                            - sets
+                                        properties:
+                                            sets:
+                                                type: array
+                                                description: Each set of rates and the date it takes effect. No two sets may take effect on the same date, and every amount is more than zero and in GBP.
+                                                items:
+                                                    $ref: '#/components/schemas/StandardRateSet'
         CreateTrainingCompletion:
             required: true
             description: The training completion to create.
@@ -70681,7 +70870,7 @@ paths:
 
                 The same rules apply as on create. Omitting the manager role removes it, so the manager can do nothing for the person until a role is assigned.
 
-                Changing the manager ends this relationship and creates a new one with a new id, which the response returns. The people it reached lose the old line before the response, so the previous manager can no longer read them, even before their grants are rebuilt. HAVS exposure records are re-stamped after the change commits. One whose re-stamp fails keeps the old line until the management lines reconciler repairs it. Changing only the kind or the manager role keeps the id.
+                Changing the manager or the manager role, including removing the role, ends this relationship and creates a new one with a new id, which the response returns. The people it reached lose the old line before the response, so the previous manager, or the old role, can no longer act for them through this relationship, even before the manager's grants are rebuilt. Access a manager holds through other grants is unaffected. The manager then holds no grants for the person until their grants are next rebuilt, usually within a minute or two, even when the new role grants more. HAVS exposure records are re-stamped after the change commits. One whose re-stamp fails keeps the old line until the management lines reconciler repairs it. Changing only the kind, or assigning a role to a relationship that has none, keeps the id.
             operationId: UpdateManagementRelationship
             parameters:
                 - $ref: '#/components/parameters/management_relationship_id'
@@ -70853,6 +71042,8 @@ paths:
                 Replace a manager role's name and permissions. The default Line manager role can be edited this way. The change applies to that organisation only.
 
                 A permission the role does not already hold must be one the caller holds organisation-wide in the role's organisation, because the role grants it to every manager whose relationship holds it. Otherwise the update is refused with 403 `CH.003.065`. Permissions the role already holds are kept whoever edits it.
+
+                Removing a permission ends every live management relationship that holds the role and creates each again with a new id, before the response. Its managers at once lose the removed permission over the people those relationships reach. Access a manager holds through other grants is unaffected. They also lose the permissions the role keeps until their grants are next rebuilt, usually within a minute or two. HAVS exposure records are re-stamped after the change commits. One whose re-stamp fails keeps the old line until the management lines reconciler repairs it. A rename, or an edit that only adds permissions, keeps every relationship.
             operationId: UpdateManagerRole
             parameters:
                 - $ref: '#/components/parameters/manager_role_id'
@@ -74983,416 +75174,6 @@ paths:
             x-mint:
                 metadata:
                     title: Update a time band
-    /v3/orgs/{org_id}/standard-mappings:
-        get:
-            description: List the organisation's standard mappings, which say how each of its forms answers a performance standard. The response has no `included`.
-            operationId: ListStandardMappings
-            parameters:
-                - $ref: '#/components/parameters/org_id'
-                - $ref: '#/components/parameters/limit'
-                - $ref: '#/components/parameters/offset'
-                - $ref: '#/components/parameters/page'
-                - $ref: '#/components/parameters/standard_mappings_filter'
-            responses:
-                "200":
-                    $ref: '#/components/responses/ListStandardMappings'
-                "400":
-                    $ref: '#/components/responses/BadRequest'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - OAuth2: []
-                - Cookie: []
-            summary: List standard mappings
-            tags:
-                - Standards
-            x-mint:
-                metadata:
-                    title: List standard mappings
-        post:
-            description: Map a form's fields to a performance standard's inputs. Every input but a listed one must be mapped, to a field whose type suits it. A yes or no input mapped to a choice field names the option that means yes in `yes_options`. The mapping generates a saved query over the form, named by `query_id`, which only the mapping changes. A form has one mapping per standard, so a second answers 409.
-            operationId: CreateStandardMapping
-            parameters:
-                - $ref: '#/components/parameters/org_id'
-            requestBody:
-                $ref: '#/components/requestBodies/CreateStandardMapping'
-            responses:
-                "201":
-                    $ref: '#/components/responses/GetStandardMapping'
-                "400":
-                    $ref: '#/components/responses/BadRequest'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "409":
-                    $ref: '#/components/responses/Conflict'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - OAuth2: []
-                - Cookie: []
-            summary: Create a standard mapping
-            tags:
-                - Standards
-            x-mint:
-                metadata:
-                    title: Create a standard mapping
-    /v3/orgs/{org_id}/standard-mappings/{standard_mapping_id}:
-        delete:
-            description: Delete a standard mapping and the query generated from it.
-            operationId: DeleteStandardMapping
-            parameters:
-                - $ref: '#/components/parameters/org_id'
-                - $ref: '#/components/parameters/standard_mapping_id'
-            responses:
-                "204":
-                    description: Standard mapping deleted.
-                "400":
-                    $ref: '#/components/responses/BadRequest'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "404":
-                    $ref: '#/components/responses/NotFound'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - OAuth2: []
-                - Cookie: []
-            summary: Delete a standard mapping
-            tags:
-                - Standards
-            x-mint:
-                metadata:
-                    title: Delete a standard mapping
-        get:
-            description: Get one of the organisation's standard mappings.
-            operationId: GetStandardMapping
-            parameters:
-                - $ref: '#/components/parameters/org_id'
-                - $ref: '#/components/parameters/standard_mapping_id'
-            responses:
-                "200":
-                    $ref: '#/components/responses/GetStandardMapping'
-                "400":
-                    $ref: '#/components/responses/BadRequest'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "404":
-                    $ref: '#/components/responses/NotFound'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - OAuth2: []
-                - Cookie: []
-            summary: Get a standard mapping
-            tags:
-                - Standards
-            x-mint:
-                metadata:
-                    title: Get a standard mapping
-        put:
-            description: Replace a standard mapping's inputs, yes options and nation, and regenerate its query. The standard and form stay as they were created, and a nation left out is cleared to the standard's default.
-            operationId: UpdateStandardMapping
-            parameters:
-                - $ref: '#/components/parameters/org_id'
-                - $ref: '#/components/parameters/standard_mapping_id'
-            requestBody:
-                $ref: '#/components/requestBodies/UpdateStandardMapping'
-            responses:
-                "200":
-                    $ref: '#/components/responses/GetStandardMapping'
-                "400":
-                    $ref: '#/components/responses/BadRequest'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "404":
-                    $ref: '#/components/responses/NotFound'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - OAuth2: []
-                - Cookie: []
-            summary: Update a standard mapping
-            tags:
-                - Standards
-            x-mint:
-                metadata:
-                    title: Update a standard mapping
-    /v3/orgs/{org_id}/standard-mappings/{standard_mapping_id}/payments/{submission_id}:
-        get:
-            description: Get whether a payment was made for one job under a standard mapping. A job is a submission of the mapping's form. The caller needs to view standards across the organisation. A view of some forms' mappings only, as a contractor's is, reads the results but not the payments. A job with no record answers 404.
-            operationId: GetStandardPayment
-            parameters:
-                - $ref: '#/components/parameters/org_id'
-                - $ref: '#/components/parameters/standard_mapping_id'
-                - $ref: '#/components/parameters/submission_id'
-            responses:
-                "200":
-                    $ref: '#/components/responses/GetStandardPayment'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "404":
-                    $ref: '#/components/responses/NotFound'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - OAuth2: []
-                - Cookie: []
-            summary: Get a job's payment record
-            tags:
-                - Standards
-            x-mint:
-                metadata:
-                    title: Get a job's payment record
-        put:
-            description: Record whether a payment was made for one job under a standard mapping, such as a breach of GSOP 3. The record replaces any the job already has. Every change is audited, and entered in the job's payment history. Recording the status `withdrawn` withdraws the job's record, and withdrawing a job with no record is refused. The caller needs permission to record standard payments, and to view standards across the organisation.
-            operationId: RecordStandardPayment
-            parameters:
-                - $ref: '#/components/parameters/org_id'
-                - $ref: '#/components/parameters/standard_mapping_id'
-                - $ref: '#/components/parameters/submission_id'
-            requestBody:
-                $ref: '#/components/requestBodies/RecordStandardPayment'
-            responses:
-                "200":
-                    $ref: '#/components/responses/GetStandardPayment'
-                "400":
-                    $ref: '#/components/responses/BadRequest'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "404":
-                    $ref: '#/components/responses/NotFound'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - OAuth2: []
-                - Cookie: []
-            summary: Record a job's payment
-            tags:
-                - Standards
-            x-mint:
-                metadata:
-                    title: Record a job's payment
-    /v3/orgs/{org_id}/standard-mappings/{standard_mapping_id}/payments/{submission_id}/history:
-        get:
-            description: List every change made to one job's payment record under a standard mapping, newest first. Each entry holds the record's fields as the change left them, who made it and when. A job whose record was never changed has an empty list. The caller needs to view standards across the organisation, as for the payment record itself. The list is not paginated, and has no `included`.
-            operationId: ListStandardPaymentHistory
-            parameters:
-                - $ref: '#/components/parameters/org_id'
-                - $ref: '#/components/parameters/standard_mapping_id'
-                - $ref: '#/components/parameters/submission_id'
-            responses:
-                "200":
-                    $ref: '#/components/responses/ListStandardPaymentHistory'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "404":
-                    $ref: '#/components/responses/NotFound'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - OAuth2: []
-                - Cookie: []
-            summary: List a job's payment history
-            tags:
-                - Standards
-            x-mint:
-                metadata:
-                    title: List a job's payment history
-    /v3/orgs/{org_id}/standard-mappings/{standard_mapping_id}/results:
-        get:
-            description: Evaluate a standard mapping's standard over a period, and return each job's result with its reasons and inputs, the counts by result, and a series of counts per bucket. A job is in the period when the mapping's period input falls in it. Without `date_op`, the period is the last 30 days. The rows are the submissions the caller can see, so a contractor reading the form owner's mapping gets results for its own jobs only. A run evaluates at most 50,000 jobs, and says when it was truncated. A caller who can view standards across the organisation also gets each job's payment record, and a withdrawn record is left off. A caller who views some forms' mappings only does not. With `submission_id`, the run evaluates that one submission whatever its date, and the series is empty. It returns no jobs when the submission is not in analytics yet, and is refused with `date_op`, `date_values` or `bucket`.
-            operationId: RunStandard
-            parameters:
-                - $ref: '#/components/parameters/org_id'
-                - $ref: '#/components/parameters/standard_mapping_id'
-                - $ref: '#/components/parameters/standard_results_date_op'
-                - $ref: '#/components/parameters/standard_results_date_values'
-                - $ref: '#/components/parameters/standard_results_bucket'
-                - $ref: '#/components/parameters/standard_results_submission_id'
-            responses:
-                "200":
-                    $ref: '#/components/responses/GetStandardResults'
-                "400":
-                    $ref: '#/components/responses/BadRequest'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "404":
-                    $ref: '#/components/responses/NotFound'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - OAuth2: []
-                - Cookie: []
-            summary: Get a standard's results
-            tags:
-                - Standards
-            x-mint:
-                metadata:
-                    title: Get a standard's results
-    /v3/orgs/{org_id}/standard-mappings/{standard_mapping_id}/results/export:
-        get:
-            description: Evaluate a standard mapping's standard over a period, as the results do, and return one CSV row per job. Each row holds the submission, when it was submitted, its period date, its result, the reasons for it, the inputs it was waiting on, and one column per input of the standard. Without `date_op`, the period is the last 30 days. A period holding more than 50,000 jobs is refused, so narrow it to export them all. When the caller can see the mapping's payments, each row also has the job's payment status, date paid, amount, the reason none is owed and the note.
-            operationId: ExportStandardResults
-            parameters:
-                - $ref: '#/components/parameters/org_id'
-                - $ref: '#/components/parameters/standard_mapping_id'
-                - $ref: '#/components/parameters/standard_results_date_op'
-                - $ref: '#/components/parameters/standard_results_date_values'
-            responses:
-                "200":
-                    content:
-                        text/csv:
-                            schema:
-                                type: string
-                    description: The standard's results as CSV.
-                    headers:
-                        Content-Disposition:
-                            description: Names the file after the standard, as `<standard key>-results.csv`, so a browser saves it rather than renders it.
-                            required: true
-                            schema:
-                                example: attachment; filename="gsop-3-results.csv"
-                                type: string
-                            example: attachment; filename="gsop-3-results.csv"
-                "400":
-                    $ref: '#/components/responses/BadRequest'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "404":
-                    $ref: '#/components/responses/NotFound'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - OAuth2: []
-                - Cookie: []
-            summary: Export a standard's results as CSV
-            tags:
-                - Standards
-            x-mint:
-                metadata:
-                    title: Export a standard's results
-    /v3/orgs/{org_id}/standards:
-        get:
-            description: List the performance standards the platform defines, such as GSOP 3 and GSOP 13, with the inputs each reads. The list is the same for every organisation, and has no `included`.
-            operationId: ListStandards
-            parameters:
-                - $ref: '#/components/parameters/org_id'
-                - $ref: '#/components/parameters/limit'
-                - $ref: '#/components/parameters/offset'
-                - $ref: '#/components/parameters/page'
-            responses:
-                "200":
-                    $ref: '#/components/responses/ListStandards'
-                "400":
-                    $ref: '#/components/responses/BadRequest'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - OAuth2: []
-                - Cookie: []
-            summary: List the performance standards
-            tags:
-                - Standards
-            x-mint:
-                metadata:
-                    title: List standards
-    /v3/orgs/{org_id}/standards/{standard_key}:
-        get:
-            description: Get one performance standard by its key, such as `gsop-3`, with the inputs it reads.
-            operationId: GetStandard
-            parameters:
-                - $ref: '#/components/parameters/org_id'
-                - $ref: '#/components/parameters/standard_key'
-            responses:
-                "200":
-                    $ref: '#/components/responses/GetStandard'
-                "400":
-                    $ref: '#/components/responses/BadRequest'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "404":
-                    $ref: '#/components/responses/NotFound'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - OAuth2: []
-                - Cookie: []
-            summary: Get a performance standard
-            tags:
-                - Standards
-            x-mint:
-                metadata:
-                    title: Get a standard
-    /v3/orgs/{org_id}/standards/{standard_key}/rates:
-        get:
-            description: Get the rates a standard's payments are priced from. The platform's sets come first, each from the date it takes effect. The organisation's own sets take precedence on any date one of them is in effect, and the platform's apply on any other date. The caller needs to view standards across the organisation. A view of some forms' mappings only, as a contractor's is, is refused.
-            operationId: GetStandardRates
-            parameters:
-                - $ref: '#/components/parameters/org_id'
-                - $ref: '#/components/parameters/standard_key'
-            responses:
-                "200":
-                    $ref: '#/components/responses/GetStandardRates'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "404":
-                    $ref: '#/components/responses/NotFound'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - OAuth2: []
-                - Cookie: []
-            summary: Get a standard's payment rates
-            tags:
-                - Standards
-            x-mint:
-                metadata:
-                    title: Get a standard's payment rates
-        put:
-            description: Replace the organisation's own rates for a standard. An empty list of sets removes them, so the platform's rates apply on every date. Every change is audited. The caller needs permission to manage standard rates across the organisation.
-            operationId: ReplaceStandardRates
-            parameters:
-                - $ref: '#/components/parameters/org_id'
-                - $ref: '#/components/parameters/standard_key'
-            requestBody:
-                $ref: '#/components/requestBodies/ReplaceStandardRates'
-            responses:
-                "200":
-                    $ref: '#/components/responses/GetStandardRates'
-                "400":
-                    $ref: '#/components/responses/BadRequest'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "404":
-                    $ref: '#/components/responses/NotFound'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - OAuth2: []
-                - Cookie: []
-            summary: Replace a standard's payment rates
-            tags:
-                - Standards
-            x-mint:
-                metadata:
-                    title: Replace a standard's payment rates
     /v3/owners:
         get:
             description: Retrieve a list of owners. Filter by organisation with `?filter=eq(organisation,xxx)`.
@@ -79229,6 +79010,455 @@ paths:
             x-mint:
                 metadata:
                     title: Update an SSO provider
+    /v3/standard-mappings:
+        get:
+            description: List the standard mappings the caller can view, in every organisation it holds a view of standards in. A mapping says how one of its organisation's forms answers a performance standard. Filter by organisation with `eq(organisation,<id>)`. The response has no `included`.
+            operationId: ListStandardMappings
+            parameters:
+                - $ref: '#/components/parameters/limit'
+                - $ref: '#/components/parameters/offset'
+                - $ref: '#/components/parameters/page'
+                - $ref: '#/components/parameters/standard_mappings_filter'
+            responses:
+                "200":
+                    $ref: '#/components/responses/ListStandardMappings'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: List standard mappings
+            tags:
+                - Standards
+            x-mint:
+                metadata:
+                    title: List standard mappings
+        post:
+            description: Map a form's fields to a performance standard's inputs, in the organisation the body's `organisation` relationship names. The caller needs to manage standards there. Every input but a listed one must be mapped, to a field whose type suits it. A yes or no input mapped to a choice field names the option that means yes in `yes_options`. The mapping generates a saved query over the form, named by `query_id`, which only the mapping changes. A form has one mapping per standard, so a second answers 409.
+            operationId: CreateStandardMapping
+            requestBody:
+                $ref: '#/components/requestBodies/CreateStandardMapping'
+            responses:
+                "201":
+                    $ref: '#/components/responses/GetStandardMapping'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Create a standard mapping
+            tags:
+                - Standards
+            x-mint:
+                metadata:
+                    title: Create a standard mapping
+    /v3/standard-mappings/{standard_mapping_id}:
+        delete:
+            description: Delete a standard mapping and the query generated from it.
+            operationId: DeleteStandardMapping
+            parameters:
+                - $ref: '#/components/parameters/standard_mapping_id'
+            responses:
+                "204":
+                    description: Standard mapping deleted.
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Delete a standard mapping
+            tags:
+                - Standards
+            x-mint:
+                metadata:
+                    title: Delete a standard mapping
+        get:
+            description: Get a standard mapping by its id. A mapping the caller cannot view answers 401.
+            operationId: GetStandardMapping
+            parameters:
+                - $ref: '#/components/parameters/standard_mapping_id'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetStandardMapping'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Get a standard mapping
+            tags:
+                - Standards
+            x-mint:
+                metadata:
+                    title: Get a standard mapping
+        put:
+            description: Replace a standard mapping's inputs, yes options and nation, and regenerate its query. The standard and form stay as they were created, and a nation left out is cleared to the standard's default.
+            operationId: UpdateStandardMapping
+            parameters:
+                - $ref: '#/components/parameters/standard_mapping_id'
+            requestBody:
+                $ref: '#/components/requestBodies/UpdateStandardMapping'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetStandardMapping'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Update a standard mapping
+            tags:
+                - Standards
+            x-mint:
+                metadata:
+                    title: Update a standard mapping
+    /v3/standard-mappings/{standard_mapping_id}/payments/{submission_id}:
+        get:
+            description: Get whether a payment was made for one job under a standard mapping. A job is a submission of the mapping's form. The caller needs to view standards across the mapping's organisation. A view of some forms' mappings only, as a contractor's is, reads the results but not the payments. A job with no record answers 404.
+            operationId: GetStandardPayment
+            parameters:
+                - $ref: '#/components/parameters/standard_mapping_id'
+                - $ref: '#/components/parameters/submission_id'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetStandardPayment'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Get a job's payment record
+            tags:
+                - Standards
+            x-mint:
+                metadata:
+                    title: Get a job's payment record
+        put:
+            description: Record whether a payment was made for one job under a standard mapping, such as a breach of GSOP 3. The record replaces any the job already has. Every change is audited, and entered in the job's payment history. Recording the status `withdrawn` withdraws the job's record, and withdrawing a job with no record is refused. The caller needs permission to record standard payments, and to view standards across the mapping's organisation.
+            operationId: RecordStandardPayment
+            parameters:
+                - $ref: '#/components/parameters/standard_mapping_id'
+                - $ref: '#/components/parameters/submission_id'
+            requestBody:
+                $ref: '#/components/requestBodies/RecordStandardPayment'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetStandardPayment'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Record a job's payment
+            tags:
+                - Standards
+            x-mint:
+                metadata:
+                    title: Record a job's payment
+    /v3/standard-mappings/{standard_mapping_id}/payments/{submission_id}/history:
+        get:
+            description: List every change made to one job's payment record under a standard mapping, newest first. Each entry holds the record's fields as the change left them, who made it, their name, and when. A job whose record was never changed has an empty list. The caller needs to view standards across the mapping's organisation, as for the payment record itself. The list is not paginated, and has no `included`.
+            operationId: ListStandardPaymentHistory
+            parameters:
+                - $ref: '#/components/parameters/standard_mapping_id'
+                - $ref: '#/components/parameters/submission_id'
+            responses:
+                "200":
+                    $ref: '#/components/responses/ListStandardPaymentHistory'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: List a job's payment history
+            tags:
+                - Standards
+            x-mint:
+                metadata:
+                    title: List a job's payment history
+    /v3/standard-mappings/{standard_mapping_id}/results:
+        get:
+            description: Evaluate a standard mapping's standard over a period, and return each job's result with its reasons and inputs, the counts by result, and a series of counts per bucket. A job is in the period when the mapping's period input falls in it. Without `date_op`, the period is the last 30 days. The rows are the submissions the caller can see, so a contractor reading the form owner's mapping gets results for its own jobs only. A run evaluates at most 50,000 jobs, and says when it was truncated. A caller who can view standards across the mapping's organisation also gets each job's payment record, and a withdrawn record is left off. A caller who views some forms' mappings only does not. With `submission_id`, the run evaluates that one submission whatever its date, and the series is empty. It returns no jobs when the submission is not in analytics yet, and is refused with `date_op`, `date_values` or `bucket`.
+            operationId: RunStandard
+            parameters:
+                - $ref: '#/components/parameters/standard_mapping_id'
+                - $ref: '#/components/parameters/standard_results_date_op'
+                - $ref: '#/components/parameters/standard_results_date_values'
+                - $ref: '#/components/parameters/standard_results_bucket'
+                - $ref: '#/components/parameters/standard_results_submission_id'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetStandardResults'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Get a standard's results
+            tags:
+                - Standards
+            x-mint:
+                metadata:
+                    title: Get a standard's results
+    /v3/standard-mappings/{standard_mapping_id}/results/export:
+        get:
+            description: Evaluate a standard mapping's standard over a period, as the results do, and return one CSV row per job. Each row holds the submission, when it was submitted, its period date, its result, the reasons for it, the inputs it was waiting on, and one column per input of the standard. Without `date_op`, the period is the last 30 days. A period holding more than 50,000 jobs is refused, so narrow it to export them all. When the caller can see the mapping's payments, each row also has the job's payment status, date paid, amount, the reason none is owed and the note.
+            operationId: ExportStandardResults
+            parameters:
+                - $ref: '#/components/parameters/standard_mapping_id'
+                - $ref: '#/components/parameters/standard_results_date_op'
+                - $ref: '#/components/parameters/standard_results_date_values'
+            responses:
+                "200":
+                    content:
+                        text/csv:
+                            schema:
+                                type: string
+                    description: The standard's results as CSV.
+                    headers:
+                        Content-Disposition:
+                            description: Names the file after the standard, as `<standard key>-results.csv`, so a browser saves it rather than renders it.
+                            required: true
+                            schema:
+                                example: attachment; filename="gsop-3-results.csv"
+                                type: string
+                            example: attachment; filename="gsop-3-results.csv"
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Export a standard's results as CSV
+            tags:
+                - Standards
+            x-mint:
+                metadata:
+                    title: Export a standard's results
+    /v3/standard-rates:
+        get:
+            description: List the rates organisations set for performance standards, one record per organisation and standard. Each record's sets take precedence over the standard's platform rates on any date one of them is in effect, and the platform's apply on any other date. The list holds the records of each organisation in which the caller can view standards across the organisation. A view of some forms' mappings only, as a contractor's is, lists none. Filter with `eq(organisation,<id>)` and `eq(standard,<key>)`. An organisation with no record uses the platform's rates alone. The response has no `included`.
+            operationId: ListStandardRates
+            parameters:
+                - $ref: '#/components/parameters/limit'
+                - $ref: '#/components/parameters/offset'
+                - $ref: '#/components/parameters/page'
+                - $ref: '#/components/parameters/standard_rates_filter'
+            responses:
+                "200":
+                    $ref: '#/components/responses/ListStandardRates'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: List organisations' standard rates
+            tags:
+                - Standards
+            x-mint:
+                metadata:
+                    title: List standard rates
+        post:
+            description: Set an organisation's own rates for a performance standard, in the organisation the body's `organisation` relationship names. They take precedence over the standard's platform rates on any date one of them is in effect. An organisation has one record per standard, so a second answers 409; change the existing record with a PUT instead. The change is audited. The caller needs permission to manage standard rates across the organisation.
+            operationId: CreateStandardRates
+            requestBody:
+                $ref: '#/components/requestBodies/CreateStandardRates'
+            responses:
+                "201":
+                    $ref: '#/components/responses/GetStandardRates'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Create an organisation's standard rates
+            tags:
+                - Standards
+            x-mint:
+                metadata:
+                    title: Create standard rates
+    /v3/standard-rates/{standard_rates_id}:
+        get:
+            description: Get one organisation's own rates for a performance standard, by the record's id. The caller needs to view standards across the record's organisation. A view of some forms' mappings only, as a contractor's is, is refused.
+            operationId: GetStandardRates
+            parameters:
+                - $ref: '#/components/parameters/standard_rates_id'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetStandardRates'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Get an organisation's standard rates
+            tags:
+                - Standards
+            x-mint:
+                metadata:
+                    title: Get standard rates
+        put:
+            description: Replace the sets of an organisation's own rates for a performance standard. An empty list of sets leaves the platform's rates to apply on every date. Sending the sets already stored changes and audits nothing. Every change is audited. The caller needs permission to manage standard rates across the record's organisation.
+            operationId: ReplaceStandardRates
+            parameters:
+                - $ref: '#/components/parameters/standard_rates_id'
+            requestBody:
+                $ref: '#/components/requestBodies/ReplaceStandardRates'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetStandardRates'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Replace an organisation's standard rates
+            tags:
+                - Standards
+            x-mint:
+                metadata:
+                    title: Replace standard rates
+    /v3/standards:
+        get:
+            description: List the performance standards the platform defines, such as GSOP 3 and GSOP 13, with the inputs each reads. The list is the same for every caller, and has no `included`. It includes each standard's platform rates. Any signed-in caller can read it.
+            operationId: ListStandards
+            parameters:
+                - $ref: '#/components/parameters/limit'
+                - $ref: '#/components/parameters/offset'
+                - $ref: '#/components/parameters/page'
+            responses:
+                "200":
+                    $ref: '#/components/responses/ListStandards'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: List the performance standards
+            tags:
+                - Standards
+            x-mint:
+                metadata:
+                    title: List standards
+    /v3/standards/{standard_key}:
+        get:
+            description: Get one performance standard by its key, such as `gsop-3`, with the inputs it reads and the platform's rates. Any signed-in caller can read it.
+            operationId: GetStandard
+            parameters:
+                - $ref: '#/components/parameters/standard_key'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetStandard'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Get a performance standard
+            tags:
+                - Standards
+            x-mint:
+                metadata:
+                    title: Get a standard
     /v3/status:
         get:
             description: View the platform status.
@@ -83328,6 +83558,7 @@ paths:
                 - $ref: '#/components/parameters/limit'
                 - $ref: '#/components/parameters/offset'
                 - $ref: '#/components/parameters/page'
+                - $ref: '#/components/parameters/work_orders_sort'
                 - $ref: '#/components/parameters/if_none_match'
             responses:
                 "200":
