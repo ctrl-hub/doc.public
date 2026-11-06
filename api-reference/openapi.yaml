@@ -40207,6 +40207,7 @@ components:
                 - `organisation_in`: Filter schemes by organisation ID(s)
                 - `eq(contract,xxx)`: Filter schemes that are assigned to the given scheme contract ID.
                 - `eq(status,xxx)`: Filter schemes by lifecycle status. One of `in_planning`, `in_progress`, `on_hold`, `complete`, `cancelled`.
+                - `ge(modified_at,<timestamp>)`: Filter by the date a scheme last changed, which is the `meta.modified_at` of the response. It moves when the scheme is edited and when its work orders, operations or their assignments change. Accepts an RFC 3339 timestamp and supports the range operators `ge`, `le`, `gt`, `lt` (and `eq`). Example (changed since a given time): `ge(modified_at,2026-07-01T00:00:00Z)`. To read what changed, sort by `modified_at` and, for the next read, start again from the last timestamp seen with `ge`, a few seconds earlier than it. The timestamp is set before the change is saved, so a write that started earlier can become visible after a read has already passed its timestamp. Remove the schemes that come back twice by `id`.
 
                 Project-role filters (cross-resource lookups against project role assignments):
 
@@ -40219,6 +40220,26 @@ components:
             schema:
                 type: string
                 default: ""
+        schemes_sort:
+            in: query
+            name: sort
+            description: |
+                The field to sort by. Only one field is accepted, because each sort is served by an index on that field alone and a second field would sort the organisation's schemes in memory.
+
+                `modified_at` is the field a changes-since read orders by. Schemes with the same value are returned in a fixed order, so `limit` and `offset` paging does not skip or repeat one.
+            required: false
+            style: form
+            explode: false
+            schema:
+                type: array
+                maxItems: 1
+                items:
+                    type: string
+                    enum:
+                        - created_at
+                        - -created_at
+                        - modified_at
+                        - -modified_at
         scheme_id:
             name: scheme_id
             in: path
@@ -70870,7 +70891,7 @@ paths:
 
                 The same rules apply as on create. Omitting the manager role removes it, so the manager can do nothing for the person until a role is assigned.
 
-                Changing the manager ends this relationship and creates a new one with a new id, which the response returns. The people it reached lose the old line before the response, so the previous manager can no longer read them, even before their grants are rebuilt. HAVS exposure records are re-stamped after the change commits. One whose re-stamp fails keeps the old line until the management lines reconciler repairs it. Changing only the kind or the manager role keeps the id.
+                Changing the manager or the manager role, including removing the role, ends this relationship and creates a new one with a new id, which the response returns. The people it reached lose the old line before the response, so the previous manager, or the old role, can no longer act for them through this relationship, even before the manager's grants are rebuilt. Access a manager holds through other grants is unaffected. The manager then holds no grants for the person until their grants are next rebuilt, usually within a minute or two, even when the new role grants more. HAVS exposure records are re-stamped after the change commits. One whose re-stamp fails keeps the old line until the management lines reconciler repairs it. Changing only the kind, or assigning a role to a relationship that has none, keeps the id.
             operationId: UpdateManagementRelationship
             parameters:
                 - $ref: '#/components/parameters/management_relationship_id'
@@ -71042,6 +71063,8 @@ paths:
                 Replace a manager role's name and permissions. The default Line manager role can be edited this way. The change applies to that organisation only.
 
                 A permission the role does not already hold must be one the caller holds organisation-wide in the role's organisation, because the role grants it to every manager whose relationship holds it. Otherwise the update is refused with 403 `CH.003.065`. Permissions the role already holds are kept whoever edits it.
+
+                Removing a permission ends every live management relationship that holds the role and creates each again with a new id, before the response. Its managers at once lose the removed permission over the people those relationships reach. Access a manager holds through other grants is unaffected. They also lose the permissions the role keeps until their grants are next rebuilt, usually within a minute or two. HAVS exposure records are re-stamped after the change commits. One whose re-stamp fails keeps the old line until the management lines reconciler repairs it. A rename, or an edit that only adds permissions, keeps every relationship.
             operationId: UpdateManagerRole
             parameters:
                 - $ref: '#/components/parameters/manager_role_id'
@@ -74783,6 +74806,7 @@ paths:
                 - $ref: '#/components/parameters/limit'
                 - $ref: '#/components/parameters/offset'
                 - $ref: '#/components/parameters/page'
+                - $ref: '#/components/parameters/schemes_sort'
                 - $ref: '#/components/parameters/if_none_match'
             responses:
                 "200":
@@ -78271,6 +78295,7 @@ paths:
                 - $ref: '#/components/parameters/limit'
                 - $ref: '#/components/parameters/offset'
                 - $ref: '#/components/parameters/page'
+                - $ref: '#/components/parameters/schemes_sort'
                 - $ref: '#/components/parameters/if_none_match'
             responses:
                 "200":
