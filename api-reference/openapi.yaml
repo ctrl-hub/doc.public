@@ -21,95 +21,18 @@ components:
             name: X-Session-Token
             type: apiKey
     schemas:
-        StreetManagerSubscriptionConfirmation:
+        StreetManagerMessage:
+            description: |
+                A message AWS SNS posts for a Street Manager topic, as a JSON document sent as text/plain. Its
+                `Type` is `SubscriptionConfirmation` or `Notification`, and the receiver decodes it. See
+                https://docs.aws.amazon.com/sns/latest/dg/http-notification-json.html for its members.
             type: object
-            description: Street Manager subscription confirmation payload
             properties:
                 Type:
                     type: string
-                    description: The message type
-                MessageId:
-                    type: string
-                    description: Unique identifier for the message
-                Token:
-                    type: string
-                    description: Confirmation token
-                TopicArn:
-                    type: string
-                    description: The ARN of the topic
-                Message:
-                    type: string
-                    description: The confirmation message
-                SubscribeURL:
-                    type: string
-                    description: URL to confirm the subscription
-                Timestamp:
-                    type: string
-                    format: date-time
-                    description: When the message was sent
-                SignatureVersion:
-                    type: string
-                    description: Version of the signature
-                Signature:
-                    type: string
-                    description: Message signature for verification
-                SigningCertURL:
-                    type: string
-                    description: URL of the signing certificate
-        StreetManagerInboundRequest:
-            type: object
-            description: Street Manager inbound request payload
-            required:
-                - Type
-                - MessageId
-                - TopicArn
-                - Message
-                - Timestamp
-                - SignatureVersion
-                - Signature
-                - SigningCertURL
-                - UnsubscribeURL
-                - MessageAttributes
-            properties:
-                Type:
-                    type: string
-                    description: The message type
-                MessageId:
-                    type: string
-                    description: Unique identifier for the message
-                TopicArn:
-                    type: string
-                    description: The ARN of the topic
-                Message:
-                    type: object
-                    additionalProperties: true
-                    description: The message content
-                Timestamp:
-                    type: string
-                    format: date-time
-                    description: When the message was sent
-                SignatureVersion:
-                    type: string
-                    description: Version of the signature
-                Signature:
-                    type: string
-                    description: Message signature for verification
-                SigningCertURL:
-                    type: string
-                    description: URL of the signing certificate
-                UnsubscribeURL:
-                    type: string
-                    description: URL to unsubscribe from the topic
-                MessageAttributes:
-                    type: object
-                    additionalProperties:
-                        type: object
-                        properties:
-                            Type:
-                                type: string
-                            Value:
-                                type: string
-                    description: Additional message attributes
+                    description: The message type, `SubscriptionConfirmation` or `Notification`.
+            additionalProperties: true
+            x-go-type: string
         FormRelationship:
             type: object
             description: Represents a relationship to a form
@@ -609,6 +532,33 @@ components:
                 - id
                 - status
                 - title
+        ServiceAccountKeySecret:
+            description: A service account key with its client secret, which is shown only when the key is created.
+            type: object
+            required:
+                - id
+                - type
+                - attributes
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the service account key.
+                type:
+                    type: string
+                    const: service-account-keys
+                attributes:
+                    type: object
+                    required:
+                        - client_secret
+                        - enabled
+                    properties:
+                        client_secret:
+                            type: string
+                            description: The client secret for the service account key.
+                        enabled:
+                            type: boolean
+                            description: Indicates whether the service account key is enabled.
         Action:
             type: object
             description: |
@@ -8066,6 +8016,7 @@ components:
                 type:
                     type: string
                     const: cost-lines
+                    x-go-type-name: CostLineResourceType
                 attributes:
                     $ref: '#/components/schemas/CostLineAttributes'
                 meta:
@@ -9310,11 +9261,13 @@ components:
                 discriminator:
                     propertyName: type
                     mapping:
+                        document-review-decisions: "#/components/schemas/DocumentReviewDecision"
                         documents: "#/components/schemas/Document"
                         job-roles: "#/components/schemas/JobRole"
                         organisations: "#/components/schemas/Organisation"
                         users: "#/components/schemas/User"
                 oneOf:
+                    - $ref: '#/components/schemas/DocumentReviewDecision'
                     - $ref: '#/components/schemas/Document'
                     - $ref: '#/components/schemas/JobRole'
                     - $ref: '#/components/schemas/Organisation'
@@ -9456,6 +9409,7 @@ components:
                 - document
                 - requester
                 - approvers
+                - decisions
             properties:
                 organisation:
                     type: object
@@ -9504,6 +9458,31 @@ components:
                             type: array
                             items:
                                 $ref: '#/components/schemas/JobRoleRelationship'
+                decisions:
+                    type: object
+                    description: >-
+                        The approvers' decisions on the request. Include `decisions` to side-load them as `document-review-decisions`.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            type: array
+                            items:
+                                $ref: '#/components/schemas/DocumentReviewDecisionRelationship'
+        DocumentReviewDecisionRelationship:
+            type: object
+            description: Represents a relationship to a document review decision
+            required:
+                - id
+                - type
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the document review decision
+                type:
+                    type: string
+                    const: document-review-decisions
         DocumentUpload:
             type: object
             description: A document upload
@@ -10345,6 +10324,7 @@ components:
                 type:
                     type: string
                     const: locations
+                    x-go-type-name: LocationResourceType
                 attributes:
                     $ref: '#/components/schemas/LocationAttributes'
                 meta:
@@ -13435,6 +13415,7 @@ components:
                 type:
                     type: string
                     const: operations
+                    x-go-type-name: OperationResourceType
                 attributes:
                     $ref: '#/components/schemas/OperationAttributes'
                 meta:
@@ -15048,6 +15029,11 @@ components:
                 type:
                     type: string
                     const: havs-equipment
+        WhoAmIPrincipal:
+            description: The authenticated principal, a user or a service account.
+            oneOf:
+                - $ref: '#/components/schemas/User'
+                - $ref: '#/components/schemas/ServiceAccount'
         UserIncludes:
             type: array
             description: Related resources that can be included when a user is returned
@@ -27224,31 +27210,7 @@ components:
                                 - data
                               properties:
                                 data:
-                                    type: object
-                                    required:
-                                        - id
-                                        - type
-                                        - attributes
-                                    properties:
-                                        id:
-                                            type: string
-                                            format: uuid
-                                            description: The unique identifier of the service account key.
-                                        type:
-                                            type: string
-                                            const: service-account-keys
-                                        attributes:
-                                            type: object
-                                            required:
-                                                - client_secret
-                                                - enabled
-                                            properties:
-                                                client_secret:
-                                                    type: string
-                                                    description: The client secret for the service account key.
-                                                enabled:
-                                                    type: boolean
-                                                    description: Indicates whether the service account key is enabled.
+                                    $ref: '#/components/schemas/ServiceAccountKeySecret'
                             - $ref: '#/components/schemas/JSONAPI'
         json:
             description: The json spec
@@ -27302,28 +27264,6 @@ components:
                                     $ref: '#/components/schemas/ActionIncludes'
                             - $ref: '#/components/schemas/DocumentMeta'
                             - $ref: '#/components/schemas/JSONAPI'
-        CreateAction:
-            description: Action created successfully.
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        allOf:
-                            - type: object
-                              required:
-                                - data
-                              properties:
-                                data:
-                                    $ref: '#/components/schemas/Action'
-                                included:
-                                    $ref: '#/components/schemas/ActionIncludes'
-                            - $ref: '#/components/schemas/JSONAPI'
         GetAction:
             description: Get an action.
             headers:
@@ -27346,29 +27286,7 @@ components:
                                 included:
                                     $ref: '#/components/schemas/ActionIncludes'
                             - $ref: '#/components/schemas/JSONAPI'
-        PatchAction:
-            description: Action updated successfully.
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        allOf:
-                            - type: object
-                              required:
-                                - data
-                              properties:
-                                data:
-                                    $ref: '#/components/schemas/Action'
-                                included:
-                                    $ref: '#/components/schemas/ActionIncludes'
-                            - $ref: '#/components/schemas/JSONAPI'
-        ResolveAddresses:
+        ResolveAddressesDocument:
             description: Address resolution results.
             headers:
                 Content-Type:
@@ -28291,28 +28209,6 @@ components:
                                 included:
                                     $ref: '#/components/schemas/CostItemVersionIncludes'
                             - $ref: '#/components/schemas/JSONAPI'
-        UpdateCostItemVersion:
-            description: The updated cost item version.
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        allOf:
-                            - type: object
-                              required:
-                                - data
-                              properties:
-                                data:
-                                    $ref: '#/components/schemas/CostItemVersion'
-                                included:
-                                    $ref: '#/components/schemas/CostItemVersionIncludes'
-                            - $ref: '#/components/schemas/JSONAPI'
         ListCostItems:
             description: List of cost items.
             headers:
@@ -28341,28 +28237,6 @@ components:
                             - $ref: '#/components/schemas/JSONAPI'
         GetCostItem:
             description: An individual cost item.
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        allOf:
-                            - type: object
-                              required:
-                                - data
-                              properties:
-                                data:
-                                    $ref: '#/components/schemas/CostItem'
-                                included:
-                                    $ref: '#/components/schemas/CostItemIncludes'
-                            - $ref: '#/components/schemas/JSONAPI'
-        UpdateCostItem:
-            description: The updated cost item.
             headers:
                 Content-Type:
                     $ref: '#/components/headers/content-type'
@@ -28438,28 +28312,6 @@ components:
                     $ref: '#/components/headers/content-length'
                 X-Request-ID:
                     $ref: '#/components/headers/x-request-id'
-        UpdateCostKitLine:
-            description: The updated cost kit line.
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        allOf:
-                            - type: object
-                              required:
-                                - data
-                              properties:
-                                data:
-                                    $ref: '#/components/schemas/CostKitLine'
-                                included:
-                                    $ref: '#/components/schemas/CostKitLineIncludes'
-                            - $ref: '#/components/schemas/JSONAPI'
         ListCostKits:
             description: List of cost kits.
             headers:
@@ -28508,29 +28360,7 @@ components:
                                 included:
                                     $ref: '#/components/schemas/CostKitIncludes'
                             - $ref: '#/components/schemas/JSONAPI'
-        UpdateCostKit:
-            description: The updated cost kit.
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        allOf:
-                            - type: object
-                              required:
-                                - data
-                              properties:
-                                data:
-                                    $ref: '#/components/schemas/CostKit'
-                                included:
-                                    $ref: '#/components/schemas/CostKitIncludes'
-                            - $ref: '#/components/schemas/JSONAPI'
-        ApplyCostKit:
+        ApplyCostKitDocument:
             description: |
                 The cost lines the kit produced — one per item in force on the work date, each
                 priced and frozen exactly as a hand-entered line is.
@@ -28610,28 +28440,6 @@ components:
                                 included:
                                     $ref: '#/components/schemas/CostLineIncludes'
                             - $ref: '#/components/schemas/JSONAPI'
-        UpdateCostLine:
-            description: The updated cost line.
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        allOf:
-                            - type: object
-                              required:
-                                - data
-                              properties:
-                                data:
-                                    $ref: '#/components/schemas/CostLine'
-                                included:
-                                    $ref: '#/components/schemas/CostLineIncludes'
-                            - $ref: '#/components/schemas/JSONAPI'
         ListCostRollups:
             description: List of cost roll-ups.
             headers:
@@ -28684,28 +28492,6 @@ components:
                             - $ref: '#/components/schemas/JSONAPI'
         GetCostSheet:
             description: An individual cost sheet.
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        allOf:
-                            - type: object
-                              required:
-                                - data
-                              properties:
-                                data:
-                                    $ref: '#/components/schemas/CostSheet'
-                                included:
-                                    $ref: '#/components/schemas/CostSheetIncludes'
-                            - $ref: '#/components/schemas/JSONAPI'
-        UpdateCostSheet:
-            description: The updated cost sheet.
             headers:
                 Content-Type:
                     $ref: '#/components/headers/content-type'
@@ -30331,9 +30117,7 @@ components:
                                 - data
                               properties:
                                 data:
-                                    oneOf:
-                                        - $ref: '#/components/schemas/User'
-                                        - $ref: '#/components/schemas/ServiceAccount'
+                                    $ref: '#/components/schemas/WhoAmIPrincipal'
                                 included:
                                     $ref: '#/components/schemas/UserIncludes'
                             - $ref: '#/components/schemas/JSONAPI'
@@ -30603,28 +30387,6 @@ components:
                                 included:
                                     $ref: '#/components/schemas/JobRoleSubjectAssignmentIncludes'
                             - $ref: '#/components/schemas/DocumentMeta'
-                            - $ref: '#/components/schemas/JSONAPI'
-        CreateJobRoleSubjectAssignment:
-            description: Job role subject assignment created successfully.
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        allOf:
-                            - type: object
-                              required:
-                                - data
-                              properties:
-                                data:
-                                    $ref: '#/components/schemas/JobRoleSubjectAssignment'
-                                included:
-                                    $ref: '#/components/schemas/JobRoleSubjectAssignmentIncludes'
                             - $ref: '#/components/schemas/JSONAPI'
         GetJobRoleSubjectAssignment:
             description: Get a job role subject assignment.
@@ -31125,7 +30887,7 @@ components:
                                                                 category counts in the sources rail. Only domains with at
                                                                 least one unread notification appear, so an absent key is
                                                                 zero rather than missing.
-        PatchNotifications:
+        PatchNotificationsDocument:
             description: The notifications that were updated.
             headers:
                 Content-Type:
@@ -31243,28 +31005,6 @@ components:
                                 included:
                                     $ref: '#/components/schemas/OperationTypeIncludes'
                             - $ref: '#/components/schemas/JSONAPI'
-        UpdateOperationType:
-            description: The updated operation type.
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        allOf:
-                            - type: object
-                              required:
-                                - data
-                              properties:
-                                data:
-                                    $ref: '#/components/schemas/OperationType'
-                                included:
-                                    $ref: '#/components/schemas/OperationTypeIncludes'
-                            - $ref: '#/components/schemas/JSONAPI'
         ListOperations:
             description: List of operations.
             headers:
@@ -31313,26 +31053,6 @@ components:
                                 included:
                                     $ref: '#/components/schemas/OperationIncludes'
                             - $ref: '#/components/schemas/JSONAPI'
-        UpdateOperation:
-            description: The updated operation
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        allOf:
-                            - type: object
-                              required:
-                                - data
-                              properties:
-                                data:
-                                    $ref: '#/components/schemas/Operation'
-                            - $ref: '#/components/schemas/JSONAPI'
         ReplaceOperationRelationshipToAppointment:
             description: Replace existing appointment to the operation
             headers:
@@ -31369,15 +31089,6 @@ components:
                     $ref: '#/components/headers/content-length'
                 X-Request-ID:
                     $ref: '#/components/headers/x-request-id'
-        RemoveLocationsFromOperation:
-            description: Remove locations from an operation
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
         ReplaceOperationLocations:
             description: Replace the locations on an operation
             headers:
@@ -31389,15 +31100,6 @@ components:
                     $ref: '#/components/headers/x-request-id'
         AddLocationsToOperation:
             description: Add locations to an operation
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-        RemovePermitsFromOperation:
-            description: Remove permits from the operation
             headers:
                 Content-Type:
                     $ref: '#/components/headers/content-type'
@@ -31423,15 +31125,6 @@ components:
                     $ref: '#/components/headers/content-length'
                 X-Request-ID:
                     $ref: '#/components/headers/x-request-id'
-        RemovePropertiesFromOperation:
-            description: Remove properties from the operation
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
         ReplaceOperationProperties:
             description: Replace existing properties to the operation
             headers:
@@ -31443,15 +31136,6 @@ components:
                     $ref: '#/components/headers/x-request-id'
         AddPropertiesToOperation:
             description: Add properties to an operation
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-        RemoveStreetsFromOperation:
-            description: Remove streets from the operation
             headers:
                 Content-Type:
                     $ref: '#/components/headers/content-type'
@@ -32074,26 +31758,6 @@ components:
                                         $ref: '#/components/schemas/OrganisationBridgeRequest'
                             - $ref: '#/components/schemas/DocumentMeta'
                             - $ref: '#/components/schemas/JSONAPI'
-        CreateOrganisationBridgeRequest:
-            description: Get an organisation bridge request code.
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        allOf:
-                            - type: object
-                              required:
-                                - data
-                              properties:
-                                data:
-                                    $ref: '#/components/schemas/OrganisationBridgeRequest'
-                            - $ref: '#/components/schemas/JSONAPI'
         GetOrganisationBridgeRequest:
             description: Get an organisation bridge request.
             headers:
@@ -32275,26 +31939,6 @@ components:
                                 data:
                                     $ref: '#/components/schemas/OperationTemplate'
                             - $ref: '#/components/schemas/JSONAPI'
-        UpdateOperationTemplate:
-            description: The updated operation template
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        allOf:
-                            - type: object
-                              required:
-                                - data
-                              properties:
-                                data:
-                                    $ref: '#/components/schemas/OperationTemplate'
-                            - $ref: '#/components/schemas/JSONAPI'
         ListPermits:
             description: List of permits.
             headers:
@@ -32387,26 +32031,6 @@ components:
                                 data:
                                     $ref: '#/components/schemas/SchemeTemplate'
                             - $ref: '#/components/schemas/JSONAPI'
-        UpdateSchemeTemplate:
-            description: The updated scheme template
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        allOf:
-                            - type: object
-                              required:
-                                - data
-                              properties:
-                                data:
-                                    $ref: '#/components/schemas/SchemeTemplate'
-                            - $ref: '#/components/schemas/JSONAPI'
         ListSchemes:
             description: Get a list of schemes.
             headers:
@@ -32455,26 +32079,6 @@ components:
                                 included:
                                     $ref: '#/components/schemas/SchemeIncludes'
                             - $ref: '#/components/schemas/JSONAPI'
-        UpdateScheme:
-            description: The updated scheme
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        allOf:
-                            - type: object
-                              required:
-                                - data
-                              properties:
-                                data:
-                                    $ref: '#/components/schemas/Scheme'
-                            - $ref: '#/components/schemas/JSONAPI'
         ListWorkOrderTemplates:
             description: List of work order templates.
             headers:
@@ -32501,26 +32105,6 @@ components:
                             - $ref: '#/components/schemas/JSONAPI'
         GetWorkOrderTemplate:
             description: An individual work order template.
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        allOf:
-                            - type: object
-                              required:
-                                - data
-                              properties:
-                                data:
-                                    $ref: '#/components/schemas/WorkOrderTemplate'
-                            - $ref: '#/components/schemas/JSONAPI'
-        UpdateWorkOrderTemplate:
-            description: The updated work order template
             headers:
                 Content-Type:
                     $ref: '#/components/headers/content-type'
@@ -35583,7 +35167,7 @@ components:
                                 included:
                                     $ref: '#/components/schemas/WasteSubmissionIncludes'
                             - $ref: '#/components/schemas/JSONAPI'
-        WhatCanIDo:
+        WhatCanIDoDocument:
             description: The authenticated user's expanded grant strings.
             headers:
                 Content-Type:
@@ -35650,26 +35234,6 @@ components:
                                     $ref: '#/components/schemas/WorkOrder'
                                 included:
                                     $ref: '#/components/schemas/WorkOrderIncludes'
-                            - $ref: '#/components/schemas/JSONAPI'
-        UpdateWorkOrder:
-            description: The updated work order
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        allOf:
-                            - type: object
-                              required:
-                                - data
-                              properties:
-                                data:
-                                    $ref: '#/components/schemas/WorkOrder'
                             - $ref: '#/components/schemas/JSONAPI'
         RemovePermitsFromWorkOrder:
             description: Remove permits from the work order
@@ -37331,6 +36895,13 @@ components:
                         - -cost_centre_type
                         - created_at
                         - -created_at
+                    x-enum-varnames:
+                        - CostSheetsSortStatus
+                        - CostSheetsSortStatusDesc
+                        - CostSheetsSortCostCentreType
+                        - CostSheetsSortCostCentreTypeDesc
+                        - CostSheetsSortCreatedAt
+                        - CostSheetsSortCreatedAtDesc
         cost_sheet_id:
             name: cost_sheet_id
             in: path
@@ -38659,12 +38230,11 @@ components:
             name: street_id
             in: path
             required: true
-            description: A unique identifier for a Street.
+            description: |
+                A street's UUID, or its USRN (Unique Street Reference Number). A value that is a UUID is looked
+                up by id, and a whole number by USRN. A value that is neither matches no street.
             schema:
-                oneOf:
-                    - type: string
-                      format: uuid
-                    - type: number
+                type: string
             example: 3443b7d7-edf0-4525-83bc-1fb1c17cb39a
         grants_sort:
             in: query
@@ -61094,9 +60664,7 @@ paths:
                 content:
                     text/plain:
                         schema:
-                            oneOf:
-                                - $ref: '#/components/schemas/StreetManagerSubscriptionConfirmation'
-                                - $ref: '#/components/schemas/StreetManagerInboundRequest'
+                            $ref: '#/components/schemas/StreetManagerMessage'
                 description: The activity to handle.
                 required: true
             responses:
@@ -61128,9 +60696,7 @@ paths:
                 content:
                     text/plain:
                         schema:
-                            oneOf:
-                                - $ref: '#/components/schemas/StreetManagerSubscriptionConfirmation'
-                                - $ref: '#/components/schemas/StreetManagerInboundRequest'
+                            $ref: '#/components/schemas/StreetManagerMessage'
                 description: The permit to handle.
                 required: true
             responses:
@@ -61162,9 +60728,7 @@ paths:
                 content:
                     text/plain:
                         schema:
-                            oneOf:
-                                - $ref: '#/components/schemas/StreetManagerSubscriptionConfirmation'
-                                - $ref: '#/components/schemas/StreetManagerInboundRequest'
+                            $ref: '#/components/schemas/StreetManagerMessage'
                 description: The protection to handle.
                 required: true
             responses:
@@ -61236,7 +60800,7 @@ paths:
                 $ref: '#/components/requestBodies/CreateAction'
             responses:
                 "201":
-                    $ref: '#/components/responses/CreateAction'
+                    $ref: '#/components/responses/GetAction'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -61330,7 +60894,7 @@ paths:
                 $ref: '#/components/requestBodies/PatchAction'
             responses:
                 "200":
-                    $ref: '#/components/responses/PatchAction'
+                    $ref: '#/components/responses/GetAction'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -61435,7 +60999,7 @@ paths:
                 $ref: '#/components/requestBodies/ResolveAddresses'
             responses:
                 "200":
-                    $ref: '#/components/responses/ResolveAddresses'
+                    $ref: '#/components/responses/ResolveAddressesDocument'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -63891,7 +63455,7 @@ paths:
                 $ref: '#/components/requestBodies/UpdateCostItemVersion'
             responses:
                 "200":
-                    $ref: '#/components/responses/UpdateCostItemVersion'
+                    $ref: '#/components/responses/GetCostItemVersion'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -64046,7 +63610,7 @@ paths:
                 $ref: '#/components/requestBodies/UpdateCostItem'
             responses:
                 "200":
-                    $ref: '#/components/responses/UpdateCostItem'
+                    $ref: '#/components/responses/GetCostItem'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -64210,7 +63774,7 @@ paths:
                 $ref: '#/components/requestBodies/UpdateCostKitLine'
             responses:
                 "200":
-                    $ref: '#/components/responses/UpdateCostKitLine'
+                    $ref: '#/components/responses/GetCostKitLine'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -64386,7 +63950,7 @@ paths:
                 $ref: '#/components/requestBodies/UpdateCostKit'
             responses:
                 "200":
-                    $ref: '#/components/responses/UpdateCostKit'
+                    $ref: '#/components/responses/GetCostKit'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -64442,7 +64006,7 @@ paths:
                 $ref: '#/components/requestBodies/ApplyCostKit'
             responses:
                 "200":
-                    $ref: '#/components/responses/ApplyCostKit'
+                    $ref: '#/components/responses/ApplyCostKitDocument'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -64614,7 +64178,7 @@ paths:
                 $ref: '#/components/requestBodies/UpdateCostLine'
             responses:
                 "200":
-                    $ref: '#/components/responses/UpdateCostLine'
+                    $ref: '#/components/responses/GetCostLine'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -64849,7 +64413,7 @@ paths:
                 $ref: '#/components/requestBodies/UpdateCostSheet'
             responses:
                 "200":
-                    $ref: '#/components/responses/UpdateCostSheet'
+                    $ref: '#/components/responses/GetCostSheet'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -68827,7 +68391,8 @@ paths:
                     title: List streets
     /v3/geo/streets/{street_id}:
         get:
-            description: Retrieve an individual street by its ID or USRN.
+            description: |
+                Retrieve an individual street by its ID or USRN. A `street_id` that is a UUID is looked up as the street's id, and a whole number as its USRN. One that matches no street, or is neither, is answered 404.
             operationId: GetStreet
             parameters:
                 - $ref: '#/components/parameters/street_id'
@@ -68838,6 +68403,8 @@ paths:
                     $ref: '#/components/responses/BadRequest'
                 "401":
                     $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
                 "500":
                     $ref: '#/components/responses/InternalServerError'
             security:
@@ -69946,7 +69513,7 @@ paths:
                 $ref: '#/components/requestBodies/CreateJobRoleSubjectAssignment'
             responses:
                 "201":
-                    $ref: '#/components/responses/CreateJobRoleSubjectAssignment'
+                    $ref: '#/components/responses/GetJobRoleSubjectAssignment'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -71412,7 +70979,7 @@ paths:
                 $ref: '#/components/requestBodies/PatchNotifications'
             responses:
                 "200":
-                    $ref: '#/components/responses/PatchNotifications'
+                    $ref: '#/components/responses/PatchNotificationsDocument'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -71702,7 +71269,7 @@ paths:
                 $ref: '#/components/requestBodies/UpdateOperationType'
             responses:
                 "200":
-                    $ref: '#/components/responses/UpdateOperationType'
+                    $ref: '#/components/responses/GetOperationType'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -71855,7 +71422,7 @@ paths:
                 $ref: '#/components/requestBodies/PatchOperation'
             responses:
                 "200":
-                    $ref: '#/components/responses/UpdateOperation'
+                    $ref: '#/components/responses/GetOperation'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -71883,7 +71450,7 @@ paths:
                 $ref: '#/components/requestBodies/UpdateOperation'
             responses:
                 "200":
-                    $ref: '#/components/responses/UpdateOperation'
+                    $ref: '#/components/responses/GetOperation'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -72116,7 +71683,7 @@ paths:
                 $ref: '#/components/requestBodies/RemoveLocationsFromOperation'
             responses:
                 "200":
-                    $ref: '#/components/responses/RemoveLocationsFromOperation'
+                    $ref: '#/components/responses/NoContent'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -72209,7 +71776,7 @@ paths:
                 $ref: '#/components/requestBodies/RemovePermitsFromOperation'
             responses:
                 "200":
-                    $ref: '#/components/responses/RemovePermitsFromOperation'
+                    $ref: '#/components/responses/NoContent'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -72302,7 +71869,7 @@ paths:
                 $ref: '#/components/requestBodies/RemovePropertiesFromOperation'
             responses:
                 "200":
-                    $ref: '#/components/responses/RemovePropertiesFromOperation'
+                    $ref: '#/components/responses/NoContent'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -72390,7 +71957,7 @@ paths:
                 $ref: '#/components/requestBodies/RemoveStreetsFromOperation'
             responses:
                 "200":
-                    $ref: '#/components/responses/RemoveStreetsFromOperation'
+                    $ref: '#/components/responses/NoContent'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -74198,7 +73765,7 @@ paths:
                 $ref: '#/components/requestBodies/CreateOrganisationBridgeRequest'
             responses:
                 "201":
-                    $ref: '#/components/responses/CreateOrganisationBridgeRequest'
+                    $ref: '#/components/responses/GetOrganisationBridgeRequest'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "500":
@@ -74609,7 +74176,7 @@ paths:
                 $ref: '#/components/requestBodies/UpdateOperationTemplate'
             responses:
                 "200":
-                    $ref: '#/components/responses/UpdateOperationTemplate'
+                    $ref: '#/components/responses/GetOperationTemplate'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -74819,7 +74386,7 @@ paths:
                 $ref: '#/components/requestBodies/UpdateSchemeTemplate'
             responses:
                 "200":
-                    $ref: '#/components/responses/UpdateSchemeTemplate'
+                    $ref: '#/components/responses/GetSchemeTemplate'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -74936,7 +74503,7 @@ paths:
                 $ref: '#/components/requestBodies/UpdateScheme'
             responses:
                 "200":
-                    $ref: '#/components/responses/UpdateScheme'
+                    $ref: '#/components/responses/GetScheme'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -75046,7 +74613,7 @@ paths:
                 $ref: '#/components/requestBodies/UpdateWorkOrderTemplate'
             responses:
                 "200":
-                    $ref: '#/components/responses/UpdateWorkOrderTemplate'
+                    $ref: '#/components/responses/GetWorkOrderTemplate'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -83601,7 +83168,7 @@ paths:
             operationId: WhatCanIDo
             responses:
                 "200":
-                    $ref: '#/components/responses/WhatCanIDo'
+                    $ref: '#/components/responses/WhatCanIDoDocument'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -83769,7 +83336,7 @@ paths:
                 $ref: '#/components/requestBodies/UpdateWorkOrder'
             responses:
                 "200":
-                    $ref: '#/components/responses/UpdateWorkOrder'
+                    $ref: '#/components/responses/GetWorkOrder'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
