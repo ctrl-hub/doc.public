@@ -26164,6 +26164,10 @@ components:
                                         type: boolean
                                         description: >-
                                             Keep amendment with the organisation that owns the form. A submission is classified as owner or contractor at its first submitted version, and that classification is what this is compared against.
+                            shared:
+                                type: boolean
+                                description: >-
+                                    Optional. When true, a submission the form's own organisation makes on this form, against a scheme it shares with other organisations, becomes visible to those organisations when it first reaches this step. Until then it is held back from them. Release is one-way: the submission stays visible if it later moves to a step that is not shared, or if a later version of the workflow clears the flag. A submission that never reaches a shared step is never released. A submission a sharing organisation makes on this form is not held back: it is visible to the form's organisation at once, as it always has been.
                             set_operation_status:
                                 type: object
                                 description: >-
@@ -60118,6 +60122,10 @@ components:
                                                                     type: boolean
                                                                     description: >-
                                                                         Keep amendment with the organisation that owns the form. A submission is classified as owner or contractor at its first submitted version, and that classification is what this is compared against.
+                                                        shared:
+                                                            type: boolean
+                                                            description: >-
+                                                                Optional. When true, a submission the form's own organisation makes on this form, against a scheme it shares with other organisations, becomes visible to those organisations when it first reaches this step. Until then it is held back from them. Release is one-way: the submission stays visible if it later moves to a step that is not shared, or if a later version of the workflow clears the flag. A submission that never reaches a shared step is never released. A submission a sharing organisation makes on this form is not held back: it is visible to the form's organisation at once, as it always has been.
                                                         set_operation_status:
                                                             type: object
                                                             description: >-
