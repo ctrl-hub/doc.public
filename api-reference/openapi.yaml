@@ -16546,7 +16546,7 @@ components:
                     description: The priority level of the PSR record.
                 extra_info:
                     type: array
-                    description: Additional information about the PSR record.
+                    description: "Additional information about the PSR record, as field and value pairs. A record holds one customer's registration, so a customer registered under several PSR categories needs one record carrying every category here, not a record per category. The field names are up to the integrator. The categories can share one entry, as the Cadent feed's `vc_disabilities` entry does, or take an entry each. Give every entry its own `field`, because entries are matched by `field`."
                     items:
                         type: object
                         required:
@@ -55142,7 +55142,7 @@ components:
                                                 description: The priority level of the PSR record.
                                             extra_info:
                                                 type: array
-                                                description: Additional information about the PSR record.
+                                                description: "Additional information about the PSR record, as field and value pairs. A record holds one customer's registration, so a customer registered under several PSR categories needs one record carrying every category here, not a record per category. The field names are up to the integrator. The categories can share one entry, as the Cadent feed's `vc_disabilities` entry does, or take an entry each. Give every entry its own `field`, because entries are matched by `field`."
                                                 items:
                                                     type: object
                                                     required:
@@ -55240,7 +55240,7 @@ components:
                                                 description: The priority level of the PSR record.
                                             extra_info:
                                                 type: array
-                                                description: Additional information about the PSR record.
+                                                description: "Additional information about the PSR record, as field and value pairs. A record holds one customer's registration, so a customer registered under several PSR categories needs one record carrying every category here, not a record per category. The field names are up to the integrator. The categories can share one entry, as the Cadent feed's `vc_disabilities` entry does, or take an entry each. Give every entry its own `field`, because entries are matched by `field`."
                                                 items:
                                                     type: object
                                                     required:
