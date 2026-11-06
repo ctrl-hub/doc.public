@@ -39233,15 +39233,6 @@ components:
                 type: string
                 format: uuid
             example: a8a41819-be0c-48b9-9883-1378fc63a637
-        org_id:
-            name: org_id
-            in: path
-            required: true
-            description: The unique identifier for the organisation.
-            schema:
-                type: string
-                format: uuid
-            example: c000c344-8847-47da-a091-32e75902d3b1
         organisations_sort:
             in: query
             name: sort
@@ -39271,6 +39262,15 @@ components:
                     type: string
                     enum:
                         - nomenclature
+        org_id:
+            name: org_id
+            in: path
+            required: true
+            description: The unique identifier for the organisation.
+            schema:
+                type: string
+                format: uuid
+            example: c000c344-8847-47da-a091-32e75902d3b1
         customer_accounts_include:
             name: include
             in: query
@@ -71558,7 +71558,6 @@ paths:
             description: Remove assignees from the operation
             operationId: RemoveAssigneesFromOperation
             parameters:
-                - $ref: '#/components/parameters/org_id'
                 - $ref: '#/components/parameters/operation_id'
             requestBody:
                 content:
@@ -71596,7 +71595,6 @@ paths:
             description: Replace existing assignees to the operation
             operationId: ReplaceAssigneeRelationshipsToOperation
             parameters:
-                - $ref: '#/components/parameters/org_id'
                 - $ref: '#/components/parameters/operation_id'
             requestBody:
                 content:
@@ -71637,7 +71635,6 @@ paths:
             description: Add new assignees to an operation
             operationId: AddAssigneesToOperation
             parameters:
-                - $ref: '#/components/parameters/org_id'
                 - $ref: '#/components/parameters/operation_id'
             requestBody:
                 content:
@@ -77919,7 +77916,6 @@ paths:
             description: List all of the schemes in an organisation.
             operationId: ListSchemes
             parameters:
-                - $ref: '#/components/parameters/org_id'
                 - $ref: '#/components/parameters/schemes_include'
                 - $ref: '#/components/parameters/scheme_filter'
                 - $ref: '#/components/parameters/limit'
