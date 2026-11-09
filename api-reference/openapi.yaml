@@ -39814,6 +39814,8 @@ components:
             description: |
                 The field to sort by. Only one field is accepted, because each sort is served by an index on that field alone and a second field would sort the organisation's schemes in memory.
 
+                `name` sorts by the name lower-cased, character by character, so `abbey Road` comes before `Zeta Road`. A name that starts with an accented letter, such as `Élan`, sorts after `z`. It is the order when no `sort` is sent.
+
                 `modified_at` is the field a changes-since read orders by. Schemes with the same value are returned in a fixed order, so `limit` and `offset` paging does not skip or repeat one.
             required: false
             style: form
@@ -39824,6 +39826,8 @@ components:
                 items:
                     type: string
                     enum:
+                        - name
+                        - -name
                         - created_at
                         - -created_at
                         - modified_at
@@ -51452,6 +51456,21 @@ components:
                                     - attributes
                                     - relationships
                                 properties:
+                                    id:
+                                        type: string
+                                        format: uuid
+                                        description: |
+                                            Optional client-supplied id. When provided it becomes the id of the new operation. Re-sending
+                                            a request with the same id after the first has been answered returns the operation already
+                                            created with it instead of creating a second one, so a create can be retried after a network
+                                            timeout on mobile. Two requests with the same id in flight at the same moment are not guarded
+                                            against and can both create an operation, so send one create per id at a time. A deleted
+                                            operation does not count, so a resend after the operation has been deleted creates it again.
+                                            The id is refused with a 409 when an operation in another organisation, one created by someone
+                                            else, or one under a different work order from the one the request names already has it. A
+                                            request that names no work order still matches an operation allocated since. The resend is
+                                            refused with a 401 when the caller can no longer view the operation. Omit it to have the
+                                            server generate the id.
                                     type:
                                         type: string
                                         const: operations
@@ -51595,6 +51614,16 @@ components:
                                                 properties:
                                                     data:
                                                         $ref: '#/components/schemas/OperationTypeRelationship'
+                                            locations:
+                                                type: object
+                                                description: |
+                                                    Organisation locations where the work is. Each must belong to the operation's organisation,
+                                                    or the create is refused and nothing is saved.
+                                                properties:
+                                                    data:
+                                                        type: array
+                                                        items:
+                                                            $ref: '#/components/schemas/LocationRelationship'
         PatchOperation:
             required: true
             description: Partial update for an operation. All fields are optional — only provided fields are updated.
@@ -70680,7 +70709,7 @@ paths:
 
                 A permission the role does not already hold must be one the caller holds organisation-wide in the role's organisation, because the role grants it to every manager whose relationship holds it. Otherwise the update is refused with 403 `CH.003.065`. Permissions the role already holds are kept whoever edits it.
 
-                Removing a permission ends every live management relationship that holds the role and creates each again with a new id, before the response. Its managers at once lose the removed permission over the people those relationships reach. Access a manager holds through other grants is unaffected. They also lose the permissions the role keeps until their grants are next rebuilt, usually within a minute or two. HAVS exposure records are re-stamped after the change commits. One whose re-stamp fails keeps the old line until the management lines reconciler repairs it. A rename, or an edit that only adds permissions, keeps every relationship.
+                Removing a permission ends every live management relationship that holds the role and creates each again with a new id. The response comes once the role is stored. The relationships are replaced in batches from that point, usually within seconds, so the replacement can begin before the response arrives. A request that names one of the old ids can then get 404 `CH.003.093`. Each manager loses the removed permission over a person once that person's stamp carries the new id. If the replacement stops part-way, the managers of anyone not yet re-stamped keep the permission until their grants are next rebuilt, at worst within an hour. After that rebuild, anyone whose relationship was replaced but whose stamp was not drops out of that manager's reach altogether, until the management lines reconciler repairs the stamp within the hour. Access a manager holds through other grants is unaffected. They also lose the permissions the role keeps until their grants are next rebuilt, usually within a minute or two. HAVS exposure records are re-stamped after the change commits. One whose re-stamp fails keeps the old line until the management lines reconciler repairs it. A rename, or an edit that only adds permissions, keeps every relationship.
             operationId: UpdateManagerRole
             parameters:
                 - $ref: '#/components/parameters/manager_role_id'
