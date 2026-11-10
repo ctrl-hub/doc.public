@@ -18197,92 +18197,6 @@ components:
                     - $ref: '#/components/schemas/Organisation'
                     - $ref: '#/components/schemas/Property'
                     - $ref: '#/components/schemas/User'
-        ExposureThreshold:
-            type: object
-            description: |
-                An organisation's amber (action) and red (limit) values for one exposure type, in force from a date
-                until a later entry takes effect. Entries are never edited, so a past date resolves against the
-                values in force on it.
-            required:
-                - id
-                - type
-                - attributes
-                - meta
-                - relationships
-            properties:
-                id:
-                    type: string
-                    format: uuid
-                    description: The unique identifier of the exposure threshold.
-                type:
-                    type: string
-                    const: exposure-thresholds
-                attributes:
-                    $ref: '#/components/schemas/ExposureThresholdAttributes'
-                meta:
-                    $ref: '#/components/schemas/ExposureThresholdMeta'
-                relationships:
-                    $ref: '#/components/schemas/ExposureThresholdRelationships'
-        ExposureThresholdAttributes:
-            type: object
-            description: Attributes of an exposure threshold
-            required:
-                - exposure_type
-                - amber
-                - red
-                - effective_from
-            properties:
-                exposure_type:
-                    $ref: '#/components/schemas/ExposureType'
-                amber:
-                    type: number
-                    format: double
-                    description: The action value, in the exposure type's unit. Never above the HSE action value (100 points for HAVS) or the red value.
-                    examples:
-                        - 100
-                red:
-                    type: number
-                    format: double
-                    description: The limit value, in the exposure type's unit. Never above the HSE limit value (400 points for HAVS).
-                    examples:
-                        - 250
-                effective_from:
-                    type: string
-                    format: date
-                    description: The Europe/London calendar date the values take effect, from 00:00. Of two entries with the same date, the one created later is in force.
-                    examples:
-                        - "2026-11-10"
-        ExposureThresholdMeta:
-            type: object
-            description: Metadata for an exposure threshold.
-            required:
-                - created_at
-            properties:
-                created_at:
-                    type: string
-                    format: date-time
-        ExposureThresholdRelationships:
-            type: object
-            description: Relationships for an exposure threshold
-            required:
-                - organisation
-            properties:
-                organisation:
-                    type: object
-                    description: The organisation the threshold belongs to.
-                    required:
-                        - data
-                    properties:
-                        data:
-                            $ref: '#/components/schemas/OrganisationRelationship'
-        ExposureType:
-            type: string
-            description: |
-                The type of exposure a limit applies to. `havs` (hand-arm vibration, in points) is the only type.
-            enum:
-                - havs
-            examples:
-                - havs
         RoleGroupIncludes:
             type: array
             description: Related resources that can be included when a form is returned
@@ -21874,10 +21788,12 @@ components:
                         schemes: "#/components/schemas/Scheme"
                         work-orders: "#/components/schemas/WorkOrder"
                         operations: "#/components/schemas/Operation"
+                        organisations: "#/components/schemas/Organisation"
                 oneOf:
                     - $ref: '#/components/schemas/Scheme'
                     - $ref: '#/components/schemas/WorkOrder'
                     - $ref: '#/components/schemas/Operation'
+                    - $ref: '#/components/schemas/Organisation'
         SearchResultAttributes:
             type: object
             description: Attributes for a search result
@@ -21897,48 +21813,50 @@ components:
                         - ["name", "description"]
         SearchResultRelationships:
             type: object
-            description: Relationships for a search result. Exactly one relationship will have data, others will be null.
+            description: |
+                Relationships for a search result. `organisation` always links the organisation that owns the
+                resource. Of `scheme`, `work_order` and `operation`, exactly one links the resource found, and the
+                other two are written with `data: null`.
             required:
+                - organisation
                 - scheme
                 - work_order
                 - operation
             properties:
                 organisation:
-                    oneOf:
-                        - type: object
-                          required:
-                            - data
-                          properties:
-                            data:
-                                $ref: '#/components/schemas/OrganisationRelationship'
-                        - {}
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/OrganisationRelationship'
                 scheme:
-                    oneOf:
-                        - type: object
-                          required:
-                            - data
-                          properties:
-                            data:
-                                $ref: '#/components/schemas/SchemeRelationship'
-                        - {}
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            oneOf:
+                                - $ref: '#/components/schemas/SchemeRelationship'
+                                - type: "null"
                 work_order:
-                    oneOf:
-                        - type: object
-                          required:
-                            - data
-                          properties:
-                            data:
-                                $ref: '#/components/schemas/WorkOrderRelationship'
-                        - {}
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            oneOf:
+                                - $ref: '#/components/schemas/WorkOrderRelationship'
+                                - type: "null"
                 operation:
-                    oneOf:
-                        - type: object
-                          required:
-                            - data
-                          properties:
-                            data:
-                                $ref: '#/components/schemas/OperationRelationship'
-                        - {}
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            oneOf:
+                                - $ref: '#/components/schemas/OperationRelationship'
+                                - type: "null"
         SecuritySettingsImpact:
             type: object
             description: >-
@@ -32080,50 +31998,6 @@ components:
                     $ref: '#/components/headers/content-length'
                 X-Request-ID:
                     $ref: '#/components/headers/x-request-id'
-        ListExposureThresholds:
-            description: Get a list of exposure thresholds.
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        allOf:
-                            - type: object
-                              required:
-                                - data
-                              properties:
-                                data:
-                                    title: A list of exposure thresholds
-                                    type: array
-                                    items:
-                                        $ref: '#/components/schemas/ExposureThreshold'
-                            - $ref: '#/components/schemas/DocumentMeta'
-                            - $ref: '#/components/schemas/JSONAPI'
-        GetExposureThreshold:
-            description: Get an exposure threshold.
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        allOf:
-                            - type: object
-                              required:
-                                - data
-                              properties:
-                                data:
-                                    $ref: '#/components/schemas/ExposureThreshold'
-                            - $ref: '#/components/schemas/JSONAPI'
         ListGroups:
             description: Get a list of Role Groups.
             headers:
@@ -37799,9 +37673,16 @@ components:
                   offered here will be accepted as an approver on a write. Not for notification
                   nominations: `notify` takes job roles, listed via the `document_id` filter on
                   `/v3/job-roles`.
-                - `scheme_id`: Filter reviewers to those eligible for the specified scheme. Retained
-                  for callers that predate `document_id`; ignored when `document_id` is given. If
-                  neither is supplied, an empty list is returned.
+                - `scheme_id`: Filter reviewers to members of organisations on a currently-active
+                  share of the specified scheme that the caller can see, plus members of the
+                  organisation owning the scheme when the caller belongs to it. A share that has
+                  ended, or has not yet started, contributes no one. This assumes the scheme's owner
+                  owns the document, and then the list never offers anyone the API would refuse as
+                  an approver. When a partner uploaded the document, the list can leave out people
+                  the API would accept. Once that partner's share has ended, it also offers members
+                  of the scheme's owner, whom the API refuses. `document_id` is the exact filter.
+                  Ignored when `document_id` is given. If neither is supplied, an empty list is
+                  returned.
                 - `org_id`: Filter reviewers to members of a specific organisation (own org or a partner org connected via the scheme).
                 - `name`: Filter by name(s) - filters by first and last name (case insensitive)
                 - `id_not_in`: Exclude users whose ID is in the provided list.
@@ -40158,48 +40039,6 @@ components:
                 type: string
                 format: uuid
             example: a71fd460-4e25-4eb3-9183-a85f24b0700d
-        exposure_thresholds_filter:
-            name: filter
-            in: query
-            description: |
-                Filters the response data based on the value provided.
-
-                Available filters:
-
-                - `eq(id,xxx)`: Filter exposure thresholds by ID.
-                - `eq(exposure_type,havs)`: Filter exposure thresholds by exposure type.
-                - `effective_from`: `ge(effective_from,2026-11-10T00:00:00Z)` and `le(effective_from,2026-11-30T00:00:00Z)` bound the date each entry takes effect. Give an RFC3339 timestamp at 00:00 UTC on the date, which is how each date is stored: a date alone is ignored.
-
-                For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
-            required: false
-            schema:
-                type: string
-                default: ""
-        exposure_thresholds_sort:
-            in: query
-            name: sort
-            description: A comma separated list of fields to sort by. Defaults to `-effective_from,-created_at`.
-            required: false
-            style: form
-            explode: false
-            schema:
-                type: array
-                items:
-                    type: string
-                    enum:
-                        - effective_from
-                        - -effective_from
-                        - created_at
-                        - -created_at
-        exposure_threshold_id:
-            name: exposure_threshold_id
-            in: path
-            required: true
-            description: The unique identifier for the exposure threshold.
-            schema:
-                type: string
-                format: uuid
-            example: 6a1f0b2c-4d3e-4f5a-8b6c-7d8e9f0a1b2c
         groups_include:
             name: include
             in: query
@@ -41576,7 +41415,12 @@ components:
 
                 Available filters:
 
-                - `search`: Search by name, code, or description
+                - `term`: Required, with `contains`. Finds resources whose name contains the value, such as `contains(term,cabling)`. Without it, the search returns nothing.
+                - `resource`: The kinds of resource to search, `schemes`, `work-orders` or `operations`, with `eq` or `in`. All three are searched when it is left out.
+                - `id`: Passed on to each kind's search, such as `not(in(id,<id>))` to leave out the resource being viewed.
+                - `organisation`: With `eq` or `in`. On `/v3/search`, limits the results to those organisations. On `/v3/shared-search`, names the organisations the work is shared with, and is required.
+
+                Terms are combined with `and`. A filter with an `or(...)` returns nothing.
 
                 For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
             required: false
@@ -44881,6 +44725,31 @@ components:
                                         type: object
                                         properties:
                                             acknowledged_at:
+                                                type: string
+                                                format: date-time
+        MarkBriefingViewed:
+            required: false
+            description: Optional. When the briefing was first viewed, for a view queued offline. Without it the server's time is used.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                    - attributes
+                                properties:
+                                    type:
+                                        type: string
+                                        const: briefing-recipients
+                                    attributes:
+                                        type: object
+                                        properties:
+                                            viewed_at:
                                                 type: string
                                                 format: date-time
         CreateBusinessArea:
@@ -53696,47 +53565,6 @@ components:
                                                 description: Notes about the interaction
                                                 examples:
                                                     - "Customer requested callback regarding service appointment"
-        CreateExposureThreshold:
-            required: true
-            description: The organisation's new amber and red values for an exposure type, and the date they take effect.
-            content:
-                application/vnd.api+json:
-                    schema:
-                        type: object
-                        required:
-                            - data
-                        properties:
-                            data:
-                                type: object
-                                required:
-                                    - type
-                                    - attributes
-                                properties:
-                                    type:
-                                        type: string
-                                        const: exposure-thresholds
-                                    attributes:
-                                        type: object
-                                        required:
-                                            - exposure_type
-                                            - amber
-                                            - red
-                                            - effective_from
-                                        properties:
-                                            exposure_type:
-                                                $ref: '#/components/schemas/ExposureType'
-                                            amber:
-                                                type: number
-                                                format: double
-                                                description: Zero or more, no higher than red and no higher than the HSE action value (100 points for HAVS).
-                                            red:
-                                                type: number
-                                                format: double
-                                                description: Zero or more, no higher than the HSE limit value (400 points for HAVS).
-                                            effective_from:
-                                                type: string
-                                                format: date
-                                                description: Today or later, as a Europe/London calendar date.
         CreateGroup:
             required: true
             description: The role group to create.
@@ -62976,7 +62804,10 @@ paths:
                 not found.
 
                 An app that acknowledged while offline sends the time it was made as `acknowledged_at`. A time
-                in the future, or before the briefing was sent to the caller, is refused.
+                more than five minutes in the future, or more than five minutes before the briefing was sent to
+                the caller, is refused. A time up to five minutes ahead, from a phone whose clock runs fast, is
+                recorded as the time the request arrives. A time up to five minutes before the send, from a phone
+                whose clock runs slow, is recorded as the send time.
             operationId: AcknowledgeBriefing
             parameters:
                 - $ref: '#/components/parameters/briefing_id'
@@ -63142,9 +62973,17 @@ paths:
             description: |
                 Record that the caller opened a briefing sent to them. Only the first view is kept, so
                 calling it again changes nothing. A briefing not sent to the caller is not found.
+
+                An app that viewed the briefing while offline sends the time it was viewed as `viewed_at`. A
+                time more than five minutes in the future, or more than five minutes before the briefing was
+                sent to the caller, is refused. A time up to five minutes ahead, from a phone whose clock runs
+                fast, is recorded as the time the request arrives. A time up to five minutes before the send,
+                from a phone whose clock runs slow, is recorded as the send time.
             operationId: MarkBriefingViewed
             parameters:
                 - $ref: '#/components/parameters/briefing_id'
+            requestBody:
+                $ref: '#/components/requestBodies/MarkBriefingViewed'
             responses:
                 "200":
                     $ref: '#/components/responses/GetBriefingRecipient'
@@ -63154,6 +62993,8 @@ paths:
                     $ref: '#/components/responses/Unauthorised'
                 "404":
                     $ref: '#/components/responses/NotFound'
+                "422":
+                    $ref: '#/components/responses/UnprocessableEntity'
                 "500":
                     $ref: '#/components/responses/InternalServerError'
             security:
@@ -71681,6 +71522,8 @@ paths:
                 Both users must be active members of the organisation, and they must be different people. A person has at most one primary manager in an organisation, so a second primary relationship onto them is refused. Any number of secondary relationships are accepted, but only one relationship of either kind between the same two people.
 
                 The manager role defaults to the organisation's Line manager role. A role named in the request must belong to the organisation.
+
+                A primary relationship also changes the reporting line of everyone beneath the managed person. Up to 500 people, the managed person included, are brought onto the change before the response. Anyone further beneath is brought onto it in the background after the response, usually within seconds. Until then they keep their old line. If that update fails, the people it did not reach keep their old line until the management lines reconciler repairs them. While the update runs, a primary relationship that makes one of them a manager can be refused with a 409, `CH.003.134`, and can be tried again shortly. If the update fails, such a relationship can be refused with `CH.003.107` until the reconciler has run.
             operationId: CreateManagementRelationship
             requestBody:
                 $ref: '#/components/requestBodies/CreateManagementRelationship'
@@ -71714,6 +71557,8 @@ paths:
         delete:
             description: |
                 Soft delete a management relationship. Nobody is moved to another manager: a person left without a primary manager stays unmanaged until an admin assigns one.
+
+                Deleting a primary relationship also changes the reporting line of everyone beneath the managed person. Up to 500 people, the managed person included, are brought onto the change before the response. Anyone further beneath is brought onto it in the background after the response, usually within seconds. Until then they keep their old line. If that update fails, the people it did not reach keep their old line until the management lines reconciler repairs them. While the update runs, a primary relationship that makes one of them a manager can be refused with a 409, `CH.003.134`, and can be tried again shortly. If the update fails, such a relationship can be refused with `CH.003.107` until the reconciler has run.
             operationId: DeleteManagementRelationship
             parameters:
                 - $ref: '#/components/parameters/management_relationship_id'
@@ -71777,7 +71622,9 @@ paths:
 
                 The same rules apply as on create. Omitting the manager role removes it, so the manager can do nothing for the person until a role is assigned.
 
-                Changing the manager or the manager role, including removing the role, ends this relationship and creates a new one with a new id, which the response returns. The people it reached lose the old line before the response, so the previous manager, or the old role, can no longer act for them through this relationship, even before the manager's grants are rebuilt. Access a manager holds through other grants is unaffected. The manager then holds no grants for the person until their grants are next rebuilt, usually within a minute or two, even when the new role grants more. HAVS exposure records are re-stamped after the change commits. One whose re-stamp fails keeps the old line until the management lines reconciler repairs it. Changing only the kind, or assigning a role to a relationship that has none, keeps the id.
+                Changing the manager, or changing or removing a role the relationship already has, ends this relationship and creates a new one with a new id, which the response returns. The managed person and the people beneath them stamped with it, up to 500 people in all, lose the old line before the response, so the previous manager, or the old role, can no longer act for them through this relationship, even before the manager's grants are rebuilt. People further beneath lose it when the background update described below reaches them. If that update fails, they keep it until the management lines reconciler repairs them, and the previous manager's grants match it until they are next rebuilt. Access a manager holds through other grants is unaffected. The manager then holds no grants for the person until their grants are next rebuilt, usually within a minute or two, even when the new role grants more. HAVS exposure records are re-stamped after the change commits. One whose re-stamp fails keeps the old line until the management lines reconciler repairs it. Changing only the kind, or assigning a role to a relationship that has none while keeping its manager, keeps the id.
+
+                A new manager or a new kind on a primary relationship, or a new role on one that had a role, also changes the reporting line of everyone beneath the managed person. Assigning a role to a relationship that had none changes no one's line, unless the same request also changes its manager or kind. Up to 500 people, the managed person included, are brought onto the change before the response. Anyone further beneath is brought onto it in the background after the response, usually within seconds. Until then they keep their old line. If that update fails, the people it did not reach keep their old line until the management lines reconciler repairs them. While the update runs, a primary relationship that makes one of them a manager can be refused with a 409, `CH.003.134`, and can be tried again shortly. If the update fails, such a relationship can be refused with `CH.003.107` until the reconciler has run.
             operationId: UpdateManagementRelationship
             parameters:
                 - $ref: '#/components/parameters/management_relationship_id'
@@ -74458,110 +74305,6 @@ paths:
             x-mint:
                 metadata:
                     title: Update the prepresentative for an interaction
-    /v3/orgs/{org_id}/exposure-thresholds:
-        get:
-            description: |
-                List the organisation's exposure threshold entries, every date and every exposure type, latest
-                `effective_from` first unless sorted otherwise. An exposure type with no entry in force resolves to
-                its HSE values (100 and 400 points for HAVS), which this list does not include. The resource has no
-                includes, so `included` is absent. Requires the `exposure-thresholds:view` permission.
-            operationId: ListExposureThresholds
-            parameters:
-                - $ref: '#/components/parameters/org_id'
-                - $ref: '#/components/parameters/exposure_thresholds_filter'
-                - $ref: '#/components/parameters/exposure_thresholds_sort'
-                - $ref: '#/components/parameters/limit'
-                - $ref: '#/components/parameters/offset'
-                - $ref: '#/components/parameters/page'
-            responses:
-                "200":
-                    $ref: '#/components/responses/ListExposureThresholds'
-                "400":
-                    $ref: '#/components/responses/BadRequest'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "404":
-                    $ref: '#/components/responses/NotFound'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - OAuth2: []
-                - Cookie: []
-            summary: List exposure thresholds
-            tags:
-                - Exposure Limits
-            x-mint:
-                metadata:
-                    title: List exposure thresholds
-        post:
-            description: |
-                Set the organisation's amber and red values for an exposure type from a date. Earlier entries are
-                kept, so a date before `effective_from` still resolves against the values in force on it.
-
-                `effective_from` must be today or later in Europe/London. Amber and red must be zero or more, amber
-                no higher than red, and neither looser than the HSE values (amber 100, red 400 points for HAVS). An
-                unknown exposure type is refused. Requires the `exposure-thresholds:update` permission, held
-                organisation-wide.
-            operationId: CreateExposureThreshold
-            parameters:
-                - $ref: '#/components/parameters/org_id'
-            requestBody:
-                $ref: '#/components/requestBodies/CreateExposureThreshold'
-            responses:
-                "201":
-                    $ref: '#/components/responses/GetExposureThreshold'
-                "400":
-                    $ref: '#/components/responses/BadRequest'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "404":
-                    $ref: '#/components/responses/NotFound'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - OAuth2: []
-                - Cookie: []
-            summary: Set exposure thresholds
-            tags:
-                - Exposure Limits
-            x-mint:
-                metadata:
-                    title: Set exposure thresholds
-    /v3/orgs/{org_id}/exposure-thresholds/{exposure_threshold_id}:
-        delete:
-            description: |
-                Delete an exposure threshold entry that has not yet taken effect. An entry whose `effective_from`
-                is today or earlier is refused with a conflict, because dates in its period must keep resolving
-                against it. Requires the `exposure-thresholds:update` permission, held organisation-wide.
-            operationId: DeleteExposureThreshold
-            parameters:
-                - $ref: '#/components/parameters/org_id'
-                - $ref: '#/components/parameters/exposure_threshold_id'
-            responses:
-                "204":
-                    $ref: '#/components/responses/NoContent'
-                "400":
-                    $ref: '#/components/responses/BadRequest'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "404":
-                    $ref: '#/components/responses/NotFound'
-                "409":
-                    $ref: '#/components/responses/Conflict'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - OAuth2: []
-                - Cookie: []
-            summary: Delete an exposure threshold
-            tags:
-                - Exposure Limits
-            x-mint:
-                metadata:
-                    title: Delete an exposure threshold
     /v3/orgs/{org_id}/iam/groups:
         get:
             description: List all of the groups in an organisation.
@@ -79385,7 +79128,7 @@ paths:
                     title: Get a scheme
     /v3/search:
         get:
-            description: Search for schemes, work orders, and operations by name, code, or description.
+            description: Search for schemes, work orders, and operations by name.
             operationId: ListSearchResults
             parameters:
                 - $ref: '#/components/parameters/search_results_include'
@@ -79408,8 +79151,6 @@ paths:
                 - Cookie: []
             tags:
                 - Search
-            x-ctrl-hub:
-                domain: search
             x-mint:
                 metadata:
                     title: Perform a search
@@ -79533,8 +79274,6 @@ paths:
                 - Cookie: []
             tags:
                 - Search
-            x-ctrl-hub:
-                domain: search
             x-mint:
                 metadata:
                     title: Search shared resources
@@ -80516,9 +80255,6 @@ paths:
                 - Cookie: []
             tags:
                 - Status
-            x-ctrl-hub:
-                domain: status
-                entity: Status
             x-mint:
                 metadata:
                     title: Status
@@ -85596,10 +85332,6 @@ tags:
     - description: |
         Equipment are the physical assets that an organisation manages.
       name: Equipment
-    - description: |
-        Exposure limits: an organisation's thresholds for each exposure type, stricter than the HSE
-        values, and the limit in force for a person on a date.
-      name: Exposure Limits
     - description: |
         The central cost register: time-versioned rate codes for material, labour,
         contractor and miscellaneous spend, used to cost work against the job
