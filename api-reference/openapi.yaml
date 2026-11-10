@@ -18197,92 +18197,6 @@ components:
                     - $ref: '#/components/schemas/Organisation'
                     - $ref: '#/components/schemas/Property'
                     - $ref: '#/components/schemas/User'
-        ExposureThreshold:
-            type: object
-            description: |
-                An organisation's amber (action) and red (limit) values for one exposure type, in force from a date
-                until a later entry takes effect. Entries are never edited, so a past date resolves against the
-                values in force on it.
-            required:
-                - id
-                - type
-                - attributes
-                - meta
-                - relationships
-            properties:
-                id:
-                    type: string
-                    format: uuid
-                    description: The unique identifier of the exposure threshold.
-                type:
-                    type: string
-                    const: exposure-thresholds
-                attributes:
-                    $ref: '#/components/schemas/ExposureThresholdAttributes'
-                meta:
-                    $ref: '#/components/schemas/ExposureThresholdMeta'
-                relationships:
-                    $ref: '#/components/schemas/ExposureThresholdRelationships'
-        ExposureThresholdAttributes:
-            type: object
-            description: Attributes of an exposure threshold
-            required:
-                - exposure_type
-                - amber
-                - red
-                - effective_from
-            properties:
-                exposure_type:
-                    $ref: '#/components/schemas/ExposureType'
-                amber:
-                    type: number
-                    format: double
-                    description: The action value, in the exposure type's unit. Never above the HSE action value (100 points for HAVS) or the red value.
-                    examples:
-                        - 100
-                red:
-                    type: number
-                    format: double
-                    description: The limit value, in the exposure type's unit. Never above the HSE limit value (400 points for HAVS).
-                    examples:
-                        - 250
-                effective_from:
-                    type: string
-                    format: date
-                    description: The Europe/London calendar date the values take effect, from 00:00. Of two entries with the same date, the one created later is in force.
-                    examples:
-                        - "2026-11-10"
-        ExposureThresholdMeta:
-            type: object
-            description: Metadata for an exposure threshold.
-            required:
-                - created_at
-            properties:
-                created_at:
-                    type: string
-                    format: date-time
-        ExposureThresholdRelationships:
-            type: object
-            description: Relationships for an exposure threshold
-            required:
-                - organisation
-            properties:
-                organisation:
-                    type: object
-                    description: The organisation the threshold belongs to.
-                    required:
-                        - data
-                    properties:
-                        data:
-                            $ref: '#/components/schemas/OrganisationRelationship'
-        ExposureType:
-            type: string
-            description: |
-                The type of exposure a limit applies to. `havs` (hand-arm vibration, in points) is the only type.
-            enum:
-                - havs
-            examples:
-                - havs
         RoleGroupIncludes:
             type: array
             description: Related resources that can be included when a form is returned
@@ -32080,50 +31994,6 @@ components:
                     $ref: '#/components/headers/content-length'
                 X-Request-ID:
                     $ref: '#/components/headers/x-request-id'
-        ListExposureThresholds:
-            description: Get a list of exposure thresholds.
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        allOf:
-                            - type: object
-                              required:
-                                - data
-                              properties:
-                                data:
-                                    title: A list of exposure thresholds
-                                    type: array
-                                    items:
-                                        $ref: '#/components/schemas/ExposureThreshold'
-                            - $ref: '#/components/schemas/DocumentMeta'
-                            - $ref: '#/components/schemas/JSONAPI'
-        GetExposureThreshold:
-            description: Get an exposure threshold.
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        allOf:
-                            - type: object
-                              required:
-                                - data
-                              properties:
-                                data:
-                                    $ref: '#/components/schemas/ExposureThreshold'
-                            - $ref: '#/components/schemas/JSONAPI'
         ListGroups:
             description: Get a list of Role Groups.
             headers:
@@ -37799,9 +37669,16 @@ components:
                   offered here will be accepted as an approver on a write. Not for notification
                   nominations: `notify` takes job roles, listed via the `document_id` filter on
                   `/v3/job-roles`.
-                - `scheme_id`: Filter reviewers to those eligible for the specified scheme. Retained
-                  for callers that predate `document_id`; ignored when `document_id` is given. If
-                  neither is supplied, an empty list is returned.
+                - `scheme_id`: Filter reviewers to members of organisations on a currently-active
+                  share of the specified scheme that the caller can see, plus members of the
+                  organisation owning the scheme when the caller belongs to it. A share that has
+                  ended, or has not yet started, contributes no one. This assumes the scheme's owner
+                  owns the document, and then the list never offers anyone the API would refuse as
+                  an approver. When a partner uploaded the document, the list can leave out people
+                  the API would accept. Once that partner's share has ended, it also offers members
+                  of the scheme's owner, whom the API refuses. `document_id` is the exact filter.
+                  Ignored when `document_id` is given. If neither is supplied, an empty list is
+                  returned.
                 - `org_id`: Filter reviewers to members of a specific organisation (own org or a partner org connected via the scheme).
                 - `name`: Filter by name(s) - filters by first and last name (case insensitive)
                 - `id_not_in`: Exclude users whose ID is in the provided list.
@@ -40158,48 +40035,6 @@ components:
                 type: string
                 format: uuid
             example: a71fd460-4e25-4eb3-9183-a85f24b0700d
-        exposure_thresholds_filter:
-            name: filter
-            in: query
-            description: |
-                Filters the response data based on the value provided.
-
-                Available filters:
-
-                - `eq(id,xxx)`: Filter exposure thresholds by ID.
-                - `eq(exposure_type,havs)`: Filter exposure thresholds by exposure type.
-                - `effective_from`: `ge(effective_from,2026-11-10T00:00:00Z)` and `le(effective_from,2026-11-30T00:00:00Z)` bound the date each entry takes effect. Give an RFC3339 timestamp at 00:00 UTC on the date, which is how each date is stored: a date alone is ignored.
-
-                For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
-            required: false
-            schema:
-                type: string
-                default: ""
-        exposure_thresholds_sort:
-            in: query
-            name: sort
-            description: A comma separated list of fields to sort by. Defaults to `-effective_from,-created_at`.
-            required: false
-            style: form
-            explode: false
-            schema:
-                type: array
-                items:
-                    type: string
-                    enum:
-                        - effective_from
-                        - -effective_from
-                        - created_at
-                        - -created_at
-        exposure_threshold_id:
-            name: exposure_threshold_id
-            in: path
-            required: true
-            description: The unique identifier for the exposure threshold.
-            schema:
-                type: string
-                format: uuid
-            example: 6a1f0b2c-4d3e-4f5a-8b6c-7d8e9f0a1b2c
         groups_include:
             name: include
             in: query
@@ -44881,6 +44716,31 @@ components:
                                         type: object
                                         properties:
                                             acknowledged_at:
+                                                type: string
+                                                format: date-time
+        MarkBriefingViewed:
+            required: false
+            description: Optional. When the briefing was first viewed, for a view queued offline. Without it the server's time is used.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                    - attributes
+                                properties:
+                                    type:
+                                        type: string
+                                        const: briefing-recipients
+                                    attributes:
+                                        type: object
+                                        properties:
+                                            viewed_at:
                                                 type: string
                                                 format: date-time
         CreateBusinessArea:
@@ -53696,47 +53556,6 @@ components:
                                                 description: Notes about the interaction
                                                 examples:
                                                     - "Customer requested callback regarding service appointment"
-        CreateExposureThreshold:
-            required: true
-            description: The organisation's new amber and red values for an exposure type, and the date they take effect.
-            content:
-                application/vnd.api+json:
-                    schema:
-                        type: object
-                        required:
-                            - data
-                        properties:
-                            data:
-                                type: object
-                                required:
-                                    - type
-                                    - attributes
-                                properties:
-                                    type:
-                                        type: string
-                                        const: exposure-thresholds
-                                    attributes:
-                                        type: object
-                                        required:
-                                            - exposure_type
-                                            - amber
-                                            - red
-                                            - effective_from
-                                        properties:
-                                            exposure_type:
-                                                $ref: '#/components/schemas/ExposureType'
-                                            amber:
-                                                type: number
-                                                format: double
-                                                description: Zero or more, no higher than red and no higher than the HSE action value (100 points for HAVS).
-                                            red:
-                                                type: number
-                                                format: double
-                                                description: Zero or more, no higher than the HSE limit value (400 points for HAVS).
-                                            effective_from:
-                                                type: string
-                                                format: date
-                                                description: Today or later, as a Europe/London calendar date.
         CreateGroup:
             required: true
             description: The role group to create.
@@ -62976,7 +62795,10 @@ paths:
                 not found.
 
                 An app that acknowledged while offline sends the time it was made as `acknowledged_at`. A time
-                in the future, or before the briefing was sent to the caller, is refused.
+                more than five minutes in the future, or more than five minutes before the briefing was sent to
+                the caller, is refused. A time up to five minutes ahead, from a phone whose clock runs fast, is
+                recorded as the time the request arrives. A time up to five minutes before the send, from a phone
+                whose clock runs slow, is recorded as the send time.
             operationId: AcknowledgeBriefing
             parameters:
                 - $ref: '#/components/parameters/briefing_id'
@@ -63142,9 +62964,17 @@ paths:
             description: |
                 Record that the caller opened a briefing sent to them. Only the first view is kept, so
                 calling it again changes nothing. A briefing not sent to the caller is not found.
+
+                An app that viewed the briefing while offline sends the time it was viewed as `viewed_at`. A
+                time more than five minutes in the future, or more than five minutes before the briefing was
+                sent to the caller, is refused. A time up to five minutes ahead, from a phone whose clock runs
+                fast, is recorded as the time the request arrives. A time up to five minutes before the send,
+                from a phone whose clock runs slow, is recorded as the send time.
             operationId: MarkBriefingViewed
             parameters:
                 - $ref: '#/components/parameters/briefing_id'
+            requestBody:
+                $ref: '#/components/requestBodies/MarkBriefingViewed'
             responses:
                 "200":
                     $ref: '#/components/responses/GetBriefingRecipient'
@@ -63154,6 +62984,8 @@ paths:
                     $ref: '#/components/responses/Unauthorised'
                 "404":
                     $ref: '#/components/responses/NotFound'
+                "422":
+                    $ref: '#/components/responses/UnprocessableEntity'
                 "500":
                     $ref: '#/components/responses/InternalServerError'
             security:
@@ -74458,110 +74290,6 @@ paths:
             x-mint:
                 metadata:
                     title: Update the prepresentative for an interaction
-    /v3/orgs/{org_id}/exposure-thresholds:
-        get:
-            description: |
-                List the organisation's exposure threshold entries, every date and every exposure type, latest
-                `effective_from` first unless sorted otherwise. An exposure type with no entry in force resolves to
-                its HSE values (100 and 400 points for HAVS), which this list does not include. The resource has no
-                includes, so `included` is absent. Requires the `exposure-thresholds:view` permission.
-            operationId: ListExposureThresholds
-            parameters:
-                - $ref: '#/components/parameters/org_id'
-                - $ref: '#/components/parameters/exposure_thresholds_filter'
-                - $ref: '#/components/parameters/exposure_thresholds_sort'
-                - $ref: '#/components/parameters/limit'
-                - $ref: '#/components/parameters/offset'
-                - $ref: '#/components/parameters/page'
-            responses:
-                "200":
-                    $ref: '#/components/responses/ListExposureThresholds'
-                "400":
-                    $ref: '#/components/responses/BadRequest'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "404":
-                    $ref: '#/components/responses/NotFound'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - OAuth2: []
-                - Cookie: []
-            summary: List exposure thresholds
-            tags:
-                - Exposure Limits
-            x-mint:
-                metadata:
-                    title: List exposure thresholds
-        post:
-            description: |
-                Set the organisation's amber and red values for an exposure type from a date. Earlier entries are
-                kept, so a date before `effective_from` still resolves against the values in force on it.
-
-                `effective_from` must be today or later in Europe/London. Amber and red must be zero or more, amber
-                no higher than red, and neither looser than the HSE values (amber 100, red 400 points for HAVS). An
-                unknown exposure type is refused. Requires the `exposure-thresholds:update` permission, held
-                organisation-wide.
-            operationId: CreateExposureThreshold
-            parameters:
-                - $ref: '#/components/parameters/org_id'
-            requestBody:
-                $ref: '#/components/requestBodies/CreateExposureThreshold'
-            responses:
-                "201":
-                    $ref: '#/components/responses/GetExposureThreshold'
-                "400":
-                    $ref: '#/components/responses/BadRequest'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "404":
-                    $ref: '#/components/responses/NotFound'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - OAuth2: []
-                - Cookie: []
-            summary: Set exposure thresholds
-            tags:
-                - Exposure Limits
-            x-mint:
-                metadata:
-                    title: Set exposure thresholds
-    /v3/orgs/{org_id}/exposure-thresholds/{exposure_threshold_id}:
-        delete:
-            description: |
-                Delete an exposure threshold entry that has not yet taken effect. An entry whose `effective_from`
-                is today or earlier is refused with a conflict, because dates in its period must keep resolving
-                against it. Requires the `exposure-thresholds:update` permission, held organisation-wide.
-            operationId: DeleteExposureThreshold
-            parameters:
-                - $ref: '#/components/parameters/org_id'
-                - $ref: '#/components/parameters/exposure_threshold_id'
-            responses:
-                "204":
-                    $ref: '#/components/responses/NoContent'
-                "400":
-                    $ref: '#/components/responses/BadRequest'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "404":
-                    $ref: '#/components/responses/NotFound'
-                "409":
-                    $ref: '#/components/responses/Conflict'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - OAuth2: []
-                - Cookie: []
-            summary: Delete an exposure threshold
-            tags:
-                - Exposure Limits
-            x-mint:
-                metadata:
-                    title: Delete an exposure threshold
     /v3/orgs/{org_id}/iam/groups:
         get:
             description: List all of the groups in an organisation.
@@ -80516,9 +80244,6 @@ paths:
                 - Cookie: []
             tags:
                 - Status
-            x-ctrl-hub:
-                domain: status
-                entity: Status
             x-mint:
                 metadata:
                     title: Status
@@ -85596,10 +85321,6 @@ tags:
     - description: |
         Equipment are the physical assets that an organisation manages.
       name: Equipment
-    - description: |
-        Exposure limits: an organisation's thresholds for each exposure type, stricter than the HSE
-        values, and the limit in force for a person on a date.
-      name: Exposure Limits
     - description: |
         The central cost register: time-versioned rate codes for material, labour,
         contractor and miscellaneous spend, used to cost work against the job
