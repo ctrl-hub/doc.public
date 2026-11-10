@@ -215,245 +215,6 @@ components:
                 type:
                     type: string
                     const: customer-accounts
-        ServiceAccount:
-            type: object
-            description: A service account
-            required:
-                - id
-                - type
-                - attributes
-            properties:
-                id:
-                    type: string
-                    format: uuid
-                    description: The unique identifier of the service account.
-                type:
-                    type: string
-                    const: service-accounts
-                attributes:
-                    $ref: '#/components/schemas/ServiceAccountAttributes'
-                meta:
-                    $ref: '#/components/schemas/ServiceAccountMeta'
-                relationships:
-                    $ref: '#/components/schemas/ServiceAccountRelationships'
-        DocumentMeta:
-            type: object
-            description: Document level meta about the resources on the server in list endpoints.
-            required:
-                - meta
-            properties:
-                meta:
-                    type: object
-                    required:
-                        - pagination
-                    properties:
-                        features:
-                            $ref: '#/components/schemas/Features'
-                        pagination:
-                            $ref: '#/components/schemas/Pagination'
-        JSONAPI:
-            type: object
-            description: JSON API response object
-            required:
-                - jsonapi
-            properties:
-                jsonapi:
-                    type: object
-                    required:
-                        - version
-                    properties:
-                        version:
-                            type: string
-                            description: The version of the JSON API specification
-                            examples:
-                                - "1.0"
-        ServiceAccountAttributes:
-            type: object
-            description: Attributes for a service account
-            properties:
-                name:
-                    type: string
-                    description: The name of the service account.
-                    examples:
-                        - API Integration Service
-                description:
-                    type: string
-                    description: A description of the service account.
-                    examples:
-                        - Service account for third-party API integration
-                email:
-                    type: string
-                    format: email
-                    description: The email of the service account.
-                    examples:
-                        - api-service@example.com
-                enabled:
-                    type: boolean
-                    description: Whether the service account is active.
-                    examples:
-                        - true
-                keys:
-                    type: array
-                    description: |
-                        API keys associated with this service account. The `client_secret` is
-                        never populated here; it is only returned once in the dedicated
-                        create-key response (`ServiceAccountKey`), and never persisted server-side.
-                    items:
-                        type: object
-                        required:
-                            - id
-                        properties:
-                            id:
-                                type: string
-                                format: uuid
-                                description: The unique identifier (client_id) of the key.
-                            enabled:
-                                type: boolean
-                                description: Whether the key is enabled.
-                                examples:
-                                    - true
-                            created_at:
-                                type: string
-                                format: date-time
-                                description: The creation time of the key.
-        ServiceAccountMeta:
-            type: object
-            description: Meta information for a service account
-            properties:
-                created_at:
-                    type: string
-                    format: date-time
-                    description: The creation time of the service account.
-                    examples:
-                        - 2023-01-15T10:30:00Z
-                updated_at:
-                    type: string
-                    format: date-time
-                    description: The last update time of the service account.
-                    examples:
-                        - 2023-02-20T14:45:00Z
-        ServiceAccountRelationships:
-            type: object
-            description: Relationships for a service account
-            properties:
-                groups:
-                    type: object
-                    required:
-                        - data
-                    properties:
-                        data:
-                            type: array
-                            items:
-                                $ref: '#/components/schemas/UserGroupRelationship'
-                organisations:
-                    type: object
-                    required:
-                        - data
-                    properties:
-                        data:
-                            type: array
-                            items:
-                                $ref: '#/components/schemas/OrganisationRelationship'
-        UserGroupRelationship:
-            type: object
-            description: Represents a relationship to a group
-            required:
-                - id
-                - type
-            properties:
-                id:
-                    type: string
-                    format: uuid
-                    description: The unique identifier of the group
-                type:
-                    type: string
-                    const: groups
-        OrganisationRelationship:
-            type: object
-            description: Represents a relationship to an organisation
-            required:
-                - id
-                - type
-            properties:
-                id:
-                    type: string
-                    format: uuid
-                    description: The unique identifier of the organisation
-                type:
-                    type: string
-                    const: organisations
-        Features:
-            type: object
-            description: Represents feature configurations of the API
-            properties:
-                include:
-                    type: object
-                    properties:
-                        options:
-                            type: array
-                            items:
-                                type: string
-                                examples:
-                                    - related.resource
-        Pagination:
-            type: object
-            description: Represents pagination details for API responses
-            required:
-                - counts
-                - current_page
-                - offsets
-                - requested
-            properties:
-                counts:
-                    type: object
-                    required:
-                        - pages
-                        - resources
-                    properties:
-                        pages:
-                            type: integer
-                            examples:
-                                - 1
-                        resources:
-                            type: integer
-                            examples:
-                                - 1
-                current_page:
-                    type: integer
-                    examples:
-                        - 1
-                offsets:
-                    type: object
-                    required:
-                        - next
-                        - previous
-                    properties:
-                        next:
-                            type:
-                                - integer
-                                - "null"
-                            examples:
-                                - null
-                        previous:
-                            type:
-                                - integer
-                                - "null"
-                            examples:
-                                - null
-                requested:
-                    type: object
-                    required:
-                        - limit
-                        - offset
-                    properties:
-                        limit:
-                            type: integer
-                            examples:
-                                - 10
-                        offset:
-                            type: integer
-                            examples:
-                                - 0
         Error:
             type: object
             description: An error response
@@ -532,33 +293,6 @@ components:
                 - id
                 - status
                 - title
-        ServiceAccountKeySecret:
-            description: A service account key with its client secret, which is shown only when the key is created.
-            type: object
-            required:
-                - id
-                - type
-                - attributes
-            properties:
-                id:
-                    type: string
-                    format: uuid
-                    description: The unique identifier of the service account key.
-                type:
-                    type: string
-                    const: service-account-keys
-                attributes:
-                    type: object
-                    required:
-                        - client_secret
-                        - enabled
-                    properties:
-                        client_secret:
-                            type: string
-                            description: The client secret for the service account key.
-                        enabled:
-                            type: boolean
-                            description: Indicates whether the service account key is enabled.
         Action:
             type: object
             description: |
@@ -608,6 +342,37 @@ components:
                     - $ref: '#/components/schemas/Team'
                     - $ref: '#/components/schemas/FormSubmission'
                     - $ref: '#/components/schemas/JobRole'
+        DocumentMeta:
+            type: object
+            description: Document level meta about the resources on the server in list endpoints.
+            required:
+                - meta
+            properties:
+                meta:
+                    type: object
+                    required:
+                        - pagination
+                    properties:
+                        features:
+                            $ref: '#/components/schemas/Features'
+                        pagination:
+                            $ref: '#/components/schemas/Pagination'
+        JSONAPI:
+            type: object
+            description: JSON API response object
+            required:
+                - jsonapi
+            properties:
+                jsonapi:
+                    type: object
+                    required:
+                        - version
+                    properties:
+                        version:
+                            type: string
+                            description: The version of the JSON API specification
+                            examples:
+                                - "1.0"
         ActionAttributes:
             type: object
             description: Attributes of an action.
@@ -798,6 +563,20 @@ components:
                     properties:
                         data:
                             $ref: '#/components/schemas/UserRelationship'
+        OrganisationRelationship:
+            type: object
+            description: Represents a relationship to an organisation
+            required:
+                - id
+                - type
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the organisation
+                type:
+                    type: string
+                    const: organisations
         FormSubmissionRelationship:
             type: object
             description: Represents a relationship to a form submission
@@ -1870,6 +1649,78 @@ components:
                 type:
                     type: string
                     const: competency-requirement-specifications
+        Features:
+            type: object
+            description: Represents feature configurations of the API
+            properties:
+                include:
+                    type: object
+                    properties:
+                        options:
+                            type: array
+                            items:
+                                type: string
+                                examples:
+                                    - related.resource
+        Pagination:
+            type: object
+            description: Represents pagination details for API responses
+            required:
+                - counts
+                - current_page
+                - offsets
+                - requested
+            properties:
+                counts:
+                    type: object
+                    required:
+                        - pages
+                        - resources
+                    properties:
+                        pages:
+                            type: integer
+                            examples:
+                                - 1
+                        resources:
+                            type: integer
+                            examples:
+                                - 1
+                current_page:
+                    type: integer
+                    examples:
+                        - 1
+                offsets:
+                    type: object
+                    required:
+                        - next
+                        - previous
+                    properties:
+                        next:
+                            type:
+                                - integer
+                                - "null"
+                            examples:
+                                - null
+                        previous:
+                            type:
+                                - integer
+                                - "null"
+                            examples:
+                                - null
+                requested:
+                    type: object
+                    required:
+                        - limit
+                        - offset
+                    properties:
+                        limit:
+                            type: integer
+                            examples:
+                                - 10
+                        offset:
+                            type: integer
+                            examples:
+                                - 0
         AddressResolution:
             type: object
             description: A single address resolution result.
@@ -3053,6 +2904,20 @@ components:
                 type:
                     type: string
                     const: service-accounts
+        UserGroupRelationship:
+            type: object
+            description: Represents a relationship to a group
+            required:
+                - id
+                - type
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the group
+                type:
+                    type: string
+                    const: groups
         NomenclatureRelationship:
             type: object
             description: Represents a relationship to a nomenclature resource
@@ -15158,6 +15023,27 @@ components:
                     $ref: '#/components/schemas/RoleGroupAttributes'
                 relationships:
                     $ref: '#/components/schemas/RoleGroupRelationships'
+        ServiceAccount:
+            type: object
+            description: A service account
+            required:
+                - id
+                - type
+                - attributes
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the service account.
+                type:
+                    type: string
+                    const: service-accounts
+                attributes:
+                    $ref: '#/components/schemas/ServiceAccountAttributes'
+                meta:
+                    $ref: '#/components/schemas/ServiceAccountMeta'
+                relationships:
+                    $ref: '#/components/schemas/ServiceAccountRelationships'
         RoleGroupAttributes:
             type: object
             description: Attributes for a group
@@ -15196,6 +15082,93 @@ components:
                             type: array
                             items:
                                 $ref: '#/components/schemas/UserRelationship'
+        ServiceAccountAttributes:
+            type: object
+            description: Attributes for a service account
+            properties:
+                name:
+                    type: string
+                    description: The name of the service account.
+                    examples:
+                        - API Integration Service
+                description:
+                    type: string
+                    description: A description of the service account.
+                    examples:
+                        - Service account for third-party API integration
+                email:
+                    type: string
+                    format: email
+                    description: The email of the service account.
+                    examples:
+                        - api-service@example.com
+                enabled:
+                    type: boolean
+                    description: Whether the service account is active.
+                    examples:
+                        - true
+                keys:
+                    type: array
+                    description: |
+                        API keys associated with this service account. The `client_secret` is
+                        never populated here; it is only returned once in the dedicated
+                        create-key response (`ServiceAccountKey`), and never persisted server-side.
+                    items:
+                        type: object
+                        required:
+                            - id
+                        properties:
+                            id:
+                                type: string
+                                format: uuid
+                                description: The unique identifier (client_id) of the key.
+                            enabled:
+                                type: boolean
+                                description: Whether the key is enabled.
+                                examples:
+                                    - true
+                            created_at:
+                                type: string
+                                format: date-time
+                                description: The creation time of the key.
+        ServiceAccountMeta:
+            type: object
+            description: Meta information for a service account
+            properties:
+                created_at:
+                    type: string
+                    format: date-time
+                    description: The creation time of the service account.
+                    examples:
+                        - 2023-01-15T10:30:00Z
+                updated_at:
+                    type: string
+                    format: date-time
+                    description: The last update time of the service account.
+                    examples:
+                        - 2023-02-20T14:45:00Z
+        ServiceAccountRelationships:
+            type: object
+            description: Relationships for a service account
+            properties:
+                groups:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            type: array
+                            items:
+                                $ref: '#/components/schemas/UserGroupRelationship'
+                organisations:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            type: array
+                            items:
+                                $ref: '#/components/schemas/OrganisationRelationship'
         HavsEquipment:
             type: object
             description: A HAVS equipment reference record sourced from HSE Table 1
@@ -18303,6 +18276,33 @@ components:
                     properties:
                         data:
                             $ref: '#/components/schemas/OrganisationRelationship'
+        ServiceAccountKeySecret:
+            description: A service account key with its client secret, which is shown only when the key is created.
+            type: object
+            required:
+                - id
+                - type
+                - attributes
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the service account key.
+                type:
+                    type: string
+                    const: service-account-keys
+                attributes:
+                    type: object
+                    required:
+                        - client_secret
+                        - enabled
+                    properties:
+                        client_secret:
+                            type: string
+                            description: The client secret for the service account key.
+                        enabled:
+                            type: boolean
+                            description: Indicates whether the service account key is enabled.
         ServiceAccountLog:
             type: object
             description: A service account log entry
@@ -23459,66 +23459,6 @@ components:
                     properties:
                         data:
                             $ref: '#/components/schemas/UserRelationship'
-        UserAppVersion:
-            type: object
-            description: |
-                A build of the mobile app that a user has made requests with. The app sends its version, build number and platform in the `X-App-Version`, `X-App-Build` and `X-App-Platform` request headers.
-            required:
-                - id
-                - type
-                - attributes
-                - meta
-            properties:
-                id:
-                    type: string
-                    description: Identifies the build within the user, as `platform:version:build`.
-                    examples:
-                        - ios:1.4.2:317
-                type:
-                    type: string
-                    const: user-app-versions
-                attributes:
-                    $ref: '#/components/schemas/UserAppVersionAttributes'
-                meta:
-                    $ref: '#/components/schemas/UserAppVersionMeta'
-        UserAppVersionAttributes:
-            type: object
-            description: Attributes of an app version
-            required:
-                - version
-                - build
-                - platform
-            properties:
-                version:
-                    type: string
-                    description: The app's version, from the `X-App-Version` header.
-                    examples:
-                        - 1.4.2
-                build:
-                    type: string
-                    description: The app's build number, from the `X-App-Build` header.
-                    examples:
-                        - "317"
-                platform:
-                    type: string
-                    description: The platform the app ran on, from the `X-App-Platform` header, lower-cased.
-                    examples:
-                        - ios
-        UserAppVersionMeta:
-            type: object
-            description: Metadata for an app version.
-            required:
-                - first_seen_at
-                - last_seen_at
-            properties:
-                first_seen_at:
-                    type: string
-                    format: date-time
-                    description: When a request with this build was first recorded.
-                last_seen_at:
-                    type: string
-                    format: date-time
-                    description: When a request with this build was last recorded. Each API pod writes it at most once every 24 hours, so it can be refreshed sooner when another pod serves the request or a pod has dropped the build from its cache.
         VehicleCategory:
             type: object
             description: A vehicle category
@@ -27403,8 +27343,8 @@ components:
                     - $ref: '#/components/schemas/Organisation'
                     - $ref: '#/components/schemas/User'
     responses:
-        ListServiceAccounts:
-            description: Get a list of Service Accounts.
+        json:
+            description: The json spec
             headers:
                 Content-Type:
                     $ref: '#/components/headers/content-type'
@@ -27413,112 +27353,9 @@ components:
                 X-Request-ID:
                     $ref: '#/components/headers/x-request-id'
             content:
-                application/vnd.api+json:
-                    schema:
-                        allOf:
-                            - type: object
-                              required:
-                                - data
-                              properties:
-                                data:
-                                    title: A list of service accounts
-                                    type: array
-                                    items:
-                                        $ref: '#/components/schemas/ServiceAccount'
-                            - $ref: '#/components/schemas/DocumentMeta'
-                            - $ref: '#/components/schemas/JSONAPI'
-        Unauthorised:
-            description: Authentication failed
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
+                application/json:
                     schema:
                         type: object
-                        properties:
-                            errors:
-                                type: array
-                                items:
-                                    $ref: '#/components/schemas/Error'
-                    example:
-                        id: 05fc9c8d-73b9-4697-9337-57f7a567a48f
-                        status: "401"
-                        title: You are not authorised to access this resource
-                        detail: In order to access this resource, you need the 'admin' role.
-                        code: AUTH.001
-        Forbidden:
-            description: The authenticated principal does not hold the grant required for this action
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        type: object
-                        properties:
-                            errors:
-                                type: array
-                                items:
-                                    $ref: '#/components/schemas/Error'
-                    example:
-                        errors:
-                            - id: 1b3f2c30-2d56-4d3a-9c44-9be9c2cbf2f0
-                              status: "403"
-                              title: Forbidden
-                              detail: You do not hold the grant required for this action.
-                              code: AUTH.002
-        InternalServerError:
-            description: There was a problem handling the request on the server side
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        type: object
-                        properties:
-                            errors:
-                                type: array
-                                items:
-                                    $ref: '#/components/schemas/Error'
-                    example:
-                        id: fe9d9a69-f0a7-4fdc-bb2c-176027f316c5
-                        status: "500"
-                        title: Internal Server Error
-                        detail: An unexpected error occurred on the server.
-        GetServiceAccount:
-            description: Get a Service Account.
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        allOf:
-                            - type: object
-                              required:
-                                - data
-                              properties:
-                                data:
-                                    $ref: '#/components/schemas/ServiceAccount'
-                            - $ref: '#/components/schemas/JSONAPI'
         BadRequest:
             description: |
                 There was an error with the request - this could be due to an invalid body, query parameters,
@@ -27547,8 +27384,8 @@ components:
                             parameter: include
                         meta:
                             resource: wrong_value
-        Conflict:
-            description: The request conflicts with the current state of the resource
+        InternalServerError:
+            description: There was a problem handling the request on the server side
             headers:
                 Content-Type:
                     $ref: '#/components/headers/content-type'
@@ -27566,68 +27403,10 @@ components:
                                 items:
                                     $ref: '#/components/schemas/Error'
                     example:
-                        id: 8e2f9a34-b5c6-4d7e-9f8a-2b3c4d5e6f7g
-                        status: "409"
-                        title: Conflict
-                        detail: The request conflicts with the current state of the resource.
-                        code: CONFLICT.001
-        NotFound:
-            description: The requested resource could not be found
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        type: object
-                        properties:
-                            errors:
-                                type: array
-                                items:
-                                    $ref: '#/components/schemas/Error'
-                    example:
-                        id: 7b4c8f12-3e9a-4d5b-8c6f-1a2b3c4d5e6f
-                        status: "404"
-                        title: Resource not found
-                        detail: The requested resource could not be found or does not exist.
-                        code: NOT_FOUND.001
-        GetServiceAccountKey:
-            description: Get a Service Account Key.
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        allOf:
-                            - type: object
-                              required:
-                                - data
-                              properties:
-                                data:
-                                    $ref: '#/components/schemas/ServiceAccountKeySecret'
-                            - $ref: '#/components/schemas/JSONAPI'
-        json:
-            description: The json spec
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/json:
-                    schema:
-                        type: object
+                        id: fe9d9a69-f0a7-4fdc-bb2c-176027f316c5
+                        status: "500"
+                        title: Internal Server Error
+                        detail: An unexpected error occurred on the server.
         yaml:
             description: The yaml spec
             headers:
@@ -27641,6 +27420,30 @@ components:
                 application/yaml:
                     schema:
                         type: string
+        Unauthorised:
+            description: Authentication failed
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        properties:
+                            errors:
+                                type: array
+                                items:
+                                    $ref: '#/components/schemas/Error'
+                    example:
+                        id: 05fc9c8d-73b9-4697-9337-57f7a567a48f
+                        status: "401"
+                        title: You are not authorised to access this resource
+                        detail: In order to access this resource, you need the 'admin' role.
+                        code: AUTH.001
         ListActions:
             description: Get a list of actions.
             headers:
@@ -27689,6 +27492,54 @@ components:
                                 included:
                                     $ref: '#/components/schemas/ActionIncludes'
                             - $ref: '#/components/schemas/JSONAPI'
+        NotFound:
+            description: The requested resource could not be found
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        properties:
+                            errors:
+                                type: array
+                                items:
+                                    $ref: '#/components/schemas/Error'
+                    example:
+                        id: 7b4c8f12-3e9a-4d5b-8c6f-1a2b3c4d5e6f
+                        status: "404"
+                        title: Resource not found
+                        detail: The requested resource could not be found or does not exist.
+                        code: NOT_FOUND.001
+        Conflict:
+            description: The request conflicts with the current state of the resource
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        properties:
+                            errors:
+                                type: array
+                                items:
+                                    $ref: '#/components/schemas/Error'
+                    example:
+                        id: 8e2f9a34-b5c6-4d7e-9f8a-2b3c4d5e6f7g
+                        status: "409"
+                        title: Conflict
+                        detail: The request conflicts with the current state of the resource.
+                        code: CONFLICT.001
         ResolveAddressesDocument:
             description: Address resolution results.
             headers:
@@ -28522,6 +28373,31 @@ components:
                                 data:
                                     $ref: '#/components/schemas/ConstructionPhasePlanRisk'
                             - $ref: '#/components/schemas/JSONAPI'
+        Forbidden:
+            description: The authenticated principal does not hold the grant required for this action
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        properties:
+                            errors:
+                                type: array
+                                items:
+                                    $ref: '#/components/schemas/Error'
+                    example:
+                        errors:
+                            - id: 1b3f2c30-2d56-4d3a-9c44-9be9c2cbf2f0
+                              status: "403"
+                              title: Forbidden
+                              detail: You do not hold the grant required for this action.
+                              code: AUTH.002
         GetDocument:
             description: Get a document.
             headers:
@@ -32181,6 +32057,70 @@ components:
                                         $ref: '#/components/schemas/User'
                             - $ref: '#/components/schemas/DocumentMeta'
                             - $ref: '#/components/schemas/JSONAPI'
+        ListServiceAccounts:
+            description: Get a list of Service Accounts.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    title: A list of service accounts
+                                    type: array
+                                    items:
+                                        $ref: '#/components/schemas/ServiceAccount'
+                            - $ref: '#/components/schemas/DocumentMeta'
+                            - $ref: '#/components/schemas/JSONAPI'
+        GetServiceAccount:
+            description: Get a Service Account.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    $ref: '#/components/schemas/ServiceAccount'
+                            - $ref: '#/components/schemas/JSONAPI'
+        GetServiceAccountKey:
+            description: Get a Service Account Key.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    $ref: '#/components/schemas/ServiceAccountKeySecret'
+                            - $ref: '#/components/schemas/JSONAPI'
         ListServiceAccountLogs:
             description: Get a list of Service Account Logs.
             headers:
@@ -34560,66 +34500,6 @@ components:
                                 included:
                                     $ref: '#/components/schemas/UserIncludes'
                             - $ref: '#/components/schemas/JSONAPI'
-        ListUserAppVersions:
-            description: Get a list of the app versions a user has used.
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/vnd.api+json:
-                    schema:
-                        allOf:
-                            - type: object
-                              required:
-                                - data
-                              properties:
-                                data:
-                                    title: A list of app versions
-                                    type: array
-                                    items:
-                                        $ref: '#/components/schemas/UserAppVersion'
-                            - $ref: '#/components/schemas/DocumentMeta'
-                            - $ref: '#/components/schemas/JSONAPI'
-        GetUserGrants:
-            description: The user's hydrated organisations and expanded grant strings.
-            headers:
-                Content-Type:
-                    $ref: '#/components/headers/content-type'
-                Content-Length:
-                    $ref: '#/components/headers/content-length'
-                X-Request-ID:
-                    $ref: '#/components/headers/x-request-id'
-            content:
-                application/json:
-                    schema:
-                        title: User grants
-                        type: object
-                        properties:
-                            user_id:
-                                type: string
-                                format: uuid
-                            organisations:
-                                type: array
-                                items:
-                                    type: object
-                                    properties:
-                                        id:
-                                            type: string
-                                            format: uuid
-                                    required:
-                                        - id
-                            grants:
-                                type: array
-                                items:
-                                    type: string
-                        required:
-                            - user_id
-                            - organisations
-                            - grants
         ListVehicleCategories:
             description: Get a list of vehicle categories.
             headers:
@@ -36046,57 +35926,6 @@ components:
                             - $ref: '#/components/schemas/JSONAPI'
                             - $ref: '#/components/schemas/DocumentMeta'
     parameters:
-        limit:
-            name: limit
-            in: query
-            description: Limit the number of resources returned by the API
-            required: false
-            schema:
-                type: integer
-                format: int64
-                minimum: 1
-                default: 100
-        offset:
-            name: offset
-            in: query
-            description: Offset the resources returned by the API
-            required: false
-            schema:
-                type: integer
-                format: int64
-                minimum: 0
-                default: 0
-        page:
-            name: page
-            in: query
-            description: |
-                JSON:API pagination, as `page[limit]` and `page[offset]`. The same as the top-level `limit` and `offset` parameters; when both forms are sent, `page[...]` wins.
-            required: false
-            style: deepObject
-            explode: true
-            schema:
-                type: object
-                additionalProperties: false
-                properties:
-                    limit:
-                        type: integer
-                        format: int64
-                        minimum: 1
-                        description: Limit the number of resources returned by the API. Defaults to the operation's `limit` default.
-                    offset:
-                        type: integer
-                        format: int64
-                        minimum: 0
-                        description: Offset the resources returned by the API. Defaults to 0.
-        system_service_account_id:
-            name: service_account_id
-            in: path
-            required: true
-            description: The unique identifier for the system service account.
-            schema:
-                type: string
-                format: uuid
-            example: 4a5b6c7d-1234-4def-89ab-cdef01234567
         actions_include:
             name: include
             in: query
@@ -36163,6 +35992,48 @@ components:
                         - -priority
                         - created_at
                         - -created_at
+        limit:
+            name: limit
+            in: query
+            description: Limit the number of resources returned by the API
+            required: false
+            schema:
+                type: integer
+                format: int64
+                minimum: 1
+                default: 100
+        offset:
+            name: offset
+            in: query
+            description: Offset the resources returned by the API
+            required: false
+            schema:
+                type: integer
+                format: int64
+                minimum: 0
+                default: 0
+        page:
+            name: page
+            in: query
+            description: |
+                JSON:API pagination, as `page[limit]` and `page[offset]`. The same as the top-level `limit` and `offset` parameters; when both forms are sent, `page[...]` wins.
+            required: false
+            style: deepObject
+            explode: true
+            schema:
+                type: object
+                additionalProperties: false
+                properties:
+                    limit:
+                        type: integer
+                        format: int64
+                        minimum: 1
+                        description: Limit the number of resources returned by the API. Defaults to the operation's `limit` default.
+                    offset:
+                        type: integer
+                        format: int64
+                        minimum: 0
+                        description: Offset the resources returned by the API. Defaults to 0.
         action_id:
             name: action_id
             in: path
@@ -43167,59 +43038,6 @@ components:
                 format: uuid
             example: 5e3b1861-9476-45b5-8b9d-68372fc2b426
     requestBodies:
-        CreateServiceAccount:
-            required: true
-            description: The service account to create.
-            content:
-                application/vnd.api+json:
-                    schema:
-                        type: object
-                        required:
-                            - data
-                        properties:
-                            data:
-                                type: object
-                                required:
-                                    - type
-                                    - attributes
-                                properties:
-                                    type:
-                                        type: string
-                                        const: service-accounts
-                                    attributes:
-                                        type: object
-                                        required:
-                                            - name
-                                        properties:
-                                            name:
-                                                type: string
-                                                minLength: 1
-                                                description: The name of the service account.
-                                                examples:
-                                                    - "API Integration Service"
-                                            description:
-                                                type: string
-                                                description: A description of the service account.
-                                                examples:
-                                                    - "Service account for third-party API integrations"
-        CreateServiceAccountKey:
-            required: true
-            description: The service account key to create.
-            content:
-                application/vnd.api+json:
-                    schema:
-                        type: object
-                        required:
-                            - data
-                        properties:
-                            data:
-                                type: object
-                                required:
-                                    - type
-                                properties:
-                                    type:
-                                        type: string
-                                        const: service-account-keys
         CreateAction:
             required: true
             description: |
@@ -53892,6 +53710,41 @@ components:
                                                     The desired membership status of this user in the organisation.
                                                 examples:
                                                     - inactive
+        CreateServiceAccount:
+            required: true
+            description: The service account to create.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                    - attributes
+                                properties:
+                                    type:
+                                        type: string
+                                        const: service-accounts
+                                    attributes:
+                                        type: object
+                                        required:
+                                            - name
+                                        properties:
+                                            name:
+                                                type: string
+                                                minLength: 1
+                                                description: The name of the service account.
+                                                examples:
+                                                    - "API Integration Service"
+                                            description:
+                                                type: string
+                                                description: A description of the service account.
+                                                examples:
+                                                    - "Service account for third-party API integrations"
         UpdateServiceAccount:
             required: true
             description: |
@@ -53934,6 +53787,24 @@ components:
                                                     requests made with the service account's keys are rejected.
                                                 examples:
                                                     - false
+        CreateServiceAccountKey:
+            required: true
+            description: The service account key to create.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                properties:
+                                    type:
+                                        type: string
+                                        const: service-account-keys
         CreateOrganisationBridgeRequest:
             required: true
             description: The role group to create.
@@ -61319,128 +61190,6 @@ info:
     version: 1.0.0
 openapi: 3.1.0
 paths:
-    /admin/v3/service-accounts:
-        get:
-            description: |
-                List system-level service accounts (cross-organisation identities used by
-                Ctrl Hub's own applications to sync data with the API). Requires the
-                `system:system-service-accounts/*:manage@direct` grant.
-            operationId: ListSystemServiceAccounts
-            parameters:
-                - $ref: '#/components/parameters/limit'
-                - $ref: '#/components/parameters/offset'
-                - $ref: '#/components/parameters/page'
-            responses:
-                "200":
-                    $ref: '#/components/responses/ListServiceAccounts'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "403":
-                    $ref: '#/components/responses/Forbidden'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - OAuth2: []
-                - Cookie: []
-            tags:
-                - Service Accounts
-            x-mint:
-                metadata:
-                    title: List system service accounts
-        post:
-            description: |
-                Create a new system-level service account. Requires the
-                `system:system-service-accounts/*:manage@direct` grant. The resulting
-                account is not scoped to any organisation; grants must be assigned in the
-                `system:` namespace for the account to authenticate against API resources.
-            operationId: CreateSystemServiceAccount
-            requestBody:
-                $ref: '#/components/requestBodies/CreateServiceAccount'
-            responses:
-                "201":
-                    $ref: '#/components/responses/GetServiceAccount'
-                "400":
-                    $ref: '#/components/responses/BadRequest'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "403":
-                    $ref: '#/components/responses/Forbidden'
-                "409":
-                    $ref: '#/components/responses/Conflict'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - OAuth2: []
-                - Cookie: []
-            summary: Create a system Service Account
-            tags:
-                - Service Accounts
-            x-mint:
-                metadata:
-                    title: Create a system service account
-    /admin/v3/service-accounts/{service_account_id}:
-        get:
-            description: |
-                Get a system-level service account by ID. Returns 404 for org-bound
-                service accounts even if the ID matches — the system endpoint never
-                exposes org-scoped identities.
-            operationId: GetSystemServiceAccount
-            parameters:
-                - $ref: '#/components/parameters/system_service_account_id'
-            responses:
-                "200":
-                    $ref: '#/components/responses/GetServiceAccount'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "403":
-                    $ref: '#/components/responses/Forbidden'
-                "404":
-                    $ref: '#/components/responses/NotFound'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - OAuth2: []
-                - Cookie: []
-            tags:
-                - Service Accounts
-            x-mint:
-                metadata:
-                    title: Get a system service account
-    /admin/v3/service-accounts/{service_account_id}/keys:
-        post:
-            description: |
-                Generate a new OAuth2 client_credentials key pair for a system-level
-                service account. The `client_secret` is returned in the response and
-                is not persisted — capture it immediately, it cannot be retrieved again.
-            operationId: CreateSystemServiceAccountKey
-            parameters:
-                - $ref: '#/components/parameters/system_service_account_id'
-            requestBody:
-                $ref: '#/components/requestBodies/CreateServiceAccountKey'
-            responses:
-                "201":
-                    $ref: '#/components/responses/GetServiceAccountKey'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "403":
-                    $ref: '#/components/responses/Forbidden'
-                "404":
-                    $ref: '#/components/responses/NotFound'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - OAuth2: []
-                - Cookie: []
-            summary: Create a system Service Account Key
-            tags:
-                - Service Accounts
-            x-mint:
-                metadata:
-                    title: Create a key for a system service account
     /spec.json:
         get:
             description: Returns the full API spec in JSON format.
@@ -81216,66 +80965,6 @@ paths:
             x-mint:
                 metadata:
                     title: Update a user
-    /v3/users/{user_id}/app-versions:
-        get:
-            description: |
-                Retrieve the builds of the mobile app that the user has made requests with, newest first by `last_seen_at`. Each build is one version, build number and platform.
-
-                The caller needs `admin:view` on every organisation. A grant on a single organisation, such as an organisation owner's, is refused with 401.
-
-                There is no include parameter, so the response has no `included`. The list is not paginated.
-            operationId: ListUserAppVersions
-            parameters:
-                - $ref: '#/components/parameters/user_id'
-            responses:
-                "200":
-                    $ref: '#/components/responses/ListUserAppVersions'
-                "400":
-                    $ref: '#/components/responses/BadRequest'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "404":
-                    $ref: '#/components/responses/NotFound'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - Cookie: []
-                - OAuth2: []
-            summary: List the app versions a user has used
-            tags:
-                - IAM
-            x-ctrl-hub:
-                domain: iam
-                domainLiteral: IAM
-            x-mint:
-                metadata:
-                    title: List the app versions a user has used
-    /v3/users/{user_id}/grants:
-        get:
-            description: |
-                Returns the organisations and expanded grant strings that would be produced
-                for the given user by the hydration pipeline. Intended for local/debugging
-                use — lets you inspect what grants a user resolves to without signing in as
-                them.
-            operationId: GetUserGrants
-            parameters:
-                - $ref: '#/components/parameters/user_id'
-            responses:
-                "200":
-                    $ref: '#/components/responses/GetUserGrants'
-                "400":
-                    $ref: '#/components/responses/BadRequest'
-                "401":
-                    $ref: '#/components/responses/Unauthorised'
-                "500":
-                    $ref: '#/components/responses/InternalServerError'
-            security:
-                - Session: []
-                - OAuth2: []
-                - Cookie: []
-            tags:
-                - IAM
     /v3/users/{user_id}/seat-class-changes:
         post:
             description: |
