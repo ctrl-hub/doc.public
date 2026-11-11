@@ -486,9 +486,9 @@ components:
                 Relationships for an action. `organisation` is always present. `assigned_users`
                 and `assigned_teams` are to-many and either may be empty (but at least one
                 assignee resolves across the two at create time). `form_submission`,
-                `triggering_job_role`, and `closed_by` are optional to-one relationships,
+                `triggering_job_role` (deprecated), and `closed_by` are optional to-one relationships,
                 populated only when relevant (subject present, role-resolved assignees,
-                closed action respectively).
+                closed action respectively). `triggering_job_roles` is an optional to-many.
             required:
                 - organisation
             properties:
@@ -546,15 +546,28 @@ components:
                             $ref: '#/components/schemas/ConstructionPhasePlanRelationship'
                 triggering_job_role:
                     type: object
+                    deprecated: true
                     description: |
-                        The job role whose holders were resolved as assignees, when the action was
-                        created via the `job_role_holders_on_subject` resolver. Display-only; the
-                        assigned users/teams remain the source of truth for who can close it.
+                        Deprecated: use `triggering_job_roles`. The first of them, when any job role
+                        resolved a holder.
                     required:
                         - data
                     properties:
                         data:
                             $ref: '#/components/schemas/JobRoleRelationship'
+                triggering_job_roles:
+                    type: object
+                    description: |
+                        The job roles that resolved at least one holder when the action was created
+                        from a workflow step. Display-only; the assigned users/teams remain the
+                        source of truth for who can close it. Absent when no role resolved.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            type: array
+                            items:
+                                $ref: '#/components/schemas/JobRoleRelationship'
                 closed_by:
                     type: object
                     description: The user who closed the action. Absent while the action is open.
@@ -3088,6 +3101,25 @@ components:
                                     name:
                                         type: string
                                         description: Human readable resource name
+                        impersonated_by:
+                            type: object
+                            description: The Ctrl Hub staff member who made the change while impersonating the principal, with the impersonation session. Absent for a change the principal made themselves.
+                            required:
+                                - user_id
+                                - name
+                                - impersonation_id
+                            properties:
+                                user_id:
+                                    type: string
+                                    format: uuid
+                                    description: The staff member's user id.
+                                name:
+                                    type: string
+                                    description: The staff member's name, or their email when they have none, as it was when the session started.
+                                impersonation_id:
+                                    type: string
+                                    format: uuid
+                                    description: The impersonation session the change was made in.
                     description: Additional context about the request
                 reason:
                     type: string
@@ -16749,7 +16781,9 @@ components:
             description: |
                 A Ctrl Hub staff member acting as a customer's user in the console, for a chosen time. While it is open,
                 the public API serves the staff member's browser sign-in as the person, with exactly the person's
-                access, and refuses every change.
+                access. Until changes while impersonating are released, it refuses every change except ending the
+                impersonation with `CH.003.153`. After, it refuses every change to sign-in, access or a user's account
+                (email and profile) with `CH.003.155`.
             required:
                 - id
                 - type
@@ -16786,6 +16820,13 @@ components:
                             $ref: '#/components/schemas/ImpersonationParty'
                         person:
                             $ref: '#/components/schemas/ImpersonationParty'
+                        changes_allowed:
+                            type: boolean
+                            description: |
+                                Whether the public API serves changes made while impersonating. When false, every change except
+                                ending the impersonation is refused with `CH.003.153`. When true, only a change to sign-in, access
+                                or a user's account (email and profile) is refused, with `CH.003.155`. Present only on the caller's
+                                own impersonation, from `GET /v3/me/impersonation`.
         ImpersonationParty:
             type: object
             description: The staff member or the person in an impersonation session.
@@ -26661,6 +26702,8 @@ components:
                                             - required:
                                                 - teams
                                             - required:
+                                                - job_role_ids
+                                            - required:
                                                 - job_role_holders_on_subject
                                         properties:
                                             users:
@@ -26675,10 +26718,18 @@ components:
                                                 items:
                                                     type: string
                                                     format: uuid
+                                            job_role_ids:
+                                                type: array
+                                                description: >-
+                                                    Job roles whose holders on the action's subject become assignees at create time. A role that resolves no holder is ignored.
+                                                items:
+                                                    type: string
+                                                    format: uuid
                                             job_role_holders_on_subject:
                                                 type: object
+                                                deprecated: true
                                                 description: >-
-                                                    Resolve assignees to the holders of a job-role on the action's subject at create time.
+                                                    Deprecated: use `job_role_ids`. Holds the first role of `job_role_ids` in responses.
                                                 required:
                                                     - job_role_id
                                                 properties:
@@ -36030,6 +36081,7 @@ components:
                         - assigned_teams
                         - form_submission
                         - triggering_job_role
+                        - triggering_job_roles
                         - closed_by
         actions_filter:
             name: filter
@@ -36047,7 +36099,8 @@ components:
                 - `eq(subject_id,xxx)`: Filter by subject ID (e.g. the form submission ID when `subject_type` is `form-submissions`).
                 - `eq(assigned_user,xxx)`: Filter to actions assigned to a given user ID.
                 - `eq(assigned_team,xxx)`: Filter to actions assigned to a given team ID.
-                - `eq(triggering_job_role,xxx)`: Filter by the triggering job role ID.
+                - `eq(triggering_job_roles,xxx)`: Filter to actions that name a given job role among the roles that resolved a holder.
+                - `eq(triggering_job_role,xxx)`: Deprecated, use `triggering_job_roles`. Matches the first role that resolved a holder only. An action whose configured role resolved nobody is not matched.
                 - `ge(due_at,xxx)` / `le(due_at,xxx)`: Filter by due date range. Use the
                   function-style `ge`/`le` operators (not `gte`/`lte`).
 
@@ -60984,6 +61037,8 @@ components:
                                                                         - required:
                                                                             - teams
                                                                         - required:
+                                                                            - job_role_ids
+                                                                        - required:
                                                                             - job_role_holders_on_subject
                                                                     properties:
                                                                         users:
@@ -60998,10 +61053,19 @@ components:
                                                                             items:
                                                                                 type: string
                                                                                 format: uuid
+                                                                        job_role_ids:
+                                                                            type: array
+                                                                            maxItems: 10
+                                                                            description: >-
+                                                                                Job roles whose holders on the action's subject become assignees at create time. At most 10. A role that resolves no holder is ignored.
+                                                                            items:
+                                                                                type: string
+                                                                                format: uuid
                                                                         job_role_holders_on_subject:
                                                                             type: object
+                                                                            deprecated: true
                                                                             description: >-
-                                                                                Resolve assignees to the holders of a job-role on the action's subject at create time.
+                                                                                Deprecated: use `job_role_ids`. If both are sent, this role must equal the first `job_role_ids` entry, or the request is rejected.
                                                                             required:
                                                                                 - job_role_id
                                                                             properties:
@@ -71872,8 +71936,8 @@ paths:
         delete:
             description: |
                 Ends the impersonation session bound to the caller's browser sign-in, recorded as ended by the staff
-                member. It is the one change accepted while impersonating. From the next request, the sign-in is served
-                as the staff member again. A sign-in with no open impersonation session is a 404.
+                member. It is accepted whether or not changes while impersonating are released. From the next request,
+                the sign-in is served as the staff member again. A sign-in with no open impersonation session is a 404.
             operationId: EndMyImpersonation
             responses:
                 "204":
@@ -71895,11 +71959,15 @@ paths:
                 Answers with the impersonation session bound to the caller's browser sign-in: the Ctrl Hub staff member, the
                 person they act as, why, and when it ends. While a session is open, every other public API request from
                 that browser sign-in is served as the person, except a request from the admin app, which is served as the
-                staff member. The Management API always serves the staff member. Every change except ending the
-                impersonation is refused with `CH.003.153`. If the person can no longer be served, such as a principal
-                disabled since the session started, reads are served as the staff member and changes are still refused.
-                A sign-in with no open impersonation session is a 404. The console reads it to show who it is
-                impersonating.
+                staff member. The Management API always serves the staff member. Until changes while impersonating are
+                released, every change except ending the impersonation is refused with `CH.003.153`. Once they are, a
+                change is made as the person and its audit event names the staff member too, but a change to sign-in,
+                access or a user's account (grants, roles, members, groups, users and their email and profile,
+                invitations, teams, operation assignees, scheme shares, bridges, security settings, SSO and the
+                organisation itself) is still refused with `CH.003.155`. If the person can no longer be served, such as
+                a principal disabled since the session started, reads are served as the staff member and every change
+                except ending the impersonation is refused with `CH.003.153`. A sign-in with no open impersonation
+                session is a 404. The console reads it to show who it is impersonating.
             operationId: GetMyImpersonation
             responses:
                 "200":
