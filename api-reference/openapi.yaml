@@ -16744,6 +16744,70 @@ components:
                     properties:
                         data:
                             $ref: '#/components/schemas/OrganisationRelationship'
+        Impersonation:
+            type: object
+            description: |
+                A Ctrl Hub staff member acting as a customer's user in the console, for a chosen time. While it is open,
+                the public API serves the staff member's browser sign-in as the person, with exactly the person's
+                access, and refuses every change.
+            required:
+                - id
+                - type
+                - attributes
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the impersonation session.
+                type:
+                    type: string
+                    const: impersonations
+                attributes:
+                    type: object
+                    required:
+                        - reason
+                        - started_at
+                        - expires_at
+                        - staff
+                        - person
+                    properties:
+                        reason:
+                            type: string
+                            description: Why the staff member is impersonating the person, as they gave it.
+                        started_at:
+                            type: string
+                            format: date-time
+                            description: When the session started.
+                        expires_at:
+                            type: string
+                            format: date-time
+                            description: When the session ends on its own.
+                        staff:
+                            $ref: '#/components/schemas/ImpersonationParty'
+                        person:
+                            $ref: '#/components/schemas/ImpersonationParty'
+        ImpersonationParty:
+            type: object
+            description: The staff member or the person in an impersonation session.
+            required:
+                - id
+                - first_name
+                - last_name
+                - email
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The user's unique identifier.
+                first_name:
+                    type: string
+                    description: The user's first name, or empty when they have not given one.
+                last_name:
+                    type: string
+                    description: The user's last name, or empty when they have not given one.
+                email:
+                    type: string
+                    description: The user's email address.
         Meter:
             type: object
             description: A meter
@@ -31125,6 +31189,26 @@ components:
                                 data:
                                     $ref: '#/components/schemas/ManagerRole'
                             - $ref: '#/components/schemas/JSONAPI'
+        GetImpersonation:
+            description: The impersonation session the request is served under.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    $ref: '#/components/schemas/Impersonation'
+                            - $ref: '#/components/schemas/JSONAPI'
         ListMeters:
             description: Get a list of meters.
             headers:
@@ -32282,6 +32366,10 @@ components:
                     $ref: '#/components/headers/content-length'
                 X-Request-ID:
                     $ref: '#/components/headers/x-request-id'
+                ETag:
+                    $ref: '#/components/headers/etag'
+                Cache-Control:
+                    $ref: '#/components/headers/cache-control'
             content:
                 application/vnd.api+json:
                     schema:
@@ -71780,6 +71868,54 @@ paths:
             x-mint:
                 metadata:
                     title: Update a manager role
+    /v3/me/impersonation:
+        delete:
+            description: |
+                Ends the impersonation session bound to the caller's browser sign-in, recorded as ended by the staff
+                member. It is the one change accepted while impersonating. From the next request, the sign-in is served
+                as the staff member again. A sign-in with no open impersonation session is a 404.
+            operationId: EndMyImpersonation
+            responses:
+                "204":
+                    $ref: '#/components/responses/NoContent'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - Cookie: []
+            summary: End the impersonation you are in
+            tags:
+                - Users
+        get:
+            description: |
+                Answers with the impersonation session bound to the caller's browser sign-in: the Ctrl Hub staff member, the
+                person they act as, why, and when it ends. While a session is open, every other public API request from
+                that browser sign-in is served as the person, except a request from the admin app, which is served as the
+                staff member. The Management API always serves the staff member. Every change except ending the
+                impersonation is refused with `CH.003.153`. If the person can no longer be served, such as a principal
+                disabled since the session started, reads are served as the staff member and changes are still refused.
+                A sign-in with no open impersonation session is a 404. The console reads it to show who it is
+                impersonating.
+            operationId: GetMyImpersonation
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetImpersonation'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - Cookie: []
+            summary: Get the impersonation you are in
+            tags:
+                - Users
     /v3/meters:
         get:
             description: Retrieve a list of meters.
@@ -75014,9 +75150,12 @@ paths:
                 - $ref: '#/components/parameters/limit'
                 - $ref: '#/components/parameters/offset'
                 - $ref: '#/components/parameters/page'
+                - $ref: '#/components/parameters/if_none_match'
             responses:
                 "200":
                     $ref: '#/components/responses/ListTeams'
+                "304":
+                    $ref: '#/components/responses/NotModified'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
