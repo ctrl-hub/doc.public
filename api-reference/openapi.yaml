@@ -486,9 +486,9 @@ components:
                 Relationships for an action. `organisation` is always present. `assigned_users`
                 and `assigned_teams` are to-many and either may be empty (but at least one
                 assignee resolves across the two at create time). `form_submission`,
-                `triggering_job_role`, and `closed_by` are optional to-one relationships,
+                `triggering_job_role` (deprecated), and `closed_by` are optional to-one relationships,
                 populated only when relevant (subject present, role-resolved assignees,
-                closed action respectively).
+                closed action respectively). `triggering_job_roles` is an optional to-many.
             required:
                 - organisation
             properties:
@@ -546,15 +546,28 @@ components:
                             $ref: '#/components/schemas/ConstructionPhasePlanRelationship'
                 triggering_job_role:
                     type: object
+                    deprecated: true
                     description: |
-                        The job role whose holders were resolved as assignees, when the action was
-                        created via the `job_role_holders_on_subject` resolver. Display-only; the
-                        assigned users/teams remain the source of truth for who can close it.
+                        Deprecated: use `triggering_job_roles`. The first of them, when any job role
+                        resolved a holder.
                     required:
                         - data
                     properties:
                         data:
                             $ref: '#/components/schemas/JobRoleRelationship'
+                triggering_job_roles:
+                    type: object
+                    description: |
+                        The job roles that resolved at least one holder when the action was created
+                        from a workflow step. Display-only; the assigned users/teams remain the
+                        source of truth for who can close it. Absent when no role resolved.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            type: array
+                            items:
+                                $ref: '#/components/schemas/JobRoleRelationship'
                 closed_by:
                     type: object
                     description: The user who closed the action. Absent while the action is open.
@@ -26661,6 +26674,8 @@ components:
                                             - required:
                                                 - teams
                                             - required:
+                                                - job_role_ids
+                                            - required:
                                                 - job_role_holders_on_subject
                                         properties:
                                             users:
@@ -26675,10 +26690,18 @@ components:
                                                 items:
                                                     type: string
                                                     format: uuid
+                                            job_role_ids:
+                                                type: array
+                                                description: >-
+                                                    Job roles whose holders on the action's subject become assignees at create time. A role that resolves no holder is ignored.
+                                                items:
+                                                    type: string
+                                                    format: uuid
                                             job_role_holders_on_subject:
                                                 type: object
+                                                deprecated: true
                                                 description: >-
-                                                    Resolve assignees to the holders of a job-role on the action's subject at create time.
+                                                    Deprecated: use `job_role_ids`. Holds the first role of `job_role_ids` in responses.
                                                 required:
                                                     - job_role_id
                                                 properties:
@@ -36030,6 +36053,7 @@ components:
                         - assigned_teams
                         - form_submission
                         - triggering_job_role
+                        - triggering_job_roles
                         - closed_by
         actions_filter:
             name: filter
@@ -36047,7 +36071,8 @@ components:
                 - `eq(subject_id,xxx)`: Filter by subject ID (e.g. the form submission ID when `subject_type` is `form-submissions`).
                 - `eq(assigned_user,xxx)`: Filter to actions assigned to a given user ID.
                 - `eq(assigned_team,xxx)`: Filter to actions assigned to a given team ID.
-                - `eq(triggering_job_role,xxx)`: Filter by the triggering job role ID.
+                - `eq(triggering_job_roles,xxx)`: Filter to actions that name a given job role among the roles that resolved a holder.
+                - `eq(triggering_job_role,xxx)`: Deprecated, use `triggering_job_roles`. Matches the first role that resolved a holder only. An action whose configured role resolved nobody is not matched.
                 - `ge(due_at,xxx)` / `le(due_at,xxx)`: Filter by due date range. Use the
                   function-style `ge`/`le` operators (not `gte`/`lte`).
 
@@ -60984,6 +61009,8 @@ components:
                                                                         - required:
                                                                             - teams
                                                                         - required:
+                                                                            - job_role_ids
+                                                                        - required:
                                                                             - job_role_holders_on_subject
                                                                     properties:
                                                                         users:
@@ -60998,10 +61025,19 @@ components:
                                                                             items:
                                                                                 type: string
                                                                                 format: uuid
+                                                                        job_role_ids:
+                                                                            type: array
+                                                                            maxItems: 10
+                                                                            description: >-
+                                                                                Job roles whose holders on the action's subject become assignees at create time. At most 10. A role that resolves no holder is ignored.
+                                                                            items:
+                                                                                type: string
+                                                                                format: uuid
                                                                         job_role_holders_on_subject:
                                                                             type: object
+                                                                            deprecated: true
                                                                             description: >-
-                                                                                Resolve assignees to the holders of a job-role on the action's subject at create time.
+                                                                                Deprecated: use `job_role_ids`. If both are sent, this role must equal the first `job_role_ids` entry, or the request is rejected.
                                                                             required:
                                                                                 - job_role_id
                                                                             properties:
