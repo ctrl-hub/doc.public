@@ -9778,9 +9778,10 @@ components:
         Reviewer:
             type: object
             description: |
-                A person who can be named as a reviewer or approver on a document. It is a user, and has a user's id and
-                type, but carries only what choosing a reviewer needs: their name, their email and the organisations they
-                belong to. A user's other attributes and relationships are absent.
+                A person who can be named as a reviewer or approver on a document. Its id is the user's id, and it carries
+                only what choosing a reviewer needs: their name, their email and the organisations they belong to. A user's
+                other attributes and relationships are absent. To name the person as an approver, use the id in an
+                `approvers` relationship of type `users`.
             required:
                 - id
                 - type
@@ -9795,7 +9796,7 @@ components:
                         - 123e4567-e89b-12d3-a456-426614174000
                 type:
                     type: string
-                    const: users
+                    const: reviewers
                 attributes:
                     type: object
                     required:
@@ -66285,7 +66286,6 @@ paths:
             x-ctrl-hub:
                 domain: iam
                 domainLiteral: IAM
-                manual: true
             x-mint:
                 metadata:
                     title: List reviewers
