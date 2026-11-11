@@ -9775,6 +9775,80 @@ components:
                 type:
                     type: string
                     const: document-review-decisions
+        Reviewer:
+            type: object
+            description: |
+                A person who can be named as a reviewer or approver on a document. Its id is the user's id, and it carries
+                only what choosing a reviewer needs: their name, their email and the organisations they belong to. A user's
+                other attributes and relationships are absent. To name the person as an approver, use the id in an
+                `approvers` relationship of type `users`.
+            required:
+                - id
+                - type
+                - attributes
+                - relationships
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the user.
+                    examples:
+                        - 123e4567-e89b-12d3-a456-426614174000
+                type:
+                    type: string
+                    const: reviewers
+                attributes:
+                    type: object
+                    required:
+                        - email
+                        - profile
+                    properties:
+                        email:
+                            type: string
+                            format: email
+                            description: The email address of the user.
+                            examples:
+                                - john.doe@example.com
+                        profile:
+                            type: object
+                            required:
+                                - personal
+                            properties:
+                                personal:
+                                    type: object
+                                    required:
+                                        - first_name
+                                        - last_name
+                                    properties:
+                                        first_name:
+                                            type: string
+                                            description: The first name of the user.
+                                            examples:
+                                                - John
+                                        last_name:
+                                            type: string
+                                            description: The last name of the user.
+                                            examples:
+                                                - Doe
+                relationships:
+                    type: object
+                    required:
+                        - organisations
+                    properties:
+                        organisations:
+                            type: object
+                            description: |
+                                The organisations the person is an active member of that are party to the work being asked about: the
+                                caller's own, the scheme's owner, the document's organisation and those on a share of the scheme that
+                                is active now. It is empty for a person who belongs to none of them, such as someone assigned to the
+                                scheme from another organisation. It does not list their other organisations.
+                            required:
+                                - data
+                            properties:
+                                data:
+                                    type: array
+                                    items:
+                                        $ref: '#/components/schemas/OrganisationRelationship'
         DocumentUpload:
             type: object
             description: A document upload
@@ -16781,9 +16855,10 @@ components:
             description: |
                 A Ctrl Hub staff member acting as a customer's user in the console, for a chosen time. While it is open,
                 the public API serves the staff member's browser sign-in as the person, with exactly the person's
-                access. Until changes while impersonating are released, it refuses every change except ending the
-                impersonation with `CH.003.153`. After, it refuses every change to sign-in, access or a user's account
-                (email and profile) with `CH.003.155`.
+                access. A view-only session, or any session while changes while impersonating are switched off, is
+                refused every change except ending the impersonation with `CH.003.153`. A session started to make
+                changes is refused every change to sign-in, access or a user's account (email and profile) with
+                `CH.003.155`.
             required:
                 - id
                 - type
@@ -16820,13 +16895,36 @@ components:
                             $ref: '#/components/schemas/ImpersonationParty'
                         person:
                             $ref: '#/components/schemas/ImpersonationParty'
+                        ended_at:
+                            type: string
+                            format: date-time
+                            description: When the session was ended. Absent while it has not been ended, even once past `expires_at`.
+                        end_reason:
+                            type: string
+                            enum:
+                                - expired
+                                - ended
+                                - revoked
+                                - signed-out
+                                - role-lost
+                                - replaced
+                                - person-ineligible
+                            description: |
+                                How the session ended: it ran out (`expired`), the staff member ended it (`ended`), another staff
+                                member revoked it (`revoked`), the staff member signed out (`signed-out`), lost the access that
+                                allowed it (`role-lost`) or started another (`replaced`), or the person was made staff or deleted
+                                (`person-ineligible`). Absent while it has not been ended.
+                        ended_by:
+                            $ref: '#/components/schemas/ImpersonationParty'
+                            description: The user who ended the session. Absent while it is open, and when a job ended it.
                         changes_allowed:
                             type: boolean
                             description: |
-                                Whether the public API serves changes made while impersonating. When false, every change except
-                                ending the impersonation is refused with `CH.003.153`. When true, only a change to sign-in, access
-                                or a user's account (email and profile) is refused, with `CH.003.155`. Present only on the caller's
-                                own impersonation, from `GET /v3/me/impersonation`.
+                                On the Management API, whether the session was started to make changes. On
+                                `GET /v3/me/impersonation`, whether the public API serves them now: the session allows them and
+                                changes while impersonating are switched on. When false, every change except ending the
+                                impersonation is refused with `CH.003.153`. When true, only a change to sign-in, access or a
+                                user's account (email and profile) is refused, with `CH.003.155`.
         ImpersonationParty:
             type: object
             description: The staff member or the person in an impersonation session.
@@ -18313,6 +18411,92 @@ components:
                     - $ref: '#/components/schemas/Organisation'
                     - $ref: '#/components/schemas/Property'
                     - $ref: '#/components/schemas/User'
+        ExposureThreshold:
+            type: object
+            description: |
+                An organisation's amber (action) and red (limit) values for one exposure type, in force from a date
+                until a later entry takes effect. Entries are never edited, so a past date resolves against the
+                values in force on it.
+            required:
+                - id
+                - type
+                - attributes
+                - meta
+                - relationships
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the exposure threshold.
+                type:
+                    type: string
+                    const: exposure-thresholds
+                attributes:
+                    $ref: '#/components/schemas/ExposureThresholdAttributes'
+                meta:
+                    $ref: '#/components/schemas/ExposureThresholdMeta'
+                relationships:
+                    $ref: '#/components/schemas/ExposureThresholdRelationships'
+        ExposureThresholdAttributes:
+            type: object
+            description: Attributes of an exposure threshold
+            required:
+                - exposure_type
+                - amber
+                - red
+                - effective_from
+            properties:
+                exposure_type:
+                    $ref: '#/components/schemas/ExposureType'
+                amber:
+                    type: number
+                    format: double
+                    description: The action value, in the exposure type's unit. Never above the HSE action value (100 points for HAVS) or the red value.
+                    examples:
+                        - 100
+                red:
+                    type: number
+                    format: double
+                    description: The limit value, in the exposure type's unit. Never above the HSE limit value (400 points for HAVS).
+                    examples:
+                        - 250
+                effective_from:
+                    type: string
+                    format: date
+                    description: The Europe/London calendar date the values take effect, from 00:00. Of two entries with the same date, the one created later is in force.
+                    examples:
+                        - "2026-11-10"
+        ExposureThresholdMeta:
+            type: object
+            description: Metadata for an exposure threshold.
+            required:
+                - created_at
+            properties:
+                created_at:
+                    type: string
+                    format: date-time
+        ExposureThresholdRelationships:
+            type: object
+            description: Relationships for an exposure threshold
+            required:
+                - organisation
+            properties:
+                organisation:
+                    type: object
+                    description: The organisation the threshold belongs to.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/OrganisationRelationship'
+        ExposureType:
+            type: string
+            description: |
+                The type of exposure a limit applies to. `havs` (hand-arm vibration, in points) is the only type.
+            enum:
+                - havs
+            examples:
+                - havs
         RoleGroupIncludes:
             type: array
             description: Related resources that can be included when a form is returned
@@ -29226,7 +29410,7 @@ components:
                                     title: A list of reviewers
                                     type: array
                                     items:
-                                        $ref: '#/components/schemas/User'
+                                        $ref: '#/components/schemas/Reviewer'
                             - $ref: '#/components/schemas/DocumentMeta'
                             - $ref: '#/components/schemas/JSONAPI'
         GetDocumentUpload:
@@ -32047,6 +32231,50 @@ components:
                     $ref: '#/components/headers/content-length'
                 X-Request-ID:
                     $ref: '#/components/headers/x-request-id'
+        ListExposureThresholds:
+            description: Get a list of exposure thresholds.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    title: A list of exposure thresholds
+                                    type: array
+                                    items:
+                                        $ref: '#/components/schemas/ExposureThreshold'
+                            - $ref: '#/components/schemas/DocumentMeta'
+                            - $ref: '#/components/schemas/JSONAPI'
+        GetExposureThreshold:
+            description: Get an exposure threshold.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    $ref: '#/components/schemas/ExposureThreshold'
+                            - $ref: '#/components/schemas/JSONAPI'
         ListGroups:
             description: Get a list of Role Groups.
             headers:
@@ -40098,6 +40326,48 @@ components:
                 type: string
                 format: uuid
             example: a71fd460-4e25-4eb3-9183-a85f24b0700d
+        exposure_thresholds_filter:
+            name: filter
+            in: query
+            description: |
+                Filters the response data based on the value provided.
+
+                Available filters:
+
+                - `eq(id,xxx)`: Filter exposure thresholds by ID.
+                - `eq(exposure_type,havs)`: Filter exposure thresholds by exposure type.
+                - `effective_from`: `ge(effective_from,2026-11-10T00:00:00Z)` and `le(effective_from,2026-11-30T00:00:00Z)` bound the date each entry takes effect. Give an RFC3339 timestamp at 00:00 UTC on the date, which is how each date is stored: a date alone is ignored.
+
+                For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
+            required: false
+            schema:
+                type: string
+                default: ""
+        exposure_thresholds_sort:
+            in: query
+            name: sort
+            description: A comma separated list of fields to sort by. Defaults to `-effective_from,-created_at`.
+            required: false
+            style: form
+            explode: false
+            schema:
+                type: array
+                items:
+                    type: string
+                    enum:
+                        - effective_from
+                        - -effective_from
+                        - created_at
+                        - -created_at
+        exposure_threshold_id:
+            name: exposure_threshold_id
+            in: path
+            required: true
+            description: The unique identifier for the exposure threshold.
+            schema:
+                type: string
+                format: uuid
+            example: 6a1f0b2c-4d3e-4f5a-8b6c-7d8e9f0a1b2c
         groups_include:
             name: include
             in: query
@@ -53599,6 +53869,47 @@ components:
                                                 description: Notes about the interaction
                                                 examples:
                                                     - "Customer requested callback regarding service appointment"
+        CreateExposureThreshold:
+            required: true
+            description: The organisation's new amber and red values for an exposure type, and the date they take effect.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                    - attributes
+                                properties:
+                                    type:
+                                        type: string
+                                        const: exposure-thresholds
+                                    attributes:
+                                        type: object
+                                        required:
+                                            - exposure_type
+                                            - amber
+                                            - red
+                                            - effective_from
+                                        properties:
+                                            exposure_type:
+                                                $ref: '#/components/schemas/ExposureType'
+                                            amber:
+                                                type: number
+                                                format: double
+                                                description: Zero or more, no higher than red and no higher than the HSE action value (100 points for HAVS).
+                                            red:
+                                                type: number
+                                                format: double
+                                                description: Zero or more, no higher than the HSE limit value (400 points for HAVS).
+                                            effective_from:
+                                                type: string
+                                                format: date
+                                                description: Today or later, as a Europe/London calendar date.
         CreateGroup:
             required: true
             description: The role group to create.
@@ -66152,6 +66463,11 @@ paths:
                 This is the same set the API enforces on write, so anyone listed here will be
                 accepted as an approver on an approval request for that document.
 
+                Each person carries only what choosing a reviewer needs: their id, name and email, and the
+                organisations they belong to that are party to the work. Their other attributes and
+                relationships, such as contact details, address and identities, are absent. There is no
+                `include` parameter, so `included` is absent.
+
                 Not for notification nominations. An approval request's `notify` relationship takes
                 **job roles**, not users, because the holders are resolved at approval time rather
                 than when the request is raised. Submitting a user id from here as a `notify` target
@@ -71959,9 +72275,10 @@ paths:
                 Answers with the impersonation session bound to the caller's browser sign-in: the Ctrl Hub staff member, the
                 person they act as, why, and when it ends. While a session is open, every other public API request from
                 that browser sign-in is served as the person, except a request from the admin app, which is served as the
-                staff member. The Management API always serves the staff member. Until changes while impersonating are
-                released, every change except ending the impersonation is refused with `CH.003.153`. Once they are, a
-                change is made as the person and its audit event names the staff member too, but a change to sign-in,
+                staff member. The Management API always serves the staff member. Unless the session was started to make
+                changes and changes while impersonating are switched on, every change except ending the impersonation is
+                refused with `CH.003.153`. Otherwise a change is made as the person and its audit event names the staff
+                member too, but a change to sign-in,
                 access or a user's account (grants, roles, members, groups, users and their email and profile,
                 invitations, teams, operation assignees, scheme shares, bridges, security settings, SSO and the
                 organisation itself) is still refused with `CH.003.155`. If the person can no longer be served, such as
@@ -74458,6 +74775,110 @@ paths:
             x-mint:
                 metadata:
                     title: Update the prepresentative for an interaction
+    /v3/orgs/{org_id}/exposure-thresholds:
+        get:
+            description: |
+                List the organisation's exposure threshold entries, every date and every exposure type, latest
+                `effective_from` first unless sorted otherwise. An exposure type with no entry in force resolves to
+                its HSE values (100 and 400 points for HAVS), which this list does not include. The resource has no
+                includes, so `included` is absent. Requires the `exposure-thresholds:view` permission.
+            operationId: ListExposureThresholds
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+                - $ref: '#/components/parameters/exposure_thresholds_filter'
+                - $ref: '#/components/parameters/exposure_thresholds_sort'
+                - $ref: '#/components/parameters/limit'
+                - $ref: '#/components/parameters/offset'
+                - $ref: '#/components/parameters/page'
+            responses:
+                "200":
+                    $ref: '#/components/responses/ListExposureThresholds'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: List exposure thresholds
+            tags:
+                - Exposure Limits
+            x-mint:
+                metadata:
+                    title: List exposure thresholds
+        post:
+            description: |
+                Set the organisation's amber and red values for an exposure type from a date. Earlier entries are
+                kept, so a date before `effective_from` still resolves against the values in force on it.
+
+                `effective_from` must be today or later in Europe/London. Amber and red must be zero or more, amber
+                no higher than red, and neither looser than the HSE values (amber 100, red 400 points for HAVS). An
+                unknown exposure type is refused. Requires the `exposure-thresholds:update` permission, held
+                organisation-wide.
+            operationId: CreateExposureThreshold
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+            requestBody:
+                $ref: '#/components/requestBodies/CreateExposureThreshold'
+            responses:
+                "201":
+                    $ref: '#/components/responses/GetExposureThreshold'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Set exposure thresholds
+            tags:
+                - Exposure Limits
+            x-mint:
+                metadata:
+                    title: Set exposure thresholds
+    /v3/orgs/{org_id}/exposure-thresholds/{exposure_threshold_id}:
+        delete:
+            description: |
+                Delete an exposure threshold entry that has not yet taken effect. An entry whose `effective_from`
+                is today or earlier is refused with a conflict, because dates in its period must keep resolving
+                against it. Requires the `exposure-thresholds:update` permission, held organisation-wide.
+            operationId: DeleteExposureThreshold
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+                - $ref: '#/components/parameters/exposure_threshold_id'
+            responses:
+                "204":
+                    $ref: '#/components/responses/NoContent'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Delete an exposure threshold
+            tags:
+                - Exposure Limits
+            x-mint:
+                metadata:
+                    title: Delete an exposure threshold
     /v3/orgs/{org_id}/iam/groups:
         get:
             description: List all of the groups in an organisation.
@@ -85428,6 +85849,10 @@ tags:
     - description: |
         Equipment are the physical assets that an organisation manages.
       name: Equipment
+    - description: |
+        Exposure limits: an organisation's thresholds for each exposure type, stricter than the HSE
+        values, and the limit in force for a person on a date.
+      name: Exposure Limits
     - description: |
         The central cost register: time-versioned rate codes for material, labour,
         contractor and miscellaneous spend, used to cost work against the job
