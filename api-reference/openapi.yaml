@@ -16820,6 +16820,28 @@ components:
                             $ref: '#/components/schemas/ImpersonationParty'
                         person:
                             $ref: '#/components/schemas/ImpersonationParty'
+                        ended_at:
+                            type: string
+                            format: date-time
+                            description: When the session was ended. Absent while it has not been ended, even once past `expires_at`.
+                        end_reason:
+                            type: string
+                            enum:
+                                - expired
+                                - ended
+                                - revoked
+                                - signed-out
+                                - role-lost
+                                - replaced
+                                - person-ineligible
+                            description: |
+                                How the session ended: it ran out (`expired`), the staff member ended it (`ended`), another staff
+                                member revoked it (`revoked`), the staff member signed out (`signed-out`), lost the access that
+                                allowed it (`role-lost`) or started another (`replaced`), or the person was made staff or deleted
+                                (`person-ineligible`). Absent while it has not been ended.
+                        ended_by:
+                            $ref: '#/components/schemas/ImpersonationParty'
+                            description: The user who ended the session. Absent while it is open, and when a job ended it.
                         changes_allowed:
                             type: boolean
                             description: |
