@@ -31820,7 +31820,7 @@ components:
                                     $ref: '#/components/schemas/ManagerRole'
                             - $ref: '#/components/schemas/JSONAPI'
         GetImpersonation:
-            description: The impersonation session the request is served under.
+            description: The impersonation session the request is served under, or null when there is none.
             headers:
                 Content-Type:
                     $ref: '#/components/headers/content-type'
@@ -31837,7 +31837,9 @@ components:
                                 - data
                               properties:
                                 data:
-                                    $ref: '#/components/schemas/Impersonation'
+                                    oneOf:
+                                        - $ref: '#/components/schemas/Impersonation'
+                                        - type: "null"
                             - $ref: '#/components/schemas/JSONAPI'
         ListMeters:
             description: Get a list of meters.
@@ -73060,15 +73062,14 @@ paths:
             description: |
                 Ends the impersonation session bound to the caller's browser sign-in, recorded as ended by the staff
                 member. It is accepted whether or not changes while impersonating are released. From the next request,
-                the sign-in is served as the staff member again. A sign-in with no open impersonation session is a 404.
+                the sign-in is served as the staff member again. A sign-in with no open impersonation session has nothing
+                to end, and is answered 204 too.
             operationId: EndMyImpersonation
             responses:
                 "204":
                     $ref: '#/components/responses/NoContent'
                 "401":
                     $ref: '#/components/responses/Unauthorised'
-                "404":
-                    $ref: '#/components/responses/NotFound'
                 "500":
                     $ref: '#/components/responses/InternalServerError'
             security:
@@ -73091,15 +73092,14 @@ paths:
                 organisation itself) is still refused with `CH.003.155`. If the person can no longer be served, such as
                 a principal disabled since the session started, reads are served as the staff member and every change
                 except ending the impersonation is refused with `CH.003.153`. A sign-in with no open impersonation
-                session is a 404. The console reads it to show who it is impersonating.
+                session is answered with `data: null`, because not impersonating is the usual state rather than a missing
+                resource. The console reads it to show who it is impersonating.
             operationId: GetMyImpersonation
             responses:
                 "200":
                     $ref: '#/components/responses/GetImpersonation'
                 "401":
                     $ref: '#/components/responses/Unauthorised'
-                "404":
-                    $ref: '#/components/responses/NotFound'
                 "500":
                     $ref: '#/components/responses/InternalServerError'
             security:
@@ -75733,9 +75733,7 @@ paths:
                 came from. The organisation is the path's, the author is the caller, and the status starts as
                 `new`. Only Ctrl Hub staff can read it, on the Management API.
 
-                Requires `feedback:create` on the organisation, which every active member holds by default. The
-                organisation must also have the `feedback.send_feedback` feature switched on, or the request is a
-                403 (`CH.029.014`).
+                Requires `feedback:create` on the organisation, which every active member holds by default.
 
                 `upload_id` attaches a screenshot the caller uploaded with `POST /v3/uploads`. An upload made by
                 someone else is not found, one that has expired is a 400, and one that is not a JPEG, PNG or WebP
@@ -75758,8 +75756,6 @@ paths:
                     $ref: '#/components/responses/BadRequest'
                 "401":
                     $ref: '#/components/responses/Unauthorised'
-                "403":
-                    $ref: '#/components/responses/Forbidden'
                 "404":
                     $ref: '#/components/responses/NotFound'
                 "429":
