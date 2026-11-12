@@ -278,6 +278,8 @@ components:
                         When a parameter caused the error, there will be a `resource` property with the name of the resource that caused the error.
 
                         When `code` is `CH.003.080`, `organisation_id` names the organisation that requires two-factor authentication, which the caller's session does not satisfy.
+
+                        When `code` is `CH.029.016`, `retry_after` is the number of seconds to wait before sending feedback again. It matches the `Retry-After` header, which a browser on another origin cannot read.
                     type: object
                     properties:
                         resource:
@@ -288,6 +290,12 @@ components:
                             format: uuid
                             examples:
                                 - "c000c344-8847-47da-a091-32e75902d3b1"
+                        retry_after:
+                            type: integer
+                            minimum: 1
+                            description: Seconds to wait before trying the request again.
+                            examples:
+                                - 1200
                     additionalProperties: true
             required:
                 - id
@@ -18411,6 +18419,99 @@ components:
                     - $ref: '#/components/schemas/Organisation'
                     - $ref: '#/components/schemas/Property'
                     - $ref: '#/components/schemas/User'
+        ExposureType:
+            type: string
+            description: |
+                The type of exposure a limit applies to. `havs` (hand-arm vibration, in points) is the only type.
+            enum:
+                - havs
+            examples:
+                - havs
+        ExposureLimit:
+            type: object
+            description: |
+                A person's effective amber and red values for one exposure type on a date, computed when asked for:
+                the lowest of the HSE values, the organisation's thresholds in force and every health plan in force
+                for them. It names the layer that set red, and never carries a health plan or note.
+            required:
+                - id
+                - type
+                - attributes
+                - relationships
+            properties:
+                id:
+                    type: string
+                    description: |
+                        The person's user id, the exposure type and the Europe/London date the limit was resolved for,
+                        joined by colons. A limit depends on all three, so its id carries all three and limits for
+                        different dates or types never share an id. Clients should read `subject`, `exposure_type` and
+                        `date` rather than parse the id.
+                    example: 3d4e5f6a-7b8c-4d9e-8f0a-1b2c3d4e5f6a:havs:2026-11-11
+                type:
+                    type: string
+                    const: exposure-limits
+                attributes:
+                    $ref: '#/components/schemas/ExposureLimitAttributes'
+                relationships:
+                    $ref: '#/components/schemas/ExposureLimitRelationships'
+        ExposureLimitAttributes:
+            type: object
+            description: Attributes of an effective exposure limit
+            required:
+                - exposure_type
+                - unit
+                - amber
+                - red
+                - source
+                - date
+            properties:
+                exposure_type:
+                    $ref: '#/components/schemas/ExposureType'
+                unit:
+                    type: string
+                    description: The unit amber and red are in, such as `points` for HAVS.
+                    examples:
+                        - points
+                amber:
+                    type: number
+                    format: double
+                    description: The action value in force.
+                    examples:
+                        - 50
+                red:
+                    type: number
+                    format: double
+                    description: The limit value in force.
+                    examples:
+                        - 100
+                source:
+                    type: string
+                    description: |
+                        The layer that set red: `hse` (the HSE limit value), `organisation` (the organisation's
+                        threshold) or `health_plan` (a health plan's cap). When two layers set the same red, the more
+                        specific is named.
+                    enum:
+                        - hse
+                        - organisation
+                        - health_plan
+                date:
+                    type: string
+                    format: date
+                    description: The Europe/London calendar date the limit was resolved for.
+        ExposureLimitRelationships:
+            type: object
+            description: Relationships for an effective exposure limit
+            required:
+                - subject
+            properties:
+                subject:
+                    type: object
+                    description: The person the limit is for.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/UserRelationship'
         ExposureThreshold:
             type: object
             description: |
@@ -18489,14 +18590,6 @@ components:
                     properties:
                         data:
                             $ref: '#/components/schemas/OrganisationRelationship'
-        ExposureType:
-            type: string
-            description: |
-                The type of exposure a limit applies to. `havs` (hand-arm vibration, in points) is the only type.
-            enum:
-                - havs
-            examples:
-                - havs
         FeedbackCategory:
             type: string
             description: What kind of feedback it is.
@@ -18667,6 +18760,138 @@ components:
                     type: string
                 email:
                     type: string
+        HealthPlan:
+            type: object
+            description: |
+                A cap on one person's limit for one exposure type over a period, with Occupational Health's health
+                notes. Readable only with the health plan permissions, which only the Occupational Health roles hold.
+            required:
+                - id
+                - type
+                - attributes
+                - meta
+                - relationships
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the health plan.
+                type:
+                    type: string
+                    const: health-plans
+                attributes:
+                    $ref: '#/components/schemas/HealthPlanAttributes'
+                meta:
+                    $ref: '#/components/schemas/HealthPlanMeta'
+                relationships:
+                    $ref: '#/components/schemas/HealthPlanRelationships'
+        HealthPlanAttributes:
+            type: object
+            description: Attributes of a health plan
+            required:
+                - exposure_type
+                - cap
+                - amber
+                - starts_at
+                - ends_at
+                - notes
+            properties:
+                exposure_type:
+                    $ref: '#/components/schemas/ExposureType'
+                cap:
+                    type: number
+                    format: double
+                    description: The person's red limit while the plan is in force, in the exposure type's unit. From 0 up to the organisation's red threshold on the start date.
+                    examples:
+                        - 100
+                amber:
+                    type: number
+                    format: double
+                    readOnly: true
+                    description: Half the cap.
+                    examples:
+                        - 50
+                starts_at:
+                    type: string
+                    format: date
+                    description: The Europe/London calendar date the plan takes effect, from 00:00.
+                ends_at:
+                    type:
+                        - string
+                        - "null"
+                    format: date
+                    description: The plan's last day, inclusive, or null for a plan with no end.
+                notes:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/HealthNote'
+        HealthPlanMeta:
+            type: object
+            description: Metadata for a health plan.
+            required:
+                - created_at
+                - updated_at
+            properties:
+                created_at:
+                    type: string
+                    format: date-time
+                updated_at:
+                    type: string
+                    format: date-time
+        HealthPlanRelationships:
+            type: object
+            description: Relationships for a health plan
+            required:
+                - organisation
+                - subject
+            properties:
+                organisation:
+                    type: object
+                    description: The organisation the plan belongs to.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/OrganisationRelationship'
+                subject:
+                    type: object
+                    description: The person the plan caps.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/UserRelationship'
+        HealthNote:
+            type: object
+            description: A health note on a health plan, with who wrote it and when. Health notes are readable only by Occupational Health.
+            required:
+                - id
+                - text
+                - author
+                - updated_by
+                - created_at
+                - updated_at
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                text:
+                    type: string
+                author:
+                    type: string
+                    format: uuid
+                    description: The user who wrote the note.
+                updated_by:
+                    type: string
+                    format: uuid
+                    description: The user who last changed the note's text. The author until someone edits it.
+                created_at:
+                    type: string
+                    format: date-time
+                updated_at:
+                    type: string
+                    format: date-time
+                    description: When the text was last changed.
         RoleGroupIncludes:
             type: array
             description: Related resources that can be included when a form is returned
@@ -32401,6 +32626,26 @@ components:
                     $ref: '#/components/headers/content-length'
                 X-Request-ID:
                     $ref: '#/components/headers/x-request-id'
+        GetExposureLimit:
+            description: Get an effective exposure limit.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    $ref: '#/components/schemas/ExposureLimit'
+                            - $ref: '#/components/schemas/JSONAPI'
         ListExposureThresholds:
             description: Get a list of exposure thresholds.
             headers:
@@ -32464,6 +32709,79 @@ components:
                               properties:
                                 data:
                                     $ref: '#/components/schemas/Feedback'
+                            - $ref: '#/components/schemas/JSONAPI'
+        TooManyRequests:
+            description: >-
+                The caller has made too many of these requests recently. Wait for the number of seconds in `Retry-After`, when it is sent, and try again. The error's `meta.retry_after` holds the same number, for a browser on another origin, which cannot read `Retry-After`.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+                Retry-After:
+                    $ref: '#/components/headers/retry-after'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        properties:
+                            errors:
+                                type: array
+                                items:
+                                    $ref: '#/components/schemas/Error'
+                    example:
+                        errors:
+                            - id: 3d8f2b61-9c4e-4a7f-b5d0-6e1a2c9f8b37
+                              status: "429"
+                              title: you have sent a lot of feedback recently; please try again later
+                              code: CH.029.016
+                              meta:
+                                retry_after: 1200
+        ListHealthPlans:
+            description: Get a list of health plans.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    title: A list of health plans
+                                    type: array
+                                    items:
+                                        $ref: '#/components/schemas/HealthPlan'
+                            - $ref: '#/components/schemas/DocumentMeta'
+                            - $ref: '#/components/schemas/JSONAPI'
+        GetHealthPlan:
+            description: Get a health plan.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    $ref: '#/components/schemas/HealthPlan'
                             - $ref: '#/components/schemas/JSONAPI'
         ListGroups:
             description: Get a list of Role Groups.
@@ -40516,6 +40834,32 @@ components:
                 type: string
                 format: uuid
             example: a71fd460-4e25-4eb3-9183-a85f24b0700d
+        user_id:
+            name: user_id
+            in: path
+            required: true
+            description: The unique identifier for the user.
+            schema:
+                type: string
+                format: uuid
+            example: 550e8400-e29b-41d4-a716-446655440000
+        exposure_type:
+            name: exposure_type
+            in: query
+            required: true
+            description: The exposure type to resolve the limit for.
+            schema:
+                $ref: '#/components/schemas/ExposureType'
+            example: havs
+        at:
+            name: at
+            in: query
+            required: false
+            description: The instant to resolve the limit at. Defaults to now. It resolves on its Europe/London calendar date.
+            schema:
+                type: string
+                format: date-time
+            example: "2026-11-10T09:00:00Z"
         exposure_thresholds_filter:
             name: filter
             in: query
@@ -40558,6 +40902,73 @@ components:
                 type: string
                 format: uuid
             example: 6a1f0b2c-4d3e-4f5a-8b6c-7d8e9f0a1b2c
+        health_plans_filter:
+            name: filter
+            in: query
+            description: |
+                Filters the response data based on the value provided.
+
+                Available filters:
+
+                - `eq(id,xxx)`: Filter health plans by ID.
+                - `eq(subject,xxx)`: Filter health plans by the person they cap.
+                - `eq(exposure_type,havs)`: Filter health plans by exposure type.
+                - `cap`: `eq(cap,0)`, or `le` and `ge` on `cap`, to find plans by their cap.
+
+                Use the `active_at` parameter for the plans in force on a date.
+
+                For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
+            required: false
+            schema:
+                type: string
+                default: ""
+        active_at:
+            name: active_at
+            in: query
+            required: false
+            description: Keep only the health plans in force on this Europe/London calendar date.
+            schema:
+                type: string
+                format: date
+            example: "2026-11-10"
+        health_plans_sort:
+            in: query
+            name: sort
+            description: A comma separated list of fields to sort by. Defaults to `-starts_at,-created_at`.
+            required: false
+            style: form
+            explode: false
+            schema:
+                type: array
+                items:
+                    type: string
+                    enum:
+                        - starts_at
+                        - -starts_at
+                        - ends_at
+                        - -ends_at
+                        - cap
+                        - -cap
+                        - created_at
+                        - -created_at
+        health_plan_id:
+            name: health_plan_id
+            in: path
+            required: true
+            description: The unique identifier for the health plan.
+            schema:
+                type: string
+                format: uuid
+            example: 5b2e1c3d-6f7a-4b8c-9d0e-1f2a3b4c5d6e
+        health_plan_note_id:
+            name: health_plan_note_id
+            in: path
+            required: true
+            description: The unique identifier for the health note.
+            schema:
+                type: string
+                format: uuid
+            example: 8c3f2d4e-7a8b-4c9d-8e0f-2a3b4c5d6e7f
         groups_include:
             name: include
             in: query
@@ -42438,15 +42849,6 @@ components:
                 type: string
                 format: uuid
             example: 3d48f727-aee6-422a-89d5-4deb7c89e9a0
-        user_id:
-            name: user_id
-            in: path
-            required: true
-            description: The unique identifier for the user.
-            schema:
-                type: string
-                format: uuid
-            example: 550e8400-e29b-41d4-a716-446655440000
         vehicle_categories_filter:
             name: filter
             in: query
@@ -54152,6 +54554,156 @@ components:
                                                 description: |
                                                     A screenshot to send with it, uploaded first with `POST /v3/uploads` by the same
                                                     user. It must be a JPEG, PNG or WebP image of at most 3 MB. It is never returned.
+        CreateHealthPlan:
+            required: true
+            description: A cap on a person's limit for one exposure type over a period.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                    - attributes
+                                    - relationships
+                                properties:
+                                    type:
+                                        type: string
+                                        const: health-plans
+                                    attributes:
+                                        type: object
+                                        required:
+                                            - exposure_type
+                                            - cap
+                                            - starts_at
+                                        properties:
+                                            exposure_type:
+                                                $ref: '#/components/schemas/ExposureType'
+                                            cap:
+                                                type: number
+                                                format: double
+                                                description: From 0 up to the organisation's red threshold for the exposure type on the start date.
+                                            starts_at:
+                                                type: string
+                                                format: date
+                                                description: Today or later, as a Europe/London calendar date.
+                                            ends_at:
+                                                type:
+                                                    - string
+                                                    - "null"
+                                                format: date
+                                                description: The plan's last day, inclusive. No earlier than the start. Omit or send null for no end.
+                                    relationships:
+                                        type: object
+                                        required:
+                                            - subject
+                                        properties:
+                                            subject:
+                                                type: object
+                                                description: The person the plan caps. They must be an active member of the organisation.
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/UserRelationship'
+        UpdateHealthPlan:
+            required: true
+            description: The health plan's new last day.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - id
+                                    - type
+                                    - attributes
+                                properties:
+                                    id:
+                                        type: string
+                                        format: uuid
+                                    type:
+                                        type: string
+                                        const: health-plans
+                                    attributes:
+                                        type: object
+                                        required:
+                                            - ends_at
+                                        properties:
+                                            ends_at:
+                                                type:
+                                                    - string
+                                                    - "null"
+                                                format: date
+                                                description: The plan's last day, inclusive. Today or later and no earlier than the start, or null for no end.
+        CreateHealthPlanNote:
+            required: true
+            description: A health note to add to the plan.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                    - attributes
+                                properties:
+                                    type:
+                                        type: string
+                                        const: health-plan-notes
+                                    attributes:
+                                        type: object
+                                        required:
+                                            - text
+                                        properties:
+                                            text:
+                                                type: string
+                                                minLength: 1
+                                                maxLength: 10000
+        UpdateHealthPlanNote:
+            required: true
+            description: The health note's new text.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - id
+                                    - type
+                                    - attributes
+                                properties:
+                                    id:
+                                        type: string
+                                        format: uuid
+                                    type:
+                                        type: string
+                                        const: health-plan-notes
+                                    attributes:
+                                        type: object
+                                        required:
+                                            - text
+                                        properties:
+                                            text:
+                                                type: string
+                                                minLength: 1
+                                                maxLength: 10000
         CreateGroup:
             required: true
             description: The role group to create.
@@ -61876,6 +62428,12 @@ components:
             schema:
                 type: string
             example: private, no-cache
+        retry-after:
+            description: How many seconds to wait before trying the request again.
+            schema:
+                type: integer
+                minimum: 1
+            example: 1200
 externalDocs:
     description: More documentation and resources
     url: https://docs.ctrl-hub.com
@@ -70196,7 +70754,10 @@ paths:
                     title: Get a street
     /v3/grants:
         get:
-            description: Retrieve a list of grants for the given organisation.
+            description: |
+                Retrieve a list of grants for the given organisation. A holder of `occupational-health-roles:assign`
+                (HR Admin Editor, Organisation Owner) also reads the grants of the `occupational-health:viewer` and
+                `occupational-health:editor` roles in that organisation, to see who holds them, and no other grant by that permission.
             operationId: ListGrants
             parameters:
                 - $ref: '#/components/parameters/limit'
@@ -70281,7 +70842,9 @@ paths:
                 metadata:
                     title: Delete a grant
         get:
-            description: Retrieve a specific grant by its unique identifier.
+            description: |
+                Retrieve a specific grant by its unique identifier. A holder of `occupational-health-roles:assign` may also
+                read a grant of the `occupational-health:viewer` or `occupational-health:editor` role in their organisation.
             operationId: GetGrant
             parameters:
                 - $ref: '#/components/parameters/grant_id'
@@ -70305,7 +70868,9 @@ paths:
                 metadata:
                     title: Get a grant
         put:
-            description: Update an existing grant
+            description: |
+                Update an existing grant. A grant of an Occupational Health role cannot be updated by anyone. Remove it and
+                appoint again.
             operationId: UpdateGrant
             parameters:
                 - $ref: '#/components/parameters/grant_id'
@@ -75017,6 +75582,46 @@ paths:
             x-mint:
                 metadata:
                     title: Update the prepresentative for an interaction
+    /v3/orgs/{org_id}/exposure-limits/{user_id}:
+        get:
+            description: |
+                Resolve a person's effective amber and red values for an exposure type at an instant, most
+                restrictive wins: the HSE values (100 and 400 points for HAVS), the organisation's thresholds in
+                force on that Europe/London date, and the cap of each of the person's health plans in force then,
+                with amber at half the cap. The response names the layer that set red, and never carries a health
+                plan or a health note.
+
+                Requires the `exposure-limits:view` permission on the person: a HAVS Operator holds it for
+                themselves, a manager for the people their management relationships reach, and Occupational Health
+                for everyone in the organisation. A person who is not an active member of the organisation is not
+                found.
+            operationId: GetExposureLimit
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+                - $ref: '#/components/parameters/user_id'
+                - $ref: '#/components/parameters/exposure_type'
+                - $ref: '#/components/parameters/at'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetExposureLimit'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Get a person's exposure limit
+            tags:
+                - Exposure Limits
+            x-mint:
+                metadata:
+                    title: Get a person's exposure limit
     /v3/orgs/{org_id}/exposure-thresholds:
         get:
             description: |
@@ -75135,6 +75740,12 @@ paths:
                 `upload_id` attaches a screenshot the caller uploaded with `POST /v3/uploads`. An upload made by
                 someone else is not found, one that has expired is a 400, and one that is not a JPEG, PNG or WebP
                 image, or is larger than 3 MB, is a 400.
+
+                One user can send a limited amount of feedback in a rolling window, across every organisation: 10
+                an hour unless the deployment sets otherwise. Past it the request is a 429 (`CH.029.016`), with a
+                `Retry-After` header giving the seconds until the user can send again. The error's
+                `meta.retry_after` holds the same number. Nothing is stored for a
+                refused request, screenshot included.
             operationId: CreateFeedback
             parameters:
                 - $ref: '#/components/parameters/org_id'
@@ -75151,6 +75762,8 @@ paths:
                     $ref: '#/components/responses/Forbidden'
                 "404":
                     $ref: '#/components/responses/NotFound'
+                "429":
+                    $ref: '#/components/responses/TooManyRequests'
                 "500":
                     $ref: '#/components/responses/InternalServerError'
             security:
@@ -75163,6 +75776,274 @@ paths:
             x-mint:
                 metadata:
                     title: Send feedback
+    /v3/orgs/{org_id}/health-plans:
+        get:
+            description: |
+                List the organisation's health plans with their health notes, latest start first unless sorted
+                otherwise. The resource has no includes, so `included` is absent. Requires the
+                `health-plans:view` permission, held organisation-wide. Health notes are special category health data. Only a holder of the health plan permissions, which only the Occupational Health roles hold, can read or write them.
+            operationId: ListHealthPlans
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+                - $ref: '#/components/parameters/health_plans_filter'
+                - $ref: '#/components/parameters/active_at'
+                - $ref: '#/components/parameters/health_plans_sort'
+                - $ref: '#/components/parameters/limit'
+                - $ref: '#/components/parameters/offset'
+                - $ref: '#/components/parameters/page'
+            responses:
+                "200":
+                    $ref: '#/components/responses/ListHealthPlans'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: List health plans
+            tags:
+                - Exposure Limits
+            x-mint:
+                metadata:
+                    title: List health plans
+        post:
+            description: |
+                Cap a person's limit for one exposure type from a start date, optionally to an end date. The
+                plan's amber is half its cap.
+
+                The person must be an active member of the organisation. `starts_at` must be today or later in
+                Europe/London, and `ends_at` no earlier than `starts_at`. The cap must be from 0 up to the
+                organisation's red threshold for the exposure type in force on `starts_at`. Requires the
+                `health-plans:create` permission, held organisation-wide.
+            operationId: CreateHealthPlan
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+            requestBody:
+                $ref: '#/components/requestBodies/CreateHealthPlan'
+            responses:
+                "201":
+                    $ref: '#/components/responses/GetHealthPlan'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Create a health plan
+            tags:
+                - Exposure Limits
+            x-mint:
+                metadata:
+                    title: Create a health plan
+    /v3/orgs/{org_id}/health-plans/{health_plan_id}:
+        delete:
+            description: |
+                Delete a health plan that has not started. A plan whose start date is today or earlier is refused
+                with a conflict: end it instead. Requires the `health-plans:delete` permission, held
+                organisation-wide.
+            operationId: DeleteHealthPlan
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+                - $ref: '#/components/parameters/health_plan_id'
+            responses:
+                "204":
+                    $ref: '#/components/responses/NoContent'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Delete a health plan
+            tags:
+                - Exposure Limits
+            x-mint:
+                metadata:
+                    title: Delete a health plan
+        get:
+            description: |
+                Get a health plan with its health notes. Requires the `health-plans:view` permission, held
+                organisation-wide. Health notes are special category health data. Only a holder of the health plan permissions, which only the Occupational Health roles hold, can read or write them.
+            operationId: GetHealthPlan
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+                - $ref: '#/components/parameters/health_plan_id'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetHealthPlan'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Get a health plan
+            tags:
+                - Exposure Limits
+            x-mint:
+                metadata:
+                    title: Get a health plan
+        patch:
+            description: |
+                Set a health plan's last day, or clear it. The new end must be today or later and no earlier than
+                the start, so the days already covered keep resolving as they did. A plan that ended before today
+                can't be changed, and is refused with a conflict. The cap and start stay as created. Requires the
+                `health-plans:update` permission, held organisation-wide.
+            operationId: UpdateHealthPlan
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+                - $ref: '#/components/parameters/health_plan_id'
+            requestBody:
+                $ref: '#/components/requestBodies/UpdateHealthPlan'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetHealthPlan'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: End a health plan
+            tags:
+                - Exposure Limits
+            x-mint:
+                metadata:
+                    title: End a health plan
+    /v3/orgs/{org_id}/health-plans/{health_plan_id}/notes:
+        post:
+            description: |
+                Add a health note to a health plan, written by the caller now, and answer with the plan. A plan
+                keeps at most 200 notes: one more is refused with a conflict. The audit
+                log records the note's id, never its text. Requires the `health-plans:update` permission, held
+                organisation-wide. Health notes are special category health data. Only a holder of the health plan permissions, which only the Occupational Health roles hold, can read or write them.
+            operationId: CreateHealthPlanNote
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+                - $ref: '#/components/parameters/health_plan_id'
+            requestBody:
+                $ref: '#/components/requestBodies/CreateHealthPlanNote'
+            responses:
+                "201":
+                    $ref: '#/components/responses/GetHealthPlan'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Add a health note
+            tags:
+                - Exposure Limits
+            x-mint:
+                metadata:
+                    title: Add a health note
+    /v3/orgs/{org_id}/health-plans/{health_plan_id}/notes/{health_plan_note_id}:
+        delete:
+            description: |
+                Delete a health note from a health plan. The audit log records the note's id. Requires the
+                `health-plans:update` permission, held organisation-wide.
+            operationId: DeleteHealthPlanNote
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+                - $ref: '#/components/parameters/health_plan_id'
+                - $ref: '#/components/parameters/health_plan_note_id'
+            responses:
+                "204":
+                    $ref: '#/components/responses/NoContent'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Delete a health note
+            tags:
+                - Exposure Limits
+            x-mint:
+                metadata:
+                    title: Delete a health note
+        patch:
+            description: |
+                Replace a health note's text, and answer with the plan. The note keeps its author. The audit log
+                records the note's id, never its text. Requires the `health-plans:update` permission, held
+                organisation-wide. Health notes are special category health data. Only a holder of the health plan permissions, which only the Occupational Health roles hold, can read or write them.
+            operationId: UpdateHealthPlanNote
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+                - $ref: '#/components/parameters/health_plan_id'
+                - $ref: '#/components/parameters/health_plan_note_id'
+            requestBody:
+                $ref: '#/components/requestBodies/UpdateHealthPlanNote'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetHealthPlan'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Edit a health note
+            tags:
+                - Exposure Limits
+            x-mint:
+                metadata:
+                    title: Edit a health note
     /v3/orgs/{org_id}/iam/groups:
         get:
             description: List all of the groups in an organisation.
