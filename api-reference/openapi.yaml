@@ -75733,9 +75733,7 @@ paths:
                 came from. The organisation is the path's, the author is the caller, and the status starts as
                 `new`. Only Ctrl Hub staff can read it, on the Management API.
 
-                Requires `feedback:create` on the organisation, which every active member holds by default. The
-                organisation must also have the `feedback.send_feedback` feature switched on, or the request is a
-                403 (`CH.029.014`).
+                Requires `feedback:create` on the organisation, which every active member holds by default.
 
                 `upload_id` attaches a screenshot the caller uploaded with `POST /v3/uploads`. An upload made by
                 someone else is not found, one that has expired is a 400, and one that is not a JPEG, PNG or WebP
@@ -75758,8 +75756,6 @@ paths:
                     $ref: '#/components/responses/BadRequest'
                 "401":
                     $ref: '#/components/responses/Unauthorised'
-                "403":
-                    $ref: '#/components/responses/Forbidden'
                 "404":
                     $ref: '#/components/responses/NotFound'
                 "429":
