@@ -17458,6 +17458,78 @@ components:
                     format: date-time
                     description: >-
                         When the recipient archived the notification. There is no delete; archiving is how an inbox is cleared, and the history is kept.
+        PushPlatform:
+            type: string
+            description: The operating system of the device the push token was issued to.
+            enum:
+                - ios
+                - android
+        PushTokenKind:
+            type: string
+            description: |
+                What a push token delivers to. A device can hold a token of each kind, because iOS gives a widget or a
+                Live Activity a token of its own. `alert` is the app's own notifications, and the only kind for now.
+            enum:
+                - alert
+        PushToken:
+            type: object
+            description: |
+                A device the signed-in user is sent push notifications on, by its own push token: an APNs device
+                token on iOS, an FCM registration token on Android. A user sees and changes only their own.
+            required:
+                - id
+                - type
+                - attributes
+                - meta
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the push token.
+                type:
+                    type: string
+                    const: push-tokens
+                attributes:
+                    $ref: '#/components/schemas/PushTokenAttributes'
+                meta:
+                    $ref: '#/components/schemas/PushTokenMeta'
+        PushTokenAttributes:
+            type: object
+            description: Attributes of a push token.
+            required:
+                - token
+                - platform
+                - kind
+                - device_id
+            properties:
+                token:
+                    type: string
+                    description: The device's own push token, an APNs device token on iOS or an FCM registration token on Android.
+                    examples:
+                        - 740f4707bebcf74f9b7c25d48e3358945f6aa01da5ddb387462c7eaf61bb78ad
+                platform:
+                    $ref: '#/components/schemas/PushPlatform'
+                kind:
+                    $ref: '#/components/schemas/PushTokenKind'
+                device_id:
+                    type: string
+                    format: uuid
+                    description: The installation of the app the token was issued to.
+        PushTokenMeta:
+            type: object
+            description: Metadata for a push token.
+            required:
+                - created_at
+                - last_seen_at
+            properties:
+                created_at:
+                    type: string
+                    format: date-time
+                    description: When the token was first registered.
+                last_seen_at:
+                    type: string
+                    format: date-time
+                    description: When the token was last registered.
         OperationType:
             type: object
             description: An operation type
@@ -32040,6 +32112,26 @@ components:
                                 data:
                                     $ref: '#/components/schemas/Notification'
                             - $ref: '#/components/schemas/JSONAPI'
+        GetPushToken:
+            description: A push token.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    $ref: '#/components/schemas/PushToken'
+                            - $ref: '#/components/schemas/JSONAPI'
         ListOperationTypes:
             description: List of operation types.
             headers:
@@ -40445,6 +40537,15 @@ components:
             schema:
                 type: string
                 format: uuid
+        device_id:
+            name: device_id
+            in: path
+            required: true
+            description: The id the mobile app made for its installation on a device.
+            schema:
+                type: string
+                format: uuid
+            example: 3f2e1d0c-9b8a-4f7e-8d6c-5b4a3f2e1d0c
         operation_types_include:
             name: include
             in: query
@@ -52917,6 +53018,53 @@ components:
                                                 type: boolean
                                                 description: >-
                                                     Whether the notification is archived. Archiving is how an inbox is cleared; setting this back to false restores it.
+        RegisterPushToken:
+            required: true
+            description: The device to send push notifications to.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                    - attributes
+                                properties:
+                                    type:
+                                        type: string
+                                        const: push-tokens
+                                    attributes:
+                                        type: object
+                                        required:
+                                            - token
+                                            - platform
+                                            - kind
+                                            - device_id
+                                        properties:
+                                            token:
+                                                type: string
+                                                minLength: 32
+                                                maxLength: 4096
+                                                description: |
+                                                    The device's own push token: the APNs device token as hex on iOS, or the FCM
+                                                    registration token on Android.
+                                                examples:
+                                                    - 740f4707bebcf74f9b7c25d48e3358945f6aa01da5ddb387462c7eaf61bb78ad
+                                            platform:
+                                                $ref: '#/components/schemas/PushPlatform'
+                                            kind:
+                                                $ref: '#/components/schemas/PushTokenKind'
+                                            device_id:
+                                                type: string
+                                                format: uuid
+                                                description: |
+                                                    An id the app makes once per installation and keeps. It ties together every token
+                                                    of one device: registering a token replaces the device's other token of the same
+                                                    kind, and signing out removes them all.
         CreateOperationType:
             required: true
             description: The operation type to create.
@@ -73525,6 +73673,38 @@ paths:
             x-mint:
                 metadata:
                     title: Archive everything you have read
+    /v3/notifications/devices/{device_id}/push-tokens:
+        delete:
+            description: |
+                Removes every push token the signed-in user registered on one device, of every kind, so that device
+                is sent no more push notifications for them. The mobile app calls it on sign-out, with the
+                `device_id` it registered its tokens with.
+
+                Tokens on the device that belong to someone else are left alone. A device with none of the
+                caller's tokens is still a 204, so signing out twice succeeds. Only a user has devices, so a service
+                account or agent is refused (`CH.012.304`).
+            operationId: RemoveDevicePushTokens
+            parameters:
+                - $ref: '#/components/parameters/device_id'
+            responses:
+                "204":
+                    $ref: '#/components/responses/NoContent'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Stop sending push notifications to a device
+            tags:
+                - Notifications
+            x-mint:
+                metadata:
+                    title: Stop sending push notifications to a device
     /v3/notifications/mark-all-read:
         post:
             description: |
@@ -73557,6 +73737,46 @@ paths:
             x-mint:
                 metadata:
                     title: Mark your inbox read
+    /v3/notifications/push-tokens:
+        post:
+            description: |
+                Registers the signed-in user's device to be sent push notifications, with the device's own push
+                token: the APNs device token as hex on iOS, or the FCM registration token on Android. mono sends to
+                Apple and Google with it directly. The mobile app calls it after sign-in, and again whenever its token
+                changes. A token that doesn't look like one for its platform is a 400 (`CH.012.302`).
+
+                Each token has a `kind` and the `device_id` the app made for its installation. A device holds one
+                token of each kind, so registering a token deletes the device's other token of the same kind, which
+                the platform has replaced. `alert`, the app's own notifications, is the only kind for now.
+
+                Registering a token the caller already holds refreshes it and answers with the same record. A
+                token held by another user moves to the caller, because a phone can change hands. Either way the
+                answer is a 201 with the token as stored.
+
+                Only a user can register a device. A service account or agent is refused (`CH.012.304`). No
+                permission is needed: the token belongs to the caller.
+            operationId: RegisterPushToken
+            requestBody:
+                $ref: '#/components/requestBodies/RegisterPushToken'
+            responses:
+                "201":
+                    $ref: '#/components/responses/GetPushToken'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Register a device for push notifications
+            tags:
+                - Notifications
+            x-mint:
+                metadata:
+                    title: Register a device for push notifications
     /v3/operation-types:
         get:
             description: List all of the operation types visible to the caller.
