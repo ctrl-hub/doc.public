@@ -31820,7 +31820,7 @@ components:
                                     $ref: '#/components/schemas/ManagerRole'
                             - $ref: '#/components/schemas/JSONAPI'
         GetImpersonation:
-            description: The impersonation session the request is served under.
+            description: The impersonation session the request is served under, or null when there is none.
             headers:
                 Content-Type:
                     $ref: '#/components/headers/content-type'
@@ -31837,7 +31837,9 @@ components:
                                 - data
                               properties:
                                 data:
-                                    $ref: '#/components/schemas/Impersonation'
+                                    oneOf:
+                                        - $ref: '#/components/schemas/Impersonation'
+                                        - type: "null"
                             - $ref: '#/components/schemas/JSONAPI'
         ListMeters:
             description: Get a list of meters.
@@ -50619,6 +50621,16 @@ components:
                                     - attributes
                                     - relationships
                                 properties:
+                                    id:
+                                        type: string
+                                        format: uuid
+                                        description: |
+                                            Optional client-generated id, which becomes the record's id. It makes the create safe
+                                            to retry, for example after a lost response on mobile. Sending the same id again, as the
+                                            same caller for the same subject and organisation, returns the record the first request
+                                            created and creates nothing. The rest of the body is not used, but it must still satisfy
+                                            this schema. An id already held by any other record, including a deleted one, is refused
+                                            with a 409. Omit it to have the server generate the id.
                                     type:
                                         type: string
                                         const: havs-exposures
@@ -50717,7 +50729,7 @@ components:
                                                     - type: "null"
                                     relationships:
                                         type: object
-                                        description: Optional. The category and subject are fixed, so any value sent must match the stored one.
+                                        description: Optional. A different havs_equipment moves the record to that category. The subject is fixed, so any value sent must match the stored one.
                                         properties:
                                             havs_equipment:
                                                 type: object
@@ -71023,6 +71035,8 @@ paths:
 
                 A category whose recommended initial magnitude is zero or less is refused. Its points, A(8) and trigger time would not be meaningful values.
 
+                The body may carry a client-generated `data.id`, so a retry returns the record already created instead of creating a second one.
+
                 The subject defaults to the caller. Recording for someone else needs the `havs-exposures:create-on-behalf` permission, and the record keeps who recorded it.
             operationId: CreateHavsExposure
             requestBody:
@@ -71036,6 +71050,8 @@ paths:
                     $ref: '#/components/responses/Unauthorised'
                 "404":
                     $ref: '#/components/responses/NotFound'
+                "409":
+                    $ref: '#/components/responses/Conflict'
                 "500":
                     $ref: '#/components/responses/InternalServerError'
             security:
@@ -71109,9 +71125,11 @@ paths:
                     title: Get a HAVS exposure
         put:
             description: |
-                Replace a HAVS exposure's times, PPE and location. Points, A(8) and the trigger time are recomputed from the magnitude copied onto the record when it was created.
+                Replace a HAVS exposure's times, PPE and location, and optionally move it to another category. Points, A(8) and the trigger time are recomputed.
 
-                The category and the subject are fixed. A body that names a different category or subject is rejected: a wrong tool means deleting the record and recording it again.
+                Naming a different category copies that category's recommended initial magnitude onto the record, as a create does, and is refused as a create is when the category is unknown or its magnitude is zero or less. Without one, the magnitude copied when the record was created is kept. The category and magnitude changes are audited with the other fields.
+
+                The subject is fixed. A body that names a different subject is rejected.
             operationId: UpdateHavsExposure
             parameters:
                 - $ref: '#/components/parameters/havs_exposure_id'
@@ -73060,15 +73078,14 @@ paths:
             description: |
                 Ends the impersonation session bound to the caller's browser sign-in, recorded as ended by the staff
                 member. It is accepted whether or not changes while impersonating are released. From the next request,
-                the sign-in is served as the staff member again. A sign-in with no open impersonation session is a 404.
+                the sign-in is served as the staff member again. A sign-in with no open impersonation session has nothing
+                to end, and is answered 204 too.
             operationId: EndMyImpersonation
             responses:
                 "204":
                     $ref: '#/components/responses/NoContent'
                 "401":
                     $ref: '#/components/responses/Unauthorised'
-                "404":
-                    $ref: '#/components/responses/NotFound'
                 "500":
                     $ref: '#/components/responses/InternalServerError'
             security:
@@ -73091,15 +73108,14 @@ paths:
                 organisation itself) is still refused with `CH.003.155`. If the person can no longer be served, such as
                 a principal disabled since the session started, reads are served as the staff member and every change
                 except ending the impersonation is refused with `CH.003.153`. A sign-in with no open impersonation
-                session is a 404. The console reads it to show who it is impersonating.
+                session is answered with `data: null`, because not impersonating is the usual state rather than a missing
+                resource. The console reads it to show who it is impersonating.
             operationId: GetMyImpersonation
             responses:
                 "200":
                     $ref: '#/components/responses/GetImpersonation'
                 "401":
                     $ref: '#/components/responses/Unauthorised'
-                "404":
-                    $ref: '#/components/responses/NotFound'
                 "500":
                     $ref: '#/components/responses/InternalServerError'
             security:
@@ -75628,7 +75644,9 @@ paths:
                 List the organisation's exposure threshold entries, every date and every exposure type, latest
                 `effective_from` first unless sorted otherwise. An exposure type with no entry in force resolves to
                 its HSE values (100 and 400 points for HAVS), which this list does not include. The resource has no
-                includes, so `included` is absent. Requires the `exposure-thresholds:view` permission.
+                includes, so `included` is absent. Requires the `exposure-thresholds:view` permission in the
+                organisation. A grant of it scoped to one person, as the HAVS Operator role is assigned, still reads
+                all of the organisation's thresholds.
             operationId: ListExposureThresholds
             parameters:
                 - $ref: '#/components/parameters/org_id'
@@ -75733,9 +75751,7 @@ paths:
                 came from. The organisation is the path's, the author is the caller, and the status starts as
                 `new`. Only Ctrl Hub staff can read it, on the Management API.
 
-                Requires `feedback:create` on the organisation, which every active member holds by default. The
-                organisation must also have the `feedback.send_feedback` feature switched on, or the request is a
-                403 (`CH.029.014`).
+                Requires `feedback:create` on the organisation, which every active member holds by default.
 
                 `upload_id` attaches a screenshot the caller uploaded with `POST /v3/uploads`. An upload made by
                 someone else is not found, one that has expired is a 400, and one that is not a JPEG, PNG or WebP
@@ -75758,8 +75774,6 @@ paths:
                     $ref: '#/components/responses/BadRequest'
                 "401":
                     $ref: '#/components/responses/Unauthorised'
-                "403":
-                    $ref: '#/components/responses/Forbidden'
                 "404":
                     $ref: '#/components/responses/NotFound'
                 "429":
@@ -82521,6 +82535,8 @@ paths:
                     $ref: '#/components/responses/Unauthorised'
                 "409":
                     $ref: '#/components/responses/Conflict'
+                "422":
+                    $ref: '#/components/responses/UnprocessableEntity'
                 "500":
                     $ref: '#/components/responses/InternalServerError'
             security:
