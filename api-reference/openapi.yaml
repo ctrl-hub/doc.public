@@ -26313,6 +26313,7 @@ components:
                         - Tonnes
                 amount:
                     type: number
+                    format: double
                     description: The weight amount, in the given metric.
                     minimum: 0
                 is_estimate:
@@ -26386,6 +26387,7 @@ components:
                     description: The name of the chemical or biological component.
                 concentration:
                     type: number
+                    format: double
                     description: The concentration of the component, in mg/kg.
                     minimum: 0
         WastePopsComponent:
@@ -26399,6 +26401,7 @@ components:
                     description: The name of the persistent organic pollutant.
                 concentration:
                     type: number
+                    format: double
                     description: The concentration of the POP, in mg/kg.
                     minimum: 0
         WasteBrokerRelationship:
@@ -36349,6 +36352,30 @@ components:
                                 included:
                                     $ref: '#/components/schemas/WasteMovementIncludes'
                             - $ref: '#/components/schemas/DocumentMeta'
+                            - $ref: '#/components/schemas/JSONAPI'
+        CreateWasteMovementDocument:
+            description: >
+                The waste movement created, or the one that already had the request's client reference. Both answer 201. A replay also carries `Idempotent-Replayed: true`. A create includes no related resources, so `included` is absent.
+
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+                Idempotent-Replayed:
+                    $ref: '#/components/headers/idempotent-replayed'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    $ref: '#/components/schemas/WasteMovement'
                             - $ref: '#/components/schemas/JSONAPI'
         GetWasteMovement:
             description: An individual waste movement.
@@ -62595,6 +62622,15 @@ components:
                 type: integer
                 minimum: 1
             example: 1200
+        idempotent-replayed:
+            description: >
+                Sent, as `true`, only when an idempotent create found a record with the request's idempotency key and answered with it rather than creating one. A create that made a new record leaves it out.
+
+            schema:
+                type: string
+                enum:
+                    - "true"
+            example: "true"
 externalDocs:
     description: More documentation and resources
     url: https://docs.ctrl-hub.com
@@ -85446,15 +85482,13 @@ paths:
                 - OAuth2: []
             tags:
                 - Waste Brokers
-            x-ctrl-hub:
-                domain: waste
         post:
             description: Create a reusable broker for an organisation. Brokers prefill the broker details when capturing a waste movement.
             operationId: CreateWasteBroker
             requestBody:
                 $ref: '#/components/requestBodies/CreateWasteBroker'
             responses:
-                "200":
+                "201":
                     $ref: '#/components/responses/GetWasteBroker'
                 "400":
                     $ref: '#/components/responses/BadRequest'
@@ -85469,8 +85503,6 @@ paths:
             summary: Create a waste broker for an organisation
             tags:
                 - Waste Brokers
-            x-ctrl-hub:
-                domain: waste
     /v3/waste-brokers/{waste_broker_id}:
         delete:
             description: Delete a reusable broker.
@@ -85495,8 +85527,6 @@ paths:
             summary: Delete a waste broker
             tags:
                 - Waste Brokers
-            x-ctrl-hub:
-                domain: waste
         get:
             description: Retrieve a specific waste broker record by its unique identifier.
             operationId: GetWasteBroker
@@ -85519,8 +85549,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Waste Brokers
-            x-ctrl-hub:
-                domain: waste
         patch:
             description: Update a reusable broker. Only the fields supplied are changed.
             operationId: UpdateWasteBroker
@@ -85546,8 +85574,6 @@ paths:
             summary: Update a waste broker
             tags:
                 - Waste Brokers
-            x-ctrl-hub:
-                domain: waste
     /v3/waste-carriers:
         get:
             description: Retrieve the reusable carriers for the given organisation.
@@ -85572,15 +85598,13 @@ paths:
                 - OAuth2: []
             tags:
                 - Waste Carriers
-            x-ctrl-hub:
-                domain: waste
         post:
             description: Create a reusable carrier for an organisation. Carriers prefill the carrier details when capturing a waste movement.
             operationId: CreateWasteCarrier
             requestBody:
                 $ref: '#/components/requestBodies/CreateWasteCarrier'
             responses:
-                "200":
+                "201":
                     $ref: '#/components/responses/GetWasteCarrier'
                 "400":
                     $ref: '#/components/responses/BadRequest'
@@ -85595,8 +85619,6 @@ paths:
             summary: Create a waste carrier for an organisation
             tags:
                 - Waste Carriers
-            x-ctrl-hub:
-                domain: waste
     /v3/waste-carriers/{waste_carrier_id}:
         delete:
             description: Delete a reusable carrier.
@@ -85621,8 +85643,6 @@ paths:
             summary: Delete a waste carrier
             tags:
                 - Waste Carriers
-            x-ctrl-hub:
-                domain: waste
         get:
             description: Retrieve a specific waste carrier record by its unique identifier.
             operationId: GetWasteCarrier
@@ -85645,8 +85665,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Waste Carriers
-            x-ctrl-hub:
-                domain: waste
         patch:
             description: Update a reusable carrier. Only the fields supplied are changed.
             operationId: UpdateWasteCarrier
@@ -85672,8 +85690,6 @@ paths:
             summary: Update a waste carrier
             tags:
                 - Waste Carriers
-            x-ctrl-hub:
-                domain: waste
     /v3/waste-container-types:
         get:
             description: Retrieve the cached list of waste container types.
@@ -85698,8 +85714,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Waste Reference Data
-            x-ctrl-hub:
-                domain: waste
     /v3/waste-disposal-recovery-codes:
         get:
             description: Retrieve the cached list of disposal (D) and recovery (R) codes.
@@ -85724,8 +85738,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Waste Reference Data
-            x-ctrl-hub:
-                domain: waste
     /v3/waste-ewc-codes:
         get:
             description: Retrieve the cached list of European Waste Catalogue (EWC) codes.
@@ -85750,8 +85762,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Waste Reference Data
-            x-ctrl-hub:
-                domain: waste
     /v3/waste-hazardous-property-codes:
         get:
             description: Retrieve the cached list of hazardous property (HP) codes.
@@ -85776,8 +85786,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Waste Reference Data
-            x-ctrl-hub:
-                domain: waste
     /v3/waste-movements:
         get:
             description: Retrieve a list of waste movements for the given organisation.
@@ -85804,17 +85812,15 @@ paths:
                 - OAuth2: []
             tags:
                 - Waste Movements
-            x-ctrl-hub:
-                domain: waste
         post:
             description: |
-                Create a new waste movement (receipt of waste). Creation is retry-safe: sending the same client_reference twice returns the existing movement rather than creating a duplicate.
+                Create a new waste movement (receipt of waste). Creation is retry-safe: sending the same client_reference twice returns the existing movement rather than creating a duplicate. Both answer 201, and the second carries the header `Idempotent-Replayed: true`.
             operationId: CreateWasteMovement
             requestBody:
                 $ref: '#/components/requestBodies/CreateWasteMovement'
             responses:
-                "200":
-                    $ref: '#/components/responses/GetWasteMovement'
+                "201":
+                    $ref: '#/components/responses/CreateWasteMovementDocument'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -85828,8 +85834,6 @@ paths:
             summary: Create a new waste movement
             tags:
                 - Waste Movements
-            x-ctrl-hub:
-                domain: waste
     /v3/waste-movements/{waste_movement_id}:
         get:
             description: Retrieve a specific waste movement by its unique identifier.
@@ -85854,8 +85858,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Waste Movements
-            x-ctrl-hub:
-                domain: waste
         patch:
             description: Update an existing waste movement. Used for corrections and later-known details.
             operationId: UpdateWasteMovement
@@ -85881,8 +85883,6 @@ paths:
             summary: Update an existing waste movement
             tags:
                 - Waste Movements
-            x-ctrl-hub:
-                domain: waste
     /v3/waste-pop-names:
         get:
             description: Retrieve the cached list of persistent organic pollutant (POP) names.
@@ -85907,8 +85907,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Waste Reference Data
-            x-ctrl-hub:
-                domain: waste
     /v3/waste-settings:
         get:
             description: Retrieve the waste settings for the given organisation.
@@ -85933,15 +85931,13 @@ paths:
                 - OAuth2: []
             tags:
                 - Waste Settings
-            x-ctrl-hub:
-                domain: waste
         post:
             description: Create the Digital Waste Tracking settings for an organisation. One settings record is permitted per organisation.
             operationId: CreateWasteSettings
             requestBody:
                 $ref: '#/components/requestBodies/CreateWasteSettings'
             responses:
-                "200":
+                "201":
                     $ref: '#/components/responses/GetWasteSettings'
                 "400":
                     $ref: '#/components/responses/BadRequest'
@@ -85958,8 +85954,6 @@ paths:
             summary: Create waste settings for an organisation
             tags:
                 - Waste Settings
-            x-ctrl-hub:
-                domain: waste
     /v3/waste-settings/{waste_settings_id}:
         get:
             description: Retrieve a specific waste settings record by its unique identifier.
@@ -85983,8 +85977,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Waste Settings
-            x-ctrl-hub:
-                domain: waste
         patch:
             description: Update an organisation's Digital Waste Tracking settings.
             operationId: UpdateWasteSettings
@@ -86010,8 +86002,6 @@ paths:
             summary: Update an organisation's waste settings
             tags:
                 - Waste Settings
-            x-ctrl-hub:
-                domain: waste
     /v3/waste-sites:
         get:
             description: Retrieve the receiving sites for the given organisation.
@@ -86036,15 +86026,13 @@ paths:
                 - OAuth2: []
             tags:
                 - Waste Sites
-            x-ctrl-hub:
-                domain: waste
         post:
             description: Create a receiving site for an organisation. Sites prefill the receiver details when capturing a waste movement.
             operationId: CreateWasteSite
             requestBody:
                 $ref: '#/components/requestBodies/CreateWasteSite'
             responses:
-                "200":
+                "201":
                     $ref: '#/components/responses/GetWasteSite'
                 "400":
                     $ref: '#/components/responses/BadRequest'
@@ -86059,8 +86047,6 @@ paths:
             summary: Create a waste site for an organisation
             tags:
                 - Waste Sites
-            x-ctrl-hub:
-                domain: waste
     /v3/waste-sites/{waste_site_id}:
         delete:
             description: Delete a receiving site.
@@ -86085,8 +86071,6 @@ paths:
             summary: Delete a waste site
             tags:
                 - Waste Sites
-            x-ctrl-hub:
-                domain: waste
         get:
             description: Retrieve a specific waste site record by its unique identifier.
             operationId: GetWasteSite
@@ -86109,8 +86093,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Waste Sites
-            x-ctrl-hub:
-                domain: waste
         patch:
             description: Update a receiving site. Only the fields supplied are changed.
             operationId: UpdateWasteSite
@@ -86136,8 +86118,6 @@ paths:
             summary: Update a waste site
             tags:
                 - Waste Sites
-            x-ctrl-hub:
-                domain: waste
     /v3/waste-submissions:
         get:
             description: Retrieve waste submissions (records of Digital Waste Tracking API calls) for the given organisation.
@@ -86163,8 +86143,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Waste Submissions
-            x-ctrl-hub:
-                domain: waste
     /v3/waste-submissions/{waste_submission_id}:
         get:
             description: Retrieve a specific waste submission by its unique identifier.
@@ -86189,8 +86167,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Waste Submissions
-            x-ctrl-hub:
-                domain: waste
     /v3/whatcanido:
         get:
             description: |
