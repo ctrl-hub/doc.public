@@ -17414,6 +17414,7 @@ components:
                         enum:
                             - inbox
                             - email
+                            - push
                 organisation_id:
                     type:
                         - string
