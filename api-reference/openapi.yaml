@@ -16863,10 +16863,12 @@ components:
             description: |
                 A Ctrl Hub staff member acting as a customer's user in the console, for a chosen time. While it is open,
                 the public API serves the staff member's browser sign-in as the person, with exactly the person's
-                access. A view-only session, or any session while changes while impersonating are switched off, is
-                refused every change except ending the impersonation with `CH.003.153`. A session started to make
-                changes is refused every change to sign-in, access or a user's account (email and profile) with
-                `CH.003.155`.
+                access. Every session is refused what is the person's own to do (an attestation, something sent outside
+                Ctrl Hub in their name, their devices and what they have read) with `CH.003.169`. A view-only session, or
+                any session while changes while impersonating are switched off, is refused every other change except
+                ending the impersonation with `CH.003.153`. A session started to make changes is refused every change to
+                sign-in, access or a user's account (email and profile) with `CH.003.155`, and a change nobody has yet
+                cleared for impersonation with `CH.003.170`.
             required:
                 - id
                 - type
@@ -16930,9 +16932,19 @@ components:
                             description: |
                                 On the Management API, whether the session was started to make changes. On
                                 `GET /v3/me/impersonation`, whether the public API serves them now: the session allows them and
-                                changes while impersonating are switched on. When false, every change except ending the
-                                impersonation is refused with `CH.003.153`. When true, only a change to sign-in, access or a
-                                user's account (email and profile) is refused, with `CH.003.155`.
+                                changes while impersonating are switched on. So a session can be true on the Management API and
+                                false on `GET /v3/me/impersonation`, while changes are switched off.
+
+                                What follows describes the value on `GET /v3/me/impersonation`. Whichever it is, what is the
+                                person's own to do (an attestation, something sent outside Ctrl Hub in their name, their devices
+                                and what they have read) is refused with `CH.003.169`. When false, every other change except
+                                ending the impersonation is refused with `CH.003.153`. When true, a change to sign-in, access or
+                                a user's account (email and profile) is refused with `CH.003.155`.
+                        case_reference:
+                            type: string
+                            description: |
+                                The support case or ticket the session was started for. Absent when none was given, and on
+                                `GET /v3/me/impersonation`.
         ImpersonationParty:
             type: object
             description: The staff member or the person in an impersonation session.
@@ -73285,15 +73297,18 @@ paths:
                 Answers with the impersonation session bound to the caller's browser sign-in: the Ctrl Hub staff member, the
                 person they act as, why, and when it ends. While a session is open, every other public API request from
                 that browser sign-in is served as the person, except a request from the admin app, which is served as the
-                staff member. The Management API always serves the staff member. Unless the session was started to make
-                changes and changes while impersonating are switched on, every change except ending the impersonation is
-                refused with `CH.003.153`. Otherwise a change is made as the person and its audit event names the staff
-                member too, but a change to sign-in,
-                access or a user's account (grants, roles, members, groups, users and their email and profile,
-                invitations, teams, operation assignees, scheme shares, bridges, security settings, SSO and the
-                organisation itself) is still refused with `CH.003.155`. If the person can no longer be served, such as
-                a principal disabled since the session started, reads are served as the staff member and every change
-                except ending the impersonation is refused with `CH.003.153`. A sign-in with no open impersonation
+                staff member. The Management API always serves the staff member. Whatever the session, what is the
+                person's own to do (an attestation, something sent outside Ctrl Hub in their name, their devices and what
+                they have read) is refused with `CH.003.169`. Unless the session was started to make changes and changes
+                while impersonating are switched on, every other change except ending the impersonation is refused with
+                `CH.003.153`. Otherwise a change is made as the person and its audit event names the staff member too,
+                but a change to sign-in, access or a user's account (grants, roles, members, groups, users and their
+                email and profile, invitations, teams, operation assignees, scheme shares, bridges, security settings,
+                SSO and the organisation itself) is still refused with `CH.003.155`, and a change nobody has yet cleared
+                for impersonation with `CH.003.170`. If the person can no longer be served, such as a principal disabled
+                since the session started, reads are served as the staff member and every change except ending the
+                impersonation is refused, with the same codes as a view-only session. Every response made under a
+                session names it in an `X-Impersonation-Id` header. A sign-in with no open impersonation
                 session is answered with `data: null`, because not impersonating is the usual state rather than a missing
                 resource. The console reads it to show who it is impersonating.
             operationId: GetMyImpersonation
