@@ -843,6 +843,16 @@ components:
                         server; it cannot be written through the API.
                     examples:
                         - 2026-09-25T10:15:00Z
+                last_login_at:
+                    type:
+                        - string
+                        - "null"
+                    format: date-time
+                    description: |
+                        When the user last signed in. Null if they have not signed in since this
+                        was recorded. Set by the server; it cannot be written through the API.
+                    examples:
+                        - 2026-11-14T08:30:00Z
                 mfa_enabled_at:
                     type:
                         - string
@@ -3155,6 +3165,14 @@ components:
                     properties:
                         data:
                             $ref: '#/components/schemas/OrganisationRelationship'
+                user:
+                    type: object
+                    description: The user who made the change. Absent when the change was made by a service account, a job or a subscriber.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/UserRelationship'
         BriefingRecipient:
             type: object
             description: One person a briefing was sent to, and how far they have got with it.
@@ -17928,6 +17946,66 @@ components:
                         nomenclature: "#/components/schemas/Nomenclature"
                 oneOf:
                     - $ref: "#/components/schemas/Nomenclature"
+        CalendarEntry:
+            type: object
+            description: One date on an organisation's expiry calendar, from one of its sources.
+            required:
+                - id
+                - type
+                - attributes
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The id of the record the entry is for.
+                type:
+                    type: string
+                    const: calendar-entries
+                attributes:
+                    $ref: '#/components/schemas/CalendarEntryAttributes'
+        CalendarEntryAttributes:
+            type: object
+            description: Attributes of a calendar entry
+            required:
+                - source
+                - title
+                - date
+                - category_id
+                - user_id
+                - status
+            properties:
+                source:
+                    type: string
+                    description: Where the entry comes from. A reminder's expiry, a document's expiry, a person's competency record expiring, or a work permit's end.
+                    enum:
+                        - reminders
+                        - documents
+                        - competencies
+                        - work-permits
+                title:
+                    type: string
+                    description: What the entry is about, such as the reminder's title, the document's name, the competency's name or the permit's reference.
+                date:
+                    type: string
+                    format: date-time
+                    description: The date the entry falls on.
+                category_id:
+                    type:
+                        - string
+                        - "null"
+                    format: uuid
+                    description: The reminder's category. Null for the other sources.
+                user_id:
+                    type:
+                        - string
+                        - "null"
+                    format: uuid
+                    description: The person a competency record belongs to. Null for the other sources.
+                status:
+                    type:
+                        - string
+                        - "null"
+                    description: The reminder's status, or the work permit's status. Null for the other sources.
         CustomerAccount:
             type: object
             description: A customer account
@@ -19955,6 +20033,295 @@ components:
                     properties:
                         data:
                             $ref: '#/components/schemas/SchemeTemplateRelationship'
+        ReminderCategory:
+            type: object
+            description: One of an organisation's own categories of reminder, such as Insurance or Domains. It sets who is told about its reminders, and how far ahead.
+            required:
+                - id
+                - type
+                - attributes
+                - relationships
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the reminder category.
+                type:
+                    type: string
+                    const: reminder-categories
+                attributes:
+                    $ref: '#/components/schemas/ReminderCategoryAttributes'
+                relationships:
+                    $ref: '#/components/schemas/ReminderCategoryRelationships'
+                meta:
+                    $ref: '#/components/schemas/ReminderMeta'
+        ReminderCategoryAttributes:
+            type: object
+            description: Attributes of a reminder category
+            required:
+                - name
+                - mandatory
+                - default_lead_days
+                - default_recipient_team_ids
+                - archived_at
+            properties:
+                name:
+                    type: string
+                    maxLength: 100
+                    description: The category's name, unique among the organisation's live categories.
+                    examples:
+                        - Insurance
+                mandatory:
+                    type: boolean
+                    description: Whether the organisation must keep this category's reminders current. A lapsed reminder in a mandatory category is counted in the organisation's lapsed-mandatory status. Nothing is blocked by it.
+                default_lead_days:
+                    type: array
+                    description: How many days before expiry the category's reminders notify their recipients, unless a reminder sets its own. At least one, each from 1 to 730.
+                    minItems: 1
+                    items:
+                        type: integer
+                        minimum: 1
+                        maximum: 730
+                    examples:
+                        - [30, 7]
+                default_recipient_team_ids:
+                    type: array
+                    description: The teams whose members are told about the category's reminders, unless a reminder sets its own. At least one.
+                    minItems: 1
+                    items:
+                        type: string
+                        format: uuid
+                archived_at:
+                    type:
+                        - string
+                        - "null"
+                    format: date-time
+                    readOnly: true
+                    description: When the category was removed while reminders still used it. An archived category keeps its reminders but takes no new ones.
+        ReminderCategoryRelationships:
+            type: object
+            description: Relationships for a reminder category
+            required:
+                - organisation
+            properties:
+                organisation:
+                    type: object
+                    description: The organisation that owns the category.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/OrganisationRelationship'
+        ReminderMeta:
+            type: object
+            description: Meta information for a reminder or a reminder category
+            properties:
+                created_at:
+                    type: string
+                    format: date-time
+                updated_at:
+                    type: string
+                    format: date-time
+        Reminder:
+            type: object
+            description: Something an organisation has that expires or renews, such as an insurance policy, an accreditation, a domain or a contract.
+            required:
+                - id
+                - type
+                - attributes
+                - relationships
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the reminder.
+                type:
+                    type: string
+                    const: reminders
+                attributes:
+                    $ref: '#/components/schemas/ReminderAttributes'
+                relationships:
+                    $ref: '#/components/schemas/ReminderRelationships'
+                meta:
+                    $ref: '#/components/schemas/ReminderMeta'
+        ReminderAttributes:
+            type: object
+            description: Attributes of a reminder
+            required:
+                - title
+                - expires_at
+                - renewal_period_months
+                - notes
+                - lead_days
+                - recipient_team_ids
+                - status
+                - mandatory
+                - attachments
+                - periods
+            properties:
+                title:
+                    type: string
+                    maxLength: 200
+                    description: What expires, at most 200 characters.
+                    examples:
+                        - Public liability insurance
+                expires_at:
+                    type: string
+                    format: date-time
+                    description: When the current period expires.
+                renewal_period_months:
+                    type:
+                        - integer
+                        - "null"
+                    minimum: 1
+                    maximum: 120
+                    description: How many months a renewal usually adds. Renewing without a new date adds this to the current expiry. Null when it does not renew on a fixed period.
+                notes:
+                    type:
+                        - string
+                        - "null"
+                    maxLength: 5000
+                lead_days:
+                    type:
+                        - array
+                        - "null"
+                    description: How many days before expiry its recipients are told. Null uses its category's `default_lead_days`.
+                    items:
+                        type: integer
+                        minimum: 1
+                        maximum: 730
+                recipient_team_ids:
+                    type:
+                        - array
+                        - "null"
+                    description: The teams whose members are told. Null uses its category's `default_recipient_team_ids`.
+                    items:
+                        type: string
+                        format: uuid
+                status:
+                    type: string
+                    readOnly: true
+                    description: '`active` until its expiry passes without a renewal, then `lapsed`. Renewing makes it active again.'
+                    enum:
+                        - active
+                        - lapsed
+                mandatory:
+                    type: boolean
+                    readOnly: true
+                    description: Whether its category is mandatory.
+                attachments:
+                    type: array
+                    readOnly: true
+                    description: The evidence for the current period, such as the certificate, in the order it was added. Renewing moves it into the period it closes.
+                    items:
+                        $ref: '#/components/schemas/ReminderAttachment'
+                periods:
+                    type: array
+                    readOnly: true
+                    description: The periods closed by renewals, oldest first.
+                    items:
+                        $ref: '#/components/schemas/ReminderPeriod'
+        ReminderRelationships:
+            type: object
+            description: Relationships for a reminder
+            required:
+                - organisation
+                - category
+            properties:
+                organisation:
+                    type: object
+                    description: The organisation the reminder belongs to.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/OrganisationRelationship'
+                category:
+                    type: object
+                    description: The organisation's category the reminder is in.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/ReminderCategoryRelationship'
+                owner:
+                    type: object
+                    description: The person responsible for renewing it. Absent when nobody is named.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/UserRelationship'
+        ReminderAttachment:
+            type: object
+            description: A file attached to a reminder as evidence.
+            required:
+                - id
+                - name
+                - content_type
+                - size
+                - added_at
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The attachment's id, used to download or remove it.
+                name:
+                    type: string
+                    description: The file's name.
+                    examples:
+                        - insurance-certificate-2026.pdf
+                content_type:
+                    type: string
+                    description: The file's media type.
+                    examples:
+                        - application/pdf
+                size:
+                    type: integer
+                    format: int64
+                    description: The file's size in bytes.
+                added_at:
+                    type: string
+                    format: date-time
+        ReminderPeriod:
+            type: object
+            description: A period of a reminder that a renewal closed, with the evidence attached during it.
+            required:
+                - expires_at
+                - renewed_at
+                - renewed_by
+                - attachments
+            properties:
+                expires_at:
+                    type: string
+                    format: date-time
+                    description: When the period was due to expire.
+                renewed_at:
+                    type: string
+                    format: date-time
+                    description: When it was renewed.
+                renewed_by:
+                    type: string
+                    format: uuid
+                    description: The user who renewed it.
+                attachments:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/ReminderAttachment'
+        ReminderCategoryRelationship:
+            type: object
+            description: Represents a relationship to a reminder category
+            required:
+                - id
+                - type
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the reminder category
+                type:
+                    type: string
+                    const: reminder-categories
         TimeBand:
             type: object
             description: A time band
@@ -32427,6 +32794,30 @@ components:
                                 included:
                                     $ref: '#/components/schemas/OrganisationIncludes'
                             - $ref: '#/components/schemas/JSONAPI'
+        ListCalendarEntries:
+            description: A list of calendar entries
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    title: A list of calendar entries
+                                    type: array
+                                    items:
+                                        $ref: '#/components/schemas/CalendarEntry'
+                            - $ref: '#/components/schemas/DocumentMeta'
+                            - $ref: '#/components/schemas/JSONAPI'
         ListCustomerAccounts:
             description: Get a list of customer accounts.
             headers:
@@ -33538,6 +33929,94 @@ components:
                               properties:
                                 data:
                                     $ref: '#/components/schemas/WorkOrderTemplate'
+                            - $ref: '#/components/schemas/JSONAPI'
+        ListReminderCategories:
+            description: A list of reminder categories
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    title: A list of reminder categories
+                                    type: array
+                                    items:
+                                        $ref: '#/components/schemas/ReminderCategory'
+                            - $ref: '#/components/schemas/DocumentMeta'
+                            - $ref: '#/components/schemas/JSONAPI'
+        GetReminderCategory:
+            description: A reminder category.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    $ref: '#/components/schemas/ReminderCategory'
+                            - $ref: '#/components/schemas/JSONAPI'
+        ListReminders:
+            description: A list of reminders
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    title: A list of reminders
+                                    type: array
+                                    items:
+                                        $ref: '#/components/schemas/Reminder'
+                            - $ref: '#/components/schemas/DocumentMeta'
+                            - $ref: '#/components/schemas/JSONAPI'
+        GetReminder:
+            description: A reminder.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    $ref: '#/components/schemas/Reminder'
                             - $ref: '#/components/schemas/JSONAPI'
         ListTimeBands:
             description: Get a list of time bands
@@ -37386,6 +37865,7 @@ components:
                 - `in(organisation,[xxx])`: Filter events by the organisation ID
                 - `in(resource.type,[xxx])`: Filter events by the resource type
                 - `in(resource.id,[xxx])`: Filter events by the resource ID
+                - `in(context.related.id,[xxx])`: Filter events by a resource they name as related. A projects event names the operation's work order and scheme, or the work order's scheme
 
                 For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
             required: false
@@ -38661,6 +39141,8 @@ components:
                         - -downloads
                         - created_at
                         - -created_at
+                        - expires_at
+                        - -expires_at
         documents_filter:
             name: filter
             in: query
@@ -38673,6 +39155,7 @@ components:
                 - `parent`: Filter documents where the parent folder ID is in the provided list.
                 - `is_root`: Filter documents where the parent folder ID is null.
                 - `mine`: Filter documents where the current user is the author.
+                - `expires_at`: Filter documents by their expiry date, for example `and(ge(expires_at,2026-01-01T00:00:00Z),le(expires_at,2026-12-31T23:59:59Z))`. A document with no expiry date matches no range.
 
                 For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
             required: false
@@ -40693,6 +41176,7 @@ components:
                 - `dates.scheduled.end`: Filter by scheduled end date. Accepts an RFC 3339 timestamp and supports the range operators `ge`, `le`, `gt`, `lt` (and `eq`). Example: `le(dates.scheduled.end,2026-07-14T23:59:59Z)`.
                 - `updated_at`: Filter by the date an operation was last modified. Accepts an RFC 3339 timestamp and supports the range operators `ge`, `le`, `gt`, `lt` (and `eq`). Send times in UTC with a `Z` suffix. An offset such as `+01:00` must have its `+` sent as `%2B`, because an unencoded `+` in a query string is read as a space and the time is rejected. Example (modified since a given time): `ge(updated_at,2026-07-01T00:00:00Z)`. Example (modified within a window): `and(ge(updated_at,2026-07-01T00:00:00Z),le(updated_at,2026-07-14T23:59:59Z))`.
                 - `created_at`: Filter by the date an operation was created. Accepts an RFC 3339 timestamp and supports the range operators `ge`, `le`, `gt`, `lt` (and `eq`). Send times in UTC with a `Z` suffix. An offset such as `+01:00` must have its `+` sent as `%2B`, because an unencoded `+` in a query string is read as a space and the time is rejected. Example (created since a given time): `ge(created_at,2026-07-01T00:00:00Z)`. Example (created within a window): `and(ge(created_at,2026-07-01T00:00:00Z),le(created_at,2026-07-14T23:59:59Z))`. Combine with `sort=created_at` to read the operations oldest first. Operations that share a `created_at`, such as those from one import, come back in a fixed order with the sort, so to continue from the last operation read, keep the other filters of the query, including any upper bound, and set the lower bound to `ge(created_at,<its created_at>)`. Set `offset` to how many operations already read have that same `created_at`. The offset counts within the filtered results, so the filters must not change between pages. If an operation already read is deleted before the next request, the offset shifts and an operation that shares its `created_at` can be skipped. An operation created with the same `created_at` as the last one read, and ordered before an operation already read, shifts the offset the other way: the next page repeats the last operation read, and the new operation is not returned by that read. Ignore an id already seen. Using `gt` instead skips the operations that share it and did not fit on the previous page.
+                - `created_by`: Filter by who created the operation, the id of a user or a service account, with `eq` or `in`. Example: `in(created_by,[<user id>])`. Operations created before 9 Oct 2026, and those synced from v2, record no creator and match no value.
 
                 For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
             required: false
@@ -40730,6 +41214,19 @@ components:
                 type: string
                 format: uuid
             example: a8a41819-be0c-48b9-9883-1378fc63a637
+        history_include:
+            name: include
+            in: query
+            description: A comma separated list of related resources to include. `user` includes the user who made each change.
+            required: false
+            style: form
+            explode: false
+            schema:
+                type: array
+                items:
+                    type: string
+                    enum:
+                        - user
         organisations_sort:
             in: query
             name: sort
@@ -40768,6 +41265,26 @@ components:
                 type: string
                 format: uuid
             example: c000c344-8847-47da-a091-32e75902d3b1
+        calendar_entries_filter:
+            name: filter
+            in: query
+            description: |
+                Chooses the entries to list. `ge(date,...)` and `le(date,...)` are required, and the range they
+                give may be at most 93 days long.
+
+                Available filters:
+
+                - `date`: The range of dates, as `and(ge(date,2026-12-01T00:00:00Z),le(date,2026-12-31T23:59:59Z))`.
+                - `source`: Only these sources: `reminders`, `documents`, `competencies` or `work-permits`, e.g. `in(source,[reminders,documents])`.
+                - `category`: Only reminders in these categories, e.g. `in(category,[X])`. Entries from other sources are left out when it is given.
+
+                Any other term, or an `or()`, is refused.
+
+                For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
+            required: false
+            schema:
+                type: string
+                default: ""
         customer_accounts_include:
             name: include
             in: query
@@ -41497,6 +42014,105 @@ components:
             schema:
                 type: string
                 default: ""
+        reminder_categories_filter:
+            name: filter
+            in: query
+            description: |
+                Filters the response data based on the value provided.
+
+                Available filters:
+
+                - `organisation`: The organisation in the path, as `eq(organisation,X)`. Rows always come from that organisation; the term is accepted so a client can name it.
+                - `name`: Filter by the category's name.
+                - `mandatory`: `eq(mandatory,true)` lists only the mandatory categories.
+                - `archived`: `eq(archived,true)` lists only archived categories, and `eq(archived,false)` only live ones. Both are listed when it is not given.
+
+                For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
+            required: false
+            schema:
+                type: string
+                default: ""
+        reminder_categories_sort:
+            in: query
+            name: sort
+            description: A comma separated list of fields to sort by. A `-` prefix sorts descending. Any other field is refused.
+            required: false
+            style: form
+            explode: false
+            schema:
+                type: array
+                items:
+                    type: string
+                    enum:
+                        - name
+                        - -name
+                        - created_at
+                        - -created_at
+        reminder_category_id:
+            name: reminder_category_id
+            in: path
+            required: true
+            description: The unique identifier for the reminder category.
+            schema:
+                type: string
+                format: uuid
+            example: 3b7e2f4a-6c1d-4e9b-8a2f-5d4c3b2a1f0e
+        reminders_filter:
+            name: filter
+            in: query
+            description: |
+                Filters the response data based on the value provided.
+
+                Available filters:
+
+                - `organisation`: The organisation in the path, as `eq(organisation,X)`. Rows always come from that organisation; the term is accepted so a client can name it.
+                - `category`: Filter by the reminder's category, e.g. `in(category,[X,Y])`.
+                - `status`: Filter by the reminder's status: `active` or `lapsed`.
+                - `mandatory`: Filter by whether the reminder's category is mandatory. `and(eq(status,lapsed),eq(mandatory,true))` lists the organisation's lapsed mandatory reminders, and its `meta.pagination` counts them.
+                - `owner`: Filter by the user who owns the reminder.
+                - `expires_at`: Filter by the expiry date, e.g. `and(ge(expires_at,2026-12-01T00:00:00Z),le(expires_at,2026-12-31T23:59:59Z))`.
+
+                For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
+            required: false
+            schema:
+                type: string
+                default: ""
+        reminders_sort:
+            in: query
+            name: sort
+            description: A comma separated list of fields to sort by. A `-` prefix sorts descending. Any other field is refused. The default is `expires_at`.
+            required: false
+            style: form
+            explode: false
+            schema:
+                type: array
+                items:
+                    type: string
+                    enum:
+                        - expires_at
+                        - -expires_at
+                        - title
+                        - -title
+                        - created_at
+                        - -created_at
+        reminder_id:
+            name: reminder_id
+            in: path
+            required: true
+            description: The unique identifier for the reminder.
+            schema:
+                type: string
+                format: uuid
+            example: 9c4d2e1f-7b3a-4f6e-8d5c-1a2b3c4d5e6f
+        reminder_attachment_id:
+            name: reminder_attachment_id
+            in: path
+            required: true
+            description: The id of a reminder's attachment, which is the id of the document that holds it.
+            schema:
+                type: string
+                format: uuid
+            example: 2e8f1a3b-5c7d-4e9f-a1b2-c3d4e5f6a7b8
         time_band_id:
             name: time_band_id
             in: path
@@ -42465,6 +43081,23 @@ components:
                 type: string
                 format: uuid
             example: feb4ad51-3335-49e1-9db0-c18559cdbf17
+        history_filter:
+            name: filter
+            in: query
+            description: |
+                Narrows a history to the events about one kind of record.
+
+                Available filters:
+
+                - `in(resource.type,[xxx])`: Only the events about records of these types: `schemes`, `work-orders` or
+                  `operations`. Without it, a scheme's history holds the events about the scheme, its work orders and its
+                  operations, and a work order's holds the events about the work order and its operations.
+
+                For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
+            required: false
+            schema:
+                type: string
+                default: ""
         search_results_include:
             name: include
             in: query
@@ -55281,7 +55914,7 @@ components:
                                                     - "This code is intended for consumption by organisation B"
         UpdateOrganisationBridgeRequest:
             required: true
-            description: The organisation bridge request to create.
+            description: The organisation bridge request to update.
             content:
                 application/vnd.api+json:
                     schema:
@@ -55306,8 +55939,9 @@ components:
                                         description: The organisation bridge request identifier.
                                     attributes:
                                         type: object
+                                        required:
+                                            - status
                                         properties:
-                                            required: {}
                                             status:
                                                 type: string
                                                 description: status of the organsation bridge request.
@@ -55317,6 +55951,12 @@ components:
                                                     - rejected
                                                 examples:
                                                     - "accepted"
+                                            code:
+                                                type: string
+                                                description: >-
+                                                    The connection code the other organisation gave you. Accepting a request needs it. It is ignored when approving or rejecting.
+                                                examples:
+                                                    - "A1BC-9GER"
         CreateTeam:
             required: true
             description: The team to create.
@@ -55934,6 +56574,336 @@ components:
                                                 type: array
                                                 items:
                                                     $ref: '#/components/schemas/Label'
+        CreateReminderCategory:
+            required: true
+            description: The category to create in the organisation in the path.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                    - attributes
+                                properties:
+                                    type:
+                                        type: string
+                                        const: reminder-categories
+                                    attributes:
+                                        type: object
+                                        required:
+                                            - name
+                                            - default_lead_days
+                                            - default_recipient_team_ids
+                                        properties:
+                                            name:
+                                                type: string
+                                                minLength: 1
+                                                maxLength: 100
+                                            mandatory:
+                                                type: boolean
+                                                description: Whether the organisation must keep this category's reminders current. False when left out.
+                                            default_lead_days:
+                                                type: array
+                                                minItems: 1
+                                                maxItems: 10
+                                                items:
+                                                    type: integer
+                                                    minimum: 1
+                                                    maximum: 730
+                                            default_recipient_team_ids:
+                                                type: array
+                                                minItems: 1
+                                                maxItems: 20
+                                                items:
+                                                    type: string
+                                                    format: uuid
+        UpdateReminderCategory:
+            required: true
+            description: The category's full settings. `mandatory` left out is false.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - id
+                                    - type
+                                    - attributes
+                                properties:
+                                    id:
+                                        type: string
+                                        format: uuid
+                                    type:
+                                        type: string
+                                        const: reminder-categories
+                                    attributes:
+                                        type: object
+                                        required:
+                                            - name
+                                            - default_lead_days
+                                            - default_recipient_team_ids
+                                        properties:
+                                            name:
+                                                type: string
+                                                minLength: 1
+                                                maxLength: 100
+                                            mandatory:
+                                                type: boolean
+                                                description: Whether the organisation must keep this category's reminders current. False when left out.
+                                            default_lead_days:
+                                                type: array
+                                                minItems: 1
+                                                maxItems: 10
+                                                items:
+                                                    type: integer
+                                                    minimum: 1
+                                                    maximum: 730
+                                            default_recipient_team_ids:
+                                                type: array
+                                                minItems: 1
+                                                maxItems: 20
+                                                items:
+                                                    type: string
+                                                    format: uuid
+        CreateReminder:
+            required: true
+            description: The reminder to create in the organisation in the path. It starts active.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                    - attributes
+                                    - relationships
+                                properties:
+                                    type:
+                                        type: string
+                                        const: reminders
+                                    attributes:
+                                        type: object
+                                        required:
+                                            - title
+                                            - expires_at
+                                        properties:
+                                            title:
+                                                type: string
+                                                minLength: 1
+                                                maxLength: 200
+                                            expires_at:
+                                                type: string
+                                                format: date-time
+                                            renewal_period_months:
+                                                type:
+                                                    - integer
+                                                    - "null"
+                                                minimum: 1
+                                                maximum: 120
+                                            notes:
+                                                type:
+                                                    - string
+                                                    - "null"
+                                                maxLength: 5000
+                                            lead_days:
+                                                type:
+                                                    - array
+                                                    - "null"
+                                                description: Null or left out uses the category's default lead times.
+                                                minItems: 1
+                                                maxItems: 10
+                                                items:
+                                                    type: integer
+                                                    minimum: 1
+                                                    maximum: 730
+                                            recipient_team_ids:
+                                                type:
+                                                    - array
+                                                    - "null"
+                                                description: Null or left out uses the category's default recipient teams.
+                                                minItems: 1
+                                                maxItems: 20
+                                                items:
+                                                    type: string
+                                                    format: uuid
+                                    relationships:
+                                        type: object
+                                        required:
+                                            - category
+                                        properties:
+                                            category:
+                                                type: object
+                                                description: The organisation's category to put the reminder in. It must not be archived.
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/ReminderCategoryRelationship'
+                                            owner:
+                                                type: object
+                                                description: The person responsible for renewing it, a member of the organisation. Left out, nobody is named.
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/UserRelationship'
+        UpdateReminder:
+            required: true
+            description: The reminder's full details. An optional attribute or relationship left out is cleared. Its status, attachments and history are kept.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - id
+                                    - type
+                                    - attributes
+                                    - relationships
+                                properties:
+                                    id:
+                                        type: string
+                                        format: uuid
+                                    type:
+                                        type: string
+                                        const: reminders
+                                    attributes:
+                                        type: object
+                                        required:
+                                            - title
+                                            - expires_at
+                                        properties:
+                                            title:
+                                                type: string
+                                                minLength: 1
+                                                maxLength: 200
+                                            expires_at:
+                                                type: string
+                                                format: date-time
+                                            renewal_period_months:
+                                                type:
+                                                    - integer
+                                                    - "null"
+                                                minimum: 1
+                                                maximum: 120
+                                            notes:
+                                                type:
+                                                    - string
+                                                    - "null"
+                                                maxLength: 5000
+                                            lead_days:
+                                                type:
+                                                    - array
+                                                    - "null"
+                                                description: Null or left out uses the category's default lead times.
+                                                minItems: 1
+                                                maxItems: 10
+                                                items:
+                                                    type: integer
+                                                    minimum: 1
+                                                    maximum: 730
+                                            recipient_team_ids:
+                                                type:
+                                                    - array
+                                                    - "null"
+                                                description: Null or left out uses the category's default recipient teams.
+                                                minItems: 1
+                                                maxItems: 20
+                                                items:
+                                                    type: string
+                                                    format: uuid
+                                    relationships:
+                                        type: object
+                                        required:
+                                            - category
+                                        properties:
+                                            category:
+                                                type: object
+                                                description: The organisation's category to put the reminder in. It must not be archived.
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/ReminderCategoryRelationship'
+                                            owner:
+                                                type: object
+                                                description: The person responsible for renewing it, a member of the organisation. Left out, nobody is named.
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/UserRelationship'
+        AttachToReminder:
+            required: true
+            description: The document upload to attach, from `POST /v3/document-uploads`.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                    - attributes
+                                properties:
+                                    type:
+                                        type: string
+                                        const: reminder-attachments
+                                    attributes:
+                                        type: object
+                                        required:
+                                            - upload_id
+                                        properties:
+                                            upload_id:
+                                                type: string
+                                                format: uuid
+                                                description: The id `POST /v3/document-uploads` returned.
+        RenewReminder:
+            required: false
+            description: The new expiry date. Without one, the reminder's renewal period is added to its current expiry.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                    - attributes
+                                properties:
+                                    type:
+                                        type: string
+                                        const: reminder-renewals
+                                    attributes:
+                                        type: object
+                                        properties:
+                                            expires_at:
+                                                type: string
+                                                format: date-time
+                                                description: The new expiry date, after the current one.
         UpdateOrganisationDocumentSettings:
             required: true
             description: The document-settings for the organisation to update.
@@ -74207,6 +75177,51 @@ paths:
             x-mint:
                 metadata:
                     title: Allocate an operation
+    /v3/operations/{operation_id}/history:
+        get:
+            description: |
+                Lists the changes made to an operation, newest first: its creation, edits to its fields, changes to its
+                assignees, teams, permits, streets, locations, properties and appointment, its allocation to a work order, and
+                its deletion.
+
+                Anyone who can view the record can read its history, including a contractor working a shared scheme. It needs no
+                audit role. A record the caller cannot view is refused, just as reading the record would be.
+
+                Each event says who made the change and when, and an update lists each changed field with its value before and
+                after. `include=user` includes the user who made each change. Records created before 9 Oct 2026, or synced from
+                v2, have no create event. The client IP, user agent and any impersonating staff member are left empty, because a
+                history needs no audit role.
+
+                A deleted operation's history is not readable here: it returns 404, just as reading the operation does. Its work order's and
+                scheme's histories still hold its events, including its deletion, for a caller with an organisation-wide grant.
+            operationId: ListOperationHistory
+            parameters:
+                - $ref: '#/components/parameters/operation_id'
+                - $ref: '#/components/parameters/limit'
+                - $ref: '#/components/parameters/offset'
+                - $ref: '#/components/parameters/page'
+                - $ref: '#/components/parameters/history_include'
+            responses:
+                "200":
+                    $ref: '#/components/responses/ListAuditEvents'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: List an operation's history
+            tags:
+                - Audit Events
+            x-mint:
+                metadata:
+                    title: List an operation's history
     /v3/operations/{operation_id}/relationships/appointment:
         patch:
             description: Replace existing appointment to the operation
@@ -74903,6 +75918,40 @@ paths:
             x-mint:
                 metadata:
                     title: Get an organisation
+    /v3/orgs/{org_id}/calendar-entries:
+        get:
+            description: |
+                List what falls due in the organisation between two dates, soonest first: reminders by expiry date, documents by expiry date, people's competency records by expiry date, and work permits by their end date.
+
+                Each source lists only what the caller may see, through its own permission: `reminders:view`, `documents:view` on each document, `competency-holders:view`, and `work-permits:view`. A source the caller holds no permission for is left out, and the others are still listed.
+
+                This operation does not support `include`, so the response has no `included` member.
+            operationId: ListCalendarEntries
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+                - $ref: '#/components/parameters/limit'
+                - $ref: '#/components/parameters/offset'
+                - $ref: '#/components/parameters/page'
+                - $ref: '#/components/parameters/calendar_entries_filter'
+            responses:
+                "200":
+                    $ref: '#/components/responses/ListCalendarEntries'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: List calendar entries
+            tags:
+                - Calendar
+            x-mint:
+                metadata:
+                    title: List calendar entries
     /v3/orgs/{org_id}/customers/accounts:
         get:
             description: List all of the customer accounts in an organisation.
@@ -76877,7 +77926,10 @@ paths:
                     title: Get a log for a service account
     /v3/orgs/{org_id}/organisation-bridge-requests:
         get:
-            description: List the organisation bridge requests.
+            description: |-
+                List the bridge requests the organisation raised or received. The caller must be a member of the organisation and hold `organisation-bridge-requests:view` in it.
+
+                `filter=code("XXXX-XXXX")` instead looks up the one request the organisation could accept with that code: initiated, not yet accepted, unexpired, and raised by another organisation. It needs `organisation-bridge-requests:update`, takes exactly one code and no other filter, and returns at most one request, without its recipient or bridge. An unknown or expired code returns an empty list.
             operationId: ListOrganisationBridgeRequests
             parameters:
                 - $ref: '#/components/parameters/org_id'
@@ -76905,7 +77957,7 @@ paths:
                 metadata:
                     title: List bridge requests
         post:
-            description: Create code to initiate organisation connection bridge.
+            description: Create code to initiate organisation connection bridge. The code lasts 72 hours. The caller must be a member of the organisation and hold `organisation-bridge-requests:create` in it.
             operationId: CreateOrganisationBridgeRequest
             parameters:
                 - $ref: '#/components/parameters/org_id'
@@ -76916,6 +77968,8 @@ paths:
                     $ref: '#/components/responses/GetOrganisationBridgeRequest'
                 "400":
                     $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
                 "500":
                     $ref: '#/components/responses/InternalServerError'
             security:
@@ -76930,7 +77984,7 @@ paths:
                     title: Create a bridge request
     /v3/orgs/{org_id}/organisation-bridge-requests/{bridge_request_id}:
         get:
-            description: Get an organisation bridge request.
+            description: Get a bridge request the organisation raised or received. The caller must be a member of the organisation and hold `organisation-bridge-requests:view` in it.
             operationId: GetOrganisationBridgeRequest
             parameters:
                 - $ref: '#/components/parameters/org_id'
@@ -76943,6 +77997,8 @@ paths:
                     $ref: '#/components/responses/BadRequest'
                 "401":
                     $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
                 "500":
                     $ref: '#/components/responses/InternalServerError'
             security:
@@ -76955,7 +78011,7 @@ paths:
                 metadata:
                     title: Get a bridge request
         patch:
-            description: Updating organisation bridge requests allows you to approve or reject them.
+            description: Accept another organisation's request with its code, or approve or reject a request the organisation raised once it has been accepted. The caller must be a member of the organisation and hold `organisation-bridge-requests:update` in it. Accepting needs the request's `code`. A missing or wrong code returns a 404, the same as a request that does not exist, and an expired code returns a 422. Approving and rejecting are not bounded by the code's expiry.
             operationId: UpdateOrganisationBridgeRequest
             parameters:
                 - $ref: '#/components/parameters/org_id'
@@ -76967,8 +78023,16 @@ paths:
                     $ref: '#/components/responses/GetOrganisationBridgeRequest'
                 "400":
                     $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "403":
+                    $ref: '#/components/responses/Forbidden'
                 "404":
                     $ref: '#/components/responses/NotFound'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "422":
+                    $ref: '#/components/responses/UnprocessableEntity'
                 "500":
                     $ref: '#/components/responses/InternalServerError'
             security:
@@ -76983,7 +78047,7 @@ paths:
                     title: Update a bridge request
     /v3/orgs/{org_id}/organisation-bridges:
         get:
-            description: List the organisation bridges.
+            description: List the organisation's bridges. The caller must be a member of the organisation or hold a grant in it.
             operationId: ListOrganisationBridges
             parameters:
                 - $ref: '#/components/parameters/org_id'
@@ -77011,7 +78075,7 @@ paths:
                     title: List bridges
     /v3/orgs/{org_id}/organisation-bridges/{bridge_id}:
         get:
-            description: Get an organisation bridge.
+            description: Get one of the organisation's bridges. The caller must be a member of the organisation. This is narrower than listing the organisation's bridges, which a holder of any grant in the organisation may also do.
             operationId: GetOrganisationBridge
             parameters:
                 - $ref: '#/components/parameters/org_id'
@@ -77023,6 +78087,8 @@ paths:
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
                     $ref: '#/components/responses/NotFound'
                 "500":
                     $ref: '#/components/responses/InternalServerError'
@@ -77037,7 +78103,7 @@ paths:
                     title: Get a bridge
     /v3/orgs/{org_id}/organisation-bridges/{bridge_id}/relationships/notification-recipients:
         patch:
-            description: 'Replace the calling organisation''s nominated notification recipients on the bridge. Both organisations share a single list and can see all of it, but each may only nominate its own members: the counterpart organisation''s nominations are left untouched, and submitting a user who is not a member of the calling organisation is rejected. Nominated users who are no longer a member of either organisation are dropped.'
+            description: 'Replace the calling organisation''s nominated notification recipients on the bridge. Both organisations share a single list and can see all of it, but each may only nominate its own members: the counterpart organisation''s nominations are left untouched, and submitting a user who is not a member of the calling organisation is rejected. Nominated users who are no longer a member of either organisation are dropped. The caller must be a member of the calling organisation and hold `organisation-bridges:update` in it.'
             operationId: ReplaceOrganisationBridgeRelationshipToNotificationRecipient
             parameters:
                 - $ref: '#/components/parameters/org_id'
@@ -77781,6 +78847,492 @@ paths:
             x-mint:
                 metadata:
                     title: Update a work order template
+    /v3/orgs/{org_id}/reminder-categories:
+        get:
+            description: |
+                List the organisation's reminder categories, archived ones included unless filtered out.
+
+                Requires `reminders:view` across the organisation.
+
+                This operation does not support `include`, so the response has no `included` member.
+            operationId: ListReminderCategories
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+                - $ref: '#/components/parameters/limit'
+                - $ref: '#/components/parameters/offset'
+                - $ref: '#/components/parameters/page'
+                - $ref: '#/components/parameters/reminder_categories_filter'
+                - $ref: '#/components/parameters/reminder_categories_sort'
+            responses:
+                "200":
+                    $ref: '#/components/responses/ListReminderCategories'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: List reminder categories
+            tags:
+                - Reminders
+            x-mint:
+                metadata:
+                    title: List reminder categories
+        post:
+            description: |
+                Create one of the organisation's own categories of reminder, with the lead times and teams its reminders use unless they set their own. Every recipient team must be one of the organisation's. A name already used by a live category is refused with 409 Conflict.
+
+                Requires `reminder-categories:manage` across the organisation.
+            operationId: CreateReminderCategory
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+            requestBody:
+                $ref: '#/components/requestBodies/CreateReminderCategory'
+            responses:
+                "201":
+                    $ref: '#/components/responses/GetReminderCategory'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "422":
+                    $ref: '#/components/responses/UnprocessableEntity'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Create a reminder category
+            tags:
+                - Reminders
+            x-mint:
+                metadata:
+                    title: Create a reminder category
+    /v3/orgs/{org_id}/reminder-categories/{reminder_category_id}:
+        delete:
+            description: |
+                Remove a category. A category no reminder uses is deleted. One still in use is archived: its reminders keep it, but no reminder can be put in it.
+
+                Requires `reminder-categories:manage` across the organisation.
+            operationId: DeleteReminderCategory
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+                - $ref: '#/components/parameters/reminder_category_id'
+            responses:
+                "204":
+                    $ref: '#/components/responses/NoContent'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Remove a reminder category
+            tags:
+                - Reminders
+            x-mint:
+                metadata:
+                    title: Remove a reminder category
+        get:
+            description: |
+                Retrieve one of the organisation's reminder categories.
+
+                Requires `reminders:view` across the organisation.
+            operationId: GetReminderCategory
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+                - $ref: '#/components/parameters/reminder_category_id'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetReminderCategory'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Get a reminder category
+            tags:
+                - Reminders
+            x-mint:
+                metadata:
+                    title: Get a reminder category
+        put:
+            description: |
+                Replace a category's name, mandatory flag, default lead times and default recipient teams. Its reminders that set none of their own use the new defaults from their next notice. Changing `mandatory` changes it on every reminder in the category. An archived category cannot be changed.
+
+                Requires `reminder-categories:manage` across the organisation.
+            operationId: UpdateReminderCategory
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+                - $ref: '#/components/parameters/reminder_category_id'
+            requestBody:
+                $ref: '#/components/requestBodies/UpdateReminderCategory'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetReminderCategory'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "422":
+                    $ref: '#/components/responses/UnprocessableEntity'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Update a reminder category
+            tags:
+                - Reminders
+            x-mint:
+                metadata:
+                    title: Update a reminder category
+    /v3/orgs/{org_id}/reminders:
+        get:
+            description: |
+                List the organisation's reminders, soonest expiry first unless sorted otherwise. `and(eq(status,lapsed),eq(mandatory,true))` lists its lapsed mandatory reminders, and `meta.pagination` counts them.
+
+                Requires `reminders:view` across the organisation.
+
+                This operation does not support `include`, so the response has no `included` member.
+            operationId: ListReminders
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+                - $ref: '#/components/parameters/limit'
+                - $ref: '#/components/parameters/offset'
+                - $ref: '#/components/parameters/page'
+                - $ref: '#/components/parameters/reminders_filter'
+                - $ref: '#/components/parameters/reminders_sort'
+            responses:
+                "200":
+                    $ref: '#/components/responses/ListReminders'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: List reminders
+            tags:
+                - Reminders
+            x-mint:
+                metadata:
+                    title: List reminders
+        post:
+            description: |
+                Record something the organisation has that expires. It starts active. Its category must be the organisation's and not archived, its recipient teams the organisation's, and its owner a member of it.
+
+                Requires `reminders:manage` across the organisation.
+            operationId: CreateReminder
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+            requestBody:
+                $ref: '#/components/requestBodies/CreateReminder'
+            responses:
+                "201":
+                    $ref: '#/components/responses/GetReminder'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "422":
+                    $ref: '#/components/responses/UnprocessableEntity'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Create a reminder
+            tags:
+                - Reminders
+            x-mint:
+                metadata:
+                    title: Create a reminder
+    /v3/orgs/{org_id}/reminders/{reminder_id}:
+        delete:
+            description: |
+                Delete a reminder, with its history and the documents attached to it.
+
+                Requires `reminders:manage` across the organisation.
+            operationId: DeleteReminder
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+                - $ref: '#/components/parameters/reminder_id'
+            responses:
+                "204":
+                    $ref: '#/components/responses/NoContent'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Delete a reminder
+            tags:
+                - Reminders
+            x-mint:
+                metadata:
+                    title: Delete a reminder
+        get:
+            description: |
+                Retrieve one of the organisation's reminders, with its evidence and its history of renewals.
+
+                Requires `reminders:view` across the organisation.
+            operationId: GetReminder
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+                - $ref: '#/components/parameters/reminder_id'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetReminder'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Get a reminder
+            tags:
+                - Reminders
+            x-mint:
+                metadata:
+                    title: Get a reminder
+        put:
+            description: |
+                Replace a reminder's details. Its status, attachments and history are kept. Moving its expiry date restarts its notices for the new date, and a lapsed reminder moved to a future date is active again. A reminder may stay in an archived category it is already in, but not move into one.
+
+                Requires `reminders:manage` across the organisation.
+            operationId: UpdateReminder
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+                - $ref: '#/components/parameters/reminder_id'
+            requestBody:
+                $ref: '#/components/requestBodies/UpdateReminder'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetReminder'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "422":
+                    $ref: '#/components/responses/UnprocessableEntity'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Update a reminder
+            tags:
+                - Reminders
+            x-mint:
+                metadata:
+                    title: Update a reminder
+    /v3/orgs/{org_id}/reminders/{reminder_id}/attachments:
+        post:
+            description: |
+                Attach a file to a reminder's current period as evidence. Upload it first with `POST /v3/document-uploads`, then send the upload's id here. The file is kept as a document in a folder the reminder owns, at the top of the organisation's documents. The documents API refuses writes to that folder but does not hide it: anyone with organisation-wide `documents:view` can read a reminder's evidence through the documents API, whether or not they can view reminders, as with briefings' attachments.
+
+                A reminder's current period holds at most 10 attachments, each at most 25 MB, of these types: PDF, JPEG, PNG, HEIC, Word, Excel, plain text and CSV. The file's extension must match its type.
+
+                Requires `reminders:manage` across the organisation.
+            operationId: AttachToReminder
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+                - $ref: '#/components/parameters/reminder_id'
+            requestBody:
+                $ref: '#/components/requestBodies/AttachToReminder'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetReminder'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "422":
+                    $ref: '#/components/responses/UnprocessableEntity'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Attach evidence to a reminder
+            tags:
+                - Reminders
+            x-mint:
+                metadata:
+                    title: Attach evidence to a reminder
+    /v3/orgs/{org_id}/reminders/{reminder_id}/attachments/{reminder_attachment_id}:
+        delete:
+            description: |
+                Remove a file from a reminder's current period, and delete the document that held it. Evidence kept in its history cannot be removed.
+
+                Requires `reminders:manage` across the organisation.
+            operationId: RemoveReminderAttachment
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+                - $ref: '#/components/parameters/reminder_id'
+                - $ref: '#/components/parameters/reminder_attachment_id'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetReminder'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Remove evidence from a reminder
+            tags:
+                - Reminders
+            x-mint:
+                metadata:
+                    title: Remove evidence from a reminder
+    /v3/orgs/{org_id}/reminders/{reminder_id}/attachments/{reminder_attachment_id}/download:
+        get:
+            description: |
+                Download a file attached to a reminder, in its current period or its history.
+
+                The response is the file's bytes, served as `application/octet-stream`. The file's type is the
+                attachment's `content_type` on the reminder.
+
+                Requires `reminders:view` across the organisation.
+            operationId: DownloadReminderAttachment
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+                - $ref: '#/components/parameters/reminder_id'
+                - $ref: '#/components/parameters/reminder_attachment_id'
+            responses:
+                "200":
+                    content:
+                        application/octet-stream:
+                            schema:
+                                format: binary
+                                type: string
+                    description: The file.
+                    headers:
+                        Content-Disposition:
+                            description: Names the file, as `attachment; filename="<name>"`, so a browser saves it rather than renders it.
+                            required: true
+                            schema:
+                                example: attachment; filename="insurance-certificate-2026.pdf"
+                                type: string
+                            example: attachment; filename="insurance-certificate-2026.pdf"
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Download a reminder's evidence
+            tags:
+                - Reminders
+            x-mint:
+                metadata:
+                    title: Download a reminder's evidence
+    /v3/orgs/{org_id}/reminders/{reminder_id}/renew:
+        post:
+            description: |
+                Roll a reminder forward to a new expiry date on the same record. The period it closes, with the evidence attached during it, is added to its `periods`, and it is active again. Its notices restart for the new date. Without a date, its renewal period is added to its current expiry, as many times as it takes to reach a date in the future, keeping the day of the month or, in a shorter month, its last day; a reminder with no renewal period needs a date. A date given must be after both the current expiry and now.
+
+                Requires `reminders:manage` across the organisation.
+            operationId: RenewReminder
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+                - $ref: '#/components/parameters/reminder_id'
+            requestBody:
+                $ref: '#/components/requestBodies/RenewReminder'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetReminder'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "422":
+                    $ref: '#/components/responses/UnprocessableEntity'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Renew a reminder
+            tags:
+                - Reminders
+            x-mint:
+                metadata:
+                    title: Renew a reminder
     /v3/orgs/{org_id}/settings/documents:
         patch:
             description: |
@@ -81155,6 +82707,52 @@ paths:
             x-mint:
                 metadata:
                     title: Get a scheme
+    /v3/schemes/{scheme_id}/history:
+        get:
+            description: |
+                Lists the changes made to a scheme, its work orders and its operations, newest first. Filter on
+                `resource.type` for one of the three, with one `eq` or `in` term.
+
+                The work orders and operations are those the caller can view. A caller with an organisation-wide view grant on
+                them also sees the events of ones since deleted. Anyone else, such as a contractor on a shared scheme, sees the
+                events of the records that exist now.
+
+                Anyone who can view the record can read its history, including a contractor working a shared scheme. It needs no
+                audit role. A record the caller cannot view is refused, just as reading the record would be.
+
+                Each event says who made the change and when, and an update lists each changed field with its value before and
+                after. `include=user` includes the user who made each change. Records created before 9 Oct 2026, or synced from
+                v2, have no create event. The client IP, user agent and any impersonating staff member are left empty, because a
+                history needs no audit role.
+            operationId: ListSchemeHistory
+            parameters:
+                - $ref: '#/components/parameters/scheme_id'
+                - $ref: '#/components/parameters/limit'
+                - $ref: '#/components/parameters/offset'
+                - $ref: '#/components/parameters/page'
+                - $ref: '#/components/parameters/history_filter'
+                - $ref: '#/components/parameters/history_include'
+            responses:
+                "200":
+                    $ref: '#/components/responses/ListAuditEvents'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: List a scheme's history
+            tags:
+                - Audit Events
+            x-mint:
+                metadata:
+                    title: List a scheme's history
     /v3/search:
         get:
             description: Search for schemes, work orders, and operations by name.
@@ -86378,6 +87976,51 @@ paths:
             x-mint:
                 metadata:
                     title: Update a work order
+    /v3/work-orders/{work_order_id}/history:
+        get:
+            description: |
+                Lists the changes made to a work order and its operations, newest first. Filter on `resource.type` for one of the
+                two, with one `eq` or `in` term.
+
+                The operations are those the caller can view. A caller with an organisation-wide view grant on operations also
+                sees the events of ones since deleted.
+
+                Anyone who can view the record can read its history, including a contractor working a shared scheme. It needs no
+                audit role. A record the caller cannot view is refused, just as reading the record would be.
+
+                Each event says who made the change and when, and an update lists each changed field with its value before and
+                after. `include=user` includes the user who made each change. Records created before 9 Oct 2026, or synced from
+                v2, have no create event. The client IP, user agent and any impersonating staff member are left empty, because a
+                history needs no audit role.
+            operationId: ListWorkOrderHistory
+            parameters:
+                - $ref: '#/components/parameters/work_order_id'
+                - $ref: '#/components/parameters/limit'
+                - $ref: '#/components/parameters/offset'
+                - $ref: '#/components/parameters/page'
+                - $ref: '#/components/parameters/history_filter'
+                - $ref: '#/components/parameters/history_include'
+            responses:
+                "200":
+                    $ref: '#/components/responses/ListAuditEvents'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: List a work order's history
+            tags:
+                - Audit Events
+            x-mint:
+                metadata:
+                    title: List a work order's history
     /v3/work-orders/{work_order_id}/relationships/permits:
         delete:
             description: |
@@ -87332,6 +88975,15 @@ tags:
         Notices an organisation sends to its own people and its contractors' people, who
         acknowledge that they have read and understood them. Replaces v2's bulletins.
       name: Briefings
+    - description: |
+        Things an organisation has that expire or renew, such as insurance, accreditations, domains,
+        certificates and contracts, in the organisation's own categories. Their recipients are told
+        ahead of time, and evidence is attached to each period.
+      name: Reminders
+    - description: |
+        What falls due in an organisation between two dates, drawn from reminders, documents,
+        competency records and work permits.
+      name: Calendar
     - description: |
         Organisations are the center point for most resources in the platform. Most other endpoints are subresources of an organisation.
       name: Organisations
