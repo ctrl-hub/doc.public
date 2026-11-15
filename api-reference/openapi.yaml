@@ -55281,7 +55281,7 @@ components:
                                                     - "This code is intended for consumption by organisation B"
         UpdateOrganisationBridgeRequest:
             required: true
-            description: The organisation bridge request to create.
+            description: The organisation bridge request to update.
             content:
                 application/vnd.api+json:
                     schema:
@@ -55306,8 +55306,9 @@ components:
                                         description: The organisation bridge request identifier.
                                     attributes:
                                         type: object
+                                        required:
+                                            - status
                                         properties:
-                                            required: {}
                                             status:
                                                 type: string
                                                 description: status of the organsation bridge request.
@@ -55317,6 +55318,12 @@ components:
                                                     - rejected
                                                 examples:
                                                     - "accepted"
+                                            code:
+                                                type: string
+                                                description: >-
+                                                    The connection code the other organisation gave you. Accepting a request needs it. It is ignored when approving or rejecting.
+                                                examples:
+                                                    - "A1BC-9GER"
         CreateTeam:
             required: true
             description: The team to create.
@@ -76877,7 +76884,10 @@ paths:
                     title: Get a log for a service account
     /v3/orgs/{org_id}/organisation-bridge-requests:
         get:
-            description: List the organisation bridge requests.
+            description: |-
+                List the bridge requests the organisation raised or received. The caller must be a member of the organisation and hold `organisation-bridge-requests:view` in it.
+
+                `filter=code("XXXX-XXXX")` instead looks up the one request the organisation could accept with that code: initiated, not yet accepted, unexpired, and raised by another organisation. It needs `organisation-bridge-requests:update`, takes exactly one code and no other filter, and returns at most one request, without its recipient or bridge. An unknown or expired code returns an empty list.
             operationId: ListOrganisationBridgeRequests
             parameters:
                 - $ref: '#/components/parameters/org_id'
@@ -76905,7 +76915,7 @@ paths:
                 metadata:
                     title: List bridge requests
         post:
-            description: Create code to initiate organisation connection bridge.
+            description: Create code to initiate organisation connection bridge. The code lasts 72 hours. The caller must be a member of the organisation and hold `organisation-bridge-requests:create` in it.
             operationId: CreateOrganisationBridgeRequest
             parameters:
                 - $ref: '#/components/parameters/org_id'
@@ -76916,6 +76926,8 @@ paths:
                     $ref: '#/components/responses/GetOrganisationBridgeRequest'
                 "400":
                     $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
                 "500":
                     $ref: '#/components/responses/InternalServerError'
             security:
@@ -76930,7 +76942,7 @@ paths:
                     title: Create a bridge request
     /v3/orgs/{org_id}/organisation-bridge-requests/{bridge_request_id}:
         get:
-            description: Get an organisation bridge request.
+            description: Get a bridge request the organisation raised or received. The caller must be a member of the organisation and hold `organisation-bridge-requests:view` in it.
             operationId: GetOrganisationBridgeRequest
             parameters:
                 - $ref: '#/components/parameters/org_id'
@@ -76943,6 +76955,8 @@ paths:
                     $ref: '#/components/responses/BadRequest'
                 "401":
                     $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
                 "500":
                     $ref: '#/components/responses/InternalServerError'
             security:
@@ -76955,7 +76969,7 @@ paths:
                 metadata:
                     title: Get a bridge request
         patch:
-            description: Updating organisation bridge requests allows you to approve or reject them.
+            description: Accept another organisation's request with its code, or approve or reject a request the organisation raised once it has been accepted. The caller must be a member of the organisation and hold `organisation-bridge-requests:update` in it. Accepting needs the request's `code`. A missing or wrong code returns a 404, the same as a request that does not exist, and an expired code returns a 422. Approving and rejecting are not bounded by the code's expiry.
             operationId: UpdateOrganisationBridgeRequest
             parameters:
                 - $ref: '#/components/parameters/org_id'
@@ -76967,8 +76981,16 @@ paths:
                     $ref: '#/components/responses/GetOrganisationBridgeRequest'
                 "400":
                     $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "403":
+                    $ref: '#/components/responses/Forbidden'
                 "404":
                     $ref: '#/components/responses/NotFound'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "422":
+                    $ref: '#/components/responses/UnprocessableEntity'
                 "500":
                     $ref: '#/components/responses/InternalServerError'
             security:
@@ -76983,7 +77005,7 @@ paths:
                     title: Update a bridge request
     /v3/orgs/{org_id}/organisation-bridges:
         get:
-            description: List the organisation bridges.
+            description: List the organisation's bridges. The caller must be a member of the organisation or hold a grant in it.
             operationId: ListOrganisationBridges
             parameters:
                 - $ref: '#/components/parameters/org_id'
@@ -77011,7 +77033,7 @@ paths:
                     title: List bridges
     /v3/orgs/{org_id}/organisation-bridges/{bridge_id}:
         get:
-            description: Get an organisation bridge.
+            description: Get one of the organisation's bridges. The caller must be a member of the organisation. This is narrower than listing the organisation's bridges, which a holder of any grant in the organisation may also do.
             operationId: GetOrganisationBridge
             parameters:
                 - $ref: '#/components/parameters/org_id'
@@ -77023,6 +77045,8 @@ paths:
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
                     $ref: '#/components/responses/NotFound'
                 "500":
                     $ref: '#/components/responses/InternalServerError'
@@ -77037,7 +77061,7 @@ paths:
                     title: Get a bridge
     /v3/orgs/{org_id}/organisation-bridges/{bridge_id}/relationships/notification-recipients:
         patch:
-            description: 'Replace the calling organisation''s nominated notification recipients on the bridge. Both organisations share a single list and can see all of it, but each may only nominate its own members: the counterpart organisation''s nominations are left untouched, and submitting a user who is not a member of the calling organisation is rejected. Nominated users who are no longer a member of either organisation are dropped.'
+            description: 'Replace the calling organisation''s nominated notification recipients on the bridge. Both organisations share a single list and can see all of it, but each may only nominate its own members: the counterpart organisation''s nominations are left untouched, and submitting a user who is not a member of the calling organisation is rejected. Nominated users who are no longer a member of either organisation are dropped. The caller must be a member of the calling organisation and hold `organisation-bridges:update` in it.'
             operationId: ReplaceOrganisationBridgeRelationshipToNotificationRecipient
             parameters:
                 - $ref: '#/components/parameters/org_id'
