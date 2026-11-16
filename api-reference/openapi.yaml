@@ -74773,8 +74773,13 @@ paths:
                 the platform has replaced. `alert`, the app's own notifications, is the only kind for now.
 
                 Registering a token the caller already holds refreshes it and answers with the same record. A
-                token held by another user moves to the caller, because a phone can change hands. Either way the
-                answer is a 201 with the token as stored.
+                token held by another user moves to the caller only when the request names the same `device_id`
+                as that user's record, because a phone can change hands and the app keeps its device id. From any
+                other device it is refused with a 409 (`CH.012.307`). Either way a registration that succeeds
+                answers with a 201 and the token as stored.
+
+                A user holds at most 10 tokens. A registration that takes them over 10 deletes their least recently
+                seen tokens. A token is seen each time it is registered.
 
                 Another user's tokens on the device are deleted when the session that registered them has ended:
                 signed out, expired or no longer held. A shared phone then stops receiving the previous person's
@@ -74793,6 +74798,8 @@ paths:
                     $ref: '#/components/responses/BadRequest'
                 "401":
                     $ref: '#/components/responses/Unauthorised'
+                "409":
+                    $ref: '#/components/responses/Conflict'
                 "500":
                     $ref: '#/components/responses/InternalServerError'
             security:
