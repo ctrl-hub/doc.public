@@ -1197,9 +1197,11 @@ components:
                 short_id:
                     type: string
                     description: |
-                        The submission's short reference: the first 8 hex characters of its ID, lowercase. This is
-                        the identity users are shown in place of the full UUID, and it is the value the `short_id`
-                        filter matches, so what a user reads is what they can search for.
+                        The submission's short reference, lowercase: the first 8 hex characters of its ID, or the
+                        last 8 for a version 7 ID. A version 7 ID starts with a timestamp, so its first 8
+                        characters change only every 65.536 seconds, and IDs created in the same interval share
+                        them. This is the identity users are shown in place of the full UUID, and it is the value
+                        the `short_id` filter matches, so what a user reads is what they can search for.
                 created_at:
                     type: string
                     format: date-time
@@ -13543,10 +13545,12 @@ components:
                 short_id:
                     type: string
                     description: |
-                        The parent submission's short reference: the first 8 hex characters of the submission ID,
-                        lowercase. This is the identity users are shown, and it is the value the `short_id` filter
-                        matches. Versions have no short reference of their own; a version's user-facing identity is
-                        this reference plus its iteration.
+                        The parent submission's short reference, lowercase: the first 8 hex characters of the
+                        submission ID, or the last 8 for a version 7 ID. A version 7 ID starts with a timestamp, so
+                        its first 8 characters change only every 65.536 seconds, and IDs created in the same
+                        interval share them. This is the identity users are shown, and it is the value the
+                        `short_id` filter matches. Versions have no short reference of their own; a version's
+                        user-facing identity is this reference plus its iteration.
                 superseded_by:
                     type:
                         - string
@@ -40096,7 +40100,7 @@ components:
                 Available filters:
 
                 - `in(id,[xxx])`: Filter by ID(s)
-                - `contains(short_id,xxx)`: Search submissions by their short ID — the reference shown in the UI (the first 8 hex characters of the full ID), e.g. `contains(short_id,3b6f0147)`. Case-insensitive; partial (substring) match.
+                - `contains(short_id,xxx)`: Search submissions by their short ID — the reference shown in the UI (the first 8 hex characters of the full ID, or the last 8 for a version 7 ID), e.g. `contains(short_id,3b6f0147)`. Case-insensitive; partial (substring) match.
                 - `in(contributor.id,[xxx])`: Filter submissions by contributor ID(s)
                 - `in(creator.id,[xxx])`: Filter submissions by creator ID(s)
                 - `in(form,[xxx])`: Filter submissions by form ID(s)
@@ -77625,6 +77629,11 @@ paths:
                 Update a member's status within an organisation. Only `active` and `inactive`
                 are accepted via this endpoint; `pending` and `unknown` remain system-managed.
 
+                The caller needs permission to update users across the organisation. A
+                permission limited to some users, such as every member's permission on their
+                own record, is refused with 401. A caller cannot change their own status, and
+                is refused with 403.
+
                 `data.id` in the request body must match the `{member_id}` path parameter.
                 A mismatch returns `400 BadRequest`.
             operationId: UpdateMember
@@ -77640,6 +77649,8 @@ paths:
                     $ref: '#/components/responses/BadRequest'
                 "401":
                     $ref: '#/components/responses/Unauthorised'
+                "403":
+                    $ref: '#/components/responses/Forbidden'
                 "404":
                     $ref: '#/components/responses/NotFound'
                 "500":
@@ -84727,9 +84738,10 @@ paths:
                 The request body is optional and names the organisation the caller is acting
                 in. Without it, the organisation is the one that manages the user: the user
                 must be managed by an organisation, and the caller needs permission to update
-                the user there. With it, the caller needs permission to update users in the
-                named organisation and the user must be a member of it; a user who is not
-                returns 404 Not Found.
+                the user there. With it, the caller needs permission to update users across
+                the named organisation, and the user must be a member of it; a user who is not
+                returns 404 Not Found. A permission limited to some users, such as every
+                member's permission on their own record, is refused with 401.
 
                 The server chooses which email to send. A user managed by the acting
                 organisation who has never set a password (`password_set_at` is null) is sent
