@@ -74776,6 +74776,11 @@ paths:
                 token held by another user moves to the caller, because a phone can change hands. Either way the
                 answer is a 201 with the token as stored.
 
+                Another user's tokens on the device are deleted when the session that registered them has ended:
+                signed out, expired or no longer held. A shared phone then stops receiving the previous person's
+                notifications once someone else signs in and registers. Another user's token whose session is still
+                active is kept, because the `device_id` comes from the app and does not prove whose device it is.
+
                 Only a user can register a device. A service account or agent is refused (`CH.012.304`). No
                 permission is needed: the token belongs to the caller.
             operationId: RegisterPushToken
