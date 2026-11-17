@@ -497,6 +497,9 @@ components:
                 `triggering_job_role` (deprecated), and `closed_by` are optional to-one relationships,
                 populated only when relevant (subject present, role-resolved assignees,
                 closed action respectively). `triggering_job_roles` is an optional to-many.
+                `source_transition_record` and `source_workflow_instance` name the workflow
+                move that raised the action. At most one is present, and neither is present
+                on an action created through `POST /v3/actions`.
             required:
                 - organisation
             properties:
@@ -584,6 +587,28 @@ components:
                     properties:
                         data:
                             $ref: '#/components/schemas/UserRelationship'
+                source_transition_record:
+                    type: object
+                    description: |
+                        The workflow transition record whose move raised this action. The step that
+                        raised it is the record's `to` step. Absent when the action was not raised by
+                        a move between steps.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/WorkflowTransitionRecordRelationship'
+                source_workflow_instance:
+                    type: object
+                    description: |
+                        The workflow instance whose first step raised this action. Entering the first
+                        step writes no transition record, so the step that raised it is the workflow's
+                        initial step. Absent when the action was not raised by entering the first step.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/WorkflowInstanceRelationship'
         OrganisationRelationship:
             type: object
             description: Represents a relationship to an organisation
@@ -654,6 +679,34 @@ components:
                 type:
                     type: string
                     const: job-roles
+        WorkflowTransitionRecordRelationship:
+            type: object
+            description: Represents a relationship to a workflow transition record
+            required:
+                - id
+                - type
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the workflow transition record
+                type:
+                    type: string
+                    const: workflow-transition-records
+        WorkflowInstanceRelationship:
+            type: object
+            description: Represents a relationship to a workflow instance
+            required:
+                - id
+                - type
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the workflow instance
+                type:
+                    type: string
+                    const: workflow-instances
         User:
             type: object
             description: A user
@@ -1197,9 +1250,11 @@ components:
                 short_id:
                     type: string
                     description: |
-                        The submission's short reference: the first 8 hex characters of its ID, lowercase. This is
-                        the identity users are shown in place of the full UUID, and it is the value the `short_id`
-                        filter matches, so what a user reads is what they can search for.
+                        The submission's short reference, lowercase: the first 8 hex characters of its ID, or the
+                        last 8 for a version 7 ID. A version 7 ID starts with a timestamp, so its first 8
+                        characters change only every 65.536 seconds, and IDs created in the same interval share
+                        them. This is the identity users are shown in place of the full UUID, and it is the value
+                        the `short_id` filter matches, so what a user reads is what they can search for.
                 created_at:
                     type: string
                     format: date-time
@@ -1475,20 +1530,6 @@ components:
                 type:
                     type: string
                     const: workflow-definition-versions
-        WorkflowInstanceRelationship:
-            type: object
-            description: Represents a relationship to a workflow instance
-            required:
-                - id
-                - type
-            properties:
-                id:
-                    type: string
-                    format: uuid
-                    description: The unique identifier of the workflow instance
-                type:
-                    type: string
-                    const: workflow-instances
         WorkOrderRelationship:
             type: object
             description: Represents a relationship to a work order
@@ -1887,6 +1928,7 @@ components:
             description: Relationships for an agent issue
             required:
                 - organisation
+                - submissions
             properties:
                 organisation:
                     type: object
@@ -2029,6 +2071,16 @@ components:
                                 - $ref: '#/components/schemas/AgentRelationship'
                                 - type: "null"
                             description: The agent assigned to this issue.
+                submissions:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            type: array
+                            items:
+                                $ref: '#/components/schemas/FormSubmissionRelationship'
+                            description: The form submissions linked to this issue.
         AgentRelationship:
             type: object
             description: Represents a relationship to an agent
@@ -2756,6 +2808,7 @@ components:
                     type: object
                     required:
                         - documents
+                        - calendar
                     properties:
                         teams:
                             type: object
@@ -2818,6 +2871,24 @@ components:
                                     uniqueItems: true
                                     examples:
                                         - ["b234c567-8901-2345-6789-abcdef012345"]
+                        calendar:
+                            type: object
+                            description: Calendar settings for the organisation.
+                            required:
+                                - bank_holiday_nation
+                            properties:
+                                bank_holiday_nation:
+                                    type: string
+                                    description: |
+                                        The UK nation whose bank holidays the organisation keeps. Form
+                                        reminders on its forms skip that nation's bank holidays unless a
+                                        reminder names another nation. England and Wales until it is set.
+                                    enum:
+                                        - england-and-wales
+                                        - scotland
+                                        - northern-ireland
+                                    examples:
+                                        - england-and-wales
         OrganisationMeta:
             type: object
             description: Meta information for an organisation
@@ -2970,7 +3041,6 @@ components:
                 - id
                 - type
                 - attributes
-                - meta
                 - relationships
             properties:
                 id:
@@ -2982,8 +3052,6 @@ components:
                     const: audit-events
                 attributes:
                     $ref: '#/components/schemas/AuditEventAttributes'
-                meta:
-                    $ref: '#/components/schemas/AuditEventMeta'
                 relationships:
                     $ref: '#/components/schemas/AuditEventRelationships'
         AuditEventIncludes:
@@ -3007,7 +3075,7 @@ components:
                 - resource
                 - values
                 - principal
-                - request_id
+                - trace_id
                 - context
             properties:
                 time:
@@ -3018,9 +3086,10 @@ components:
                     type: string
                     enum:
                         - create
+                        - read
                         - update
                         - delete
-                    description: The type of operation that was performed
+                    description: The type of operation that was performed. `read` records a read the API audits, such as an export or a download.
                 resource:
                     type: object
                     required:
@@ -3064,7 +3133,9 @@ components:
                                     - object
                                     - array
                                     - "null"
-                                description: The original data type
+                                    - time
+                                    - unknown
+                                description: The original data type. `time` is a date and time, and `unknown` is a value of any other kind, such as a pointer.
                     description: Array of field changes that occurred during the operation
                 principal:
                     type: object
@@ -3085,10 +3156,9 @@ components:
                             format: uuid
                             description: The principal id
                     description: Information about who performed the operation
-                request_id:
+                trace_id:
                     type: string
-                    format: uuid
-                    description: The unique identifier of the request that triggered this audit event
+                    description: The OpenTelemetry trace id of the request that made the change. Empty when the change was made outside a traced request.
                 context:
                     type: object
                     required:
@@ -3142,21 +3212,12 @@ components:
                 reason:
                     type: string
                     description: Why the change was made. Present only on a change that requires a reason.
-        AuditEventMeta:
-            type: object
-            description: Metadata for an audit event
-            required:
-                - created_at
-            properties:
-                created_at:
-                    type: string
-                    format: date-time
-                    description: The date and time when the audit event was created
         AuditEventRelationships:
             type: object
             description: Relationships for an audit event
             required:
                 - organisation
+                - user
             properties:
                 organisation:
                     type: object
@@ -3167,12 +3228,58 @@ components:
                             $ref: '#/components/schemas/OrganisationRelationship'
                 user:
                     type: object
-                    description: The user who made the change. Absent when the change was made by a service account, a job or a subscriber.
+                    description: The user who made the change. Its data is null when the change was made by a service account, a job or a subscriber.
                     required:
                         - data
                     properties:
                         data:
-                            $ref: '#/components/schemas/UserRelationship'
+                            oneOf:
+                                - $ref: '#/components/schemas/UserRelationship'
+                                - type: "null"
+        BankHoliday:
+            type: object
+            description: One bank holiday in one UK nation, as gov.uk publishes it.
+            required:
+                - id
+                - type
+                - attributes
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the bank holiday.
+                type:
+                    type: string
+                    const: bank-holidays
+                attributes:
+                    $ref: '#/components/schemas/BankHolidayAttributes'
+        BankHolidayAttributes:
+            type: object
+            required:
+                - date
+                - nation
+                - title
+            properties:
+                date:
+                    type: string
+                    format: date
+                    description: The calendar date of the holiday.
+                    examples:
+                        - "2026-12-25"
+                nation:
+                    type: string
+                    description: The UK nation that keeps the holiday.
+                    enum:
+                        - england-and-wales
+                        - scotland
+                        - northern-ireland
+                    examples:
+                        - england-and-wales
+                title:
+                    type: string
+                    description: The holiday's name, as gov.uk gives it.
+                    examples:
+                        - Christmas Day
         BriefingRecipient:
             type: object
             description: One person a briefing was sent to, and how far they have got with it.
@@ -3806,6 +3913,7 @@ components:
             required:
                 - organisation
                 - author
+                - commentable
             properties:
                 organisation:
                     type: object
@@ -3814,6 +3922,15 @@ components:
                     properties:
                         data:
                             $ref: '#/components/schemas/OrganisationRelationship'
+                commentable:
+                    type: object
+                    description: >-
+                        The record the comment is on. It names the same record as whichever of agent_issue, plane_project, plane_goal and plane_plan is set, and is the relationship include=commentable follows.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/CommentableRelationship'
                 agent_issue:
                     type: object
                     properties:
@@ -3900,6 +4017,24 @@ components:
                                     type: string
                                     format: uuid
                             description: The author of this comment.
+        CommentableRelationship:
+            type: object
+            description: Represents a relationship to the record a comment is on
+            required:
+                - id
+                - type
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the record
+                type:
+                    type: string
+                    enum:
+                        - agent-issues
+                        - plane-projects
+                        - plane-goals
+                        - plane-plans
         PlaneProject:
             type: object
             description: A Plane project for organising AI agent issues
@@ -13543,10 +13678,12 @@ components:
                 short_id:
                     type: string
                     description: |
-                        The parent submission's short reference: the first 8 hex characters of the submission ID,
-                        lowercase. This is the identity users are shown, and it is the value the `short_id` filter
-                        matches. Versions have no short reference of their own; a version's user-facing identity is
-                        this reference plus its iteration.
+                        The parent submission's short reference, lowercase: the first 8 hex characters of the
+                        submission ID, or the last 8 for a version 7 ID. A version 7 ID starts with a timestamp, so
+                        its first 8 characters change only every 65.536 seconds, and IDs created in the same
+                        interval share them. This is the identity users are shown, and it is the value the
+                        `short_id` filter matches. Versions have no short reference of their own; a version's
+                        user-facing identity is this reference plus its iteration.
                 superseded_by:
                     type:
                         - string
@@ -17561,6 +17698,33 @@ components:
                     type: string
                     format: date-time
                     description: When the token was last registered.
+        OperationDeletion:
+            type: object
+            description: The deletion of an operation. Its id is the deleted operation's id, and it carries nothing else about the operation.
+            required:
+                - id
+                - type
+                - attributes
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The id of the deleted operation.
+                type:
+                    type: string
+                    const: operation-deletions
+                attributes:
+                    $ref: '#/components/schemas/OperationDeletionAttributes'
+        OperationDeletionAttributes:
+            type: object
+            description: Attributes of an operation deletion
+            required:
+                - deleted_at
+            properties:
+                deleted_at:
+                    type: string
+                    format: date-time
+                    description: When the operation was deleted.
         OperationType:
             type: object
             description: An operation type
@@ -18770,9 +18934,9 @@ components:
                 url:
                     type: string
                     maxLength: 2048
-                    description: The page's path and query, as the router held it.
+                    description: The page's path, without its query string or fragment. The API drops any it is sent.
                     examples:
-                        - /people/teams?page=2
+                        - /people/teams
                 route_name:
                     type: string
                     maxLength: 256
@@ -28849,6 +29013,8 @@ components:
                               properties:
                                 data:
                                     $ref: '#/components/schemas/Agent'
+                                included:
+                                    $ref: '#/components/schemas/AgentIncludes'
                             - $ref: '#/components/schemas/JSONAPI'
         ListAgentBriefings:
             description: List of briefings.
@@ -29077,6 +29243,30 @@ components:
                                     $ref: '#/components/schemas/AuditEvent'
                                 included:
                                     $ref: '#/components/schemas/AuditEventIncludes'
+                            - $ref: '#/components/schemas/JSONAPI'
+        ListBankHolidays:
+            description: A list of bank holidays
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    title: A list of bank holidays
+                                    type: array
+                                    items:
+                                        $ref: '#/components/schemas/BankHoliday'
+                            - $ref: '#/components/schemas/DocumentMeta'
                             - $ref: '#/components/schemas/JSONAPI'
         ListBriefingRecipients:
             description: A list of briefing recipients
@@ -32514,6 +32704,30 @@ components:
                               properties:
                                 data:
                                     $ref: '#/components/schemas/PushToken'
+                            - $ref: '#/components/schemas/JSONAPI'
+        ListOperationDeletions:
+            description: A list of operation deletions
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    title: A list of operation deletions
+                                    type: array
+                                    items:
+                                        $ref: '#/components/schemas/OperationDeletion'
+                            - $ref: '#/components/schemas/DocumentMeta'
                             - $ref: '#/components/schemas/JSONAPI'
         ListOperationTypes:
             description: List of operation types.
@@ -40096,7 +40310,7 @@ components:
                 Available filters:
 
                 - `in(id,[xxx])`: Filter by ID(s)
-                - `contains(short_id,xxx)`: Search submissions by their short ID — the reference shown in the UI (the first 8 hex characters of the full ID), e.g. `contains(short_id,3b6f0147)`. Case-insensitive; partial (substring) match.
+                - `contains(short_id,xxx)`: Search submissions by their short ID — the reference shown in the UI (the first 8 hex characters of the full ID, or the last 8 for a version 7 ID), e.g. `contains(short_id,3b6f0147)`. Case-insensitive; partial (substring) match.
                 - `in(contributor.id,[xxx])`: Filter submissions by contributor ID(s)
                 - `in(creator.id,[xxx])`: Filter submissions by creator ID(s)
                 - `in(form,[xxx])`: Filter submissions by form ID(s)
@@ -41069,6 +41283,15 @@ components:
                 type: string
                 format: uuid
             example: 3f2e1d0c-9b8a-4f7e-8d6c-5b4a3f2e1d0c
+        operation_deletions_since:
+            name: since
+            in: query
+            description: Only operations deleted at or after this time are listed. An RFC 3339 date-time. A client reading changes sends a time earlier than the newest deletion it has seen, so that consecutive reads overlap; the operation's description says why.
+            required: true
+            schema:
+                type: string
+                format: date-time
+            example: "2026-11-16T09:00:00Z"
         operation_types_include:
             name: include
             in: query
@@ -45161,6 +45384,9 @@ components:
                                                 items:
                                                     type: string
                                                 description: Labels attached to the issue.
+                                            closed:
+                                                type: boolean
+                                                description: Whether the issue is closed.
                                     relationships:
                                         type: object
                                         required:
@@ -45271,6 +45497,57 @@ components:
                                                                     format: uuid
                                                                     description: The ID of the agent to assign to this issue.
                                                             - type: "null"
+                                            duplicate_of:
+                                                type: object
+                                                properties:
+                                                    data:
+                                                        oneOf:
+                                                            - type: object
+                                                              required:
+                                                                - type
+                                                                - id
+                                                              properties:
+                                                                type:
+                                                                    type: string
+                                                                    const: agent-issues
+                                                                id:
+                                                                    type: string
+                                                                    format: uuid
+                                                            - type: "null"
+                                            blocked_by:
+                                                type: object
+                                                properties:
+                                                    data:
+                                                        type: array
+                                                        items:
+                                                            type: object
+                                                            required:
+                                                                - type
+                                                                - id
+                                                            properties:
+                                                                type:
+                                                                    type: string
+                                                                    const: agent-issues
+                                                                id:
+                                                                    type: string
+                                                                    format: uuid
+                                            submissions:
+                                                type: object
+                                                properties:
+                                                    data:
+                                                        type: array
+                                                        items:
+                                                            type: object
+                                                            required:
+                                                                - type
+                                                                - id
+                                                            properties:
+                                                                type:
+                                                                    type: string
+                                                                    const: form-submissions
+                                                                id:
+                                                                    type: string
+                                                                    format: uuid
         UpdateAgentIssue:
             required: true
             description: The agent issue to update.
@@ -45452,6 +45729,23 @@ components:
                                                                     type: string
                                                                     format: uuid
                                                             - type: "null"
+                                            submissions:
+                                                type: object
+                                                properties:
+                                                    data:
+                                                        type: array
+                                                        items:
+                                                            type: object
+                                                            required:
+                                                                - type
+                                                                - id
+                                                            properties:
+                                                                type:
+                                                                    type: string
+                                                                    const: form-submissions
+                                                                id:
+                                                                    type: string
+                                                                    format: uuid
         CreateAgent:
             required: true
             description: The agent to create.
@@ -46664,6 +46958,8 @@ components:
                                                 description: The text content of the comment.
                                     relationships:
                                         type: object
+                                        description: >-
+                                            Name exactly one of agent_issue, plane_project, plane_goal and plane_plan, the record the comment is on. A request naming none of them, or more than one, is refused with 400 CH.018.026.
                                         required:
                                             - organisation
                                         properties:
@@ -49463,6 +49759,13 @@ components:
                 `manufacturer` and `model` are both optional, but if `model` is supplied with a
                 non-null `data` then `manufacturer` MUST also be supplied with a non-null `data`
                 and the model must belong to that manufacturer.
+                The item must be allocated: supply exactly one of `allocated_person`,
+                `allocated_scheme`, `allocated_work_order`, `allocated_location` or
+                `allocated_vehicle`, with an optional `meta.starts_at`. The target must belong
+                to the item's organisation, and a person must be an active member of it. None,
+                or more than one, is refused with a 400 that names the five relationships. The
+                allocation is recorded in the item's audit-event history, as the allocation
+                endpoints record it.
             content:
                 application/vnd.api+json:
                     schema:
@@ -49600,13 +49903,67 @@ components:
                                                         type: array
                                                         items:
                                                             $ref: '#/components/schemas/EquipmentCategoryRelationship'
+                                            allocated_person:
+                                                type: object
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/UserRelationship'
+                                                    meta:
+                                                        $ref: '#/components/schemas/AllocationMeta'
+                                            allocated_scheme:
+                                                type: object
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/SchemeRelationship'
+                                                    meta:
+                                                        $ref: '#/components/schemas/AllocationMeta'
+                                            allocated_work_order:
+                                                type: object
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/WorkOrderRelationship'
+                                                    meta:
+                                                        $ref: '#/components/schemas/AllocationMeta'
+                                            allocated_location:
+                                                type: object
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/LocationRelationship'
+                                                    meta:
+                                                        $ref: '#/components/schemas/AllocationMeta'
+                                            allocated_vehicle:
+                                                type: object
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/VehicleRelationship'
+                                                    meta:
+                                                        $ref: '#/components/schemas/AllocationMeta'
         UpdateEquipmentItem:
             required: true
             description: |
                 The full equipment item representation. This is a replace (PUT) - any optional
                 relationship or attribute omitted from the body (such as owner) is cleared.
-                Allocation to a person, scheme, work order, location or vehicle is managed
-                separately via the allocation relationship endpoints, not through this body.
+                The allocation is the exception: an item's allocation can never be cleared, so
+                leaving all five `allocated_*` relationships out keeps the current one.
+                Supplying one of `allocated_person`, `allocated_scheme`, `allocated_work_order`,
+                `allocated_location` or `allocated_vehicle` reallocates the item to it, with the
+                same checks and history as the allocation relationship endpoints. Supplying
+                the relationship the item is already allocated to without `meta.starts_at`
+                also keeps the current allocation, its start date included; to change only
+                the start date, supply that relationship with a new `meta.starts_at`. An item with
+                no allocation, created before allocation was required, must be given one: an
+                update that leaves it out is refused with a 400, as is one that supplies more
+                than one.
                 `reference`, `serial` and `asset_number` are all required. `asset_number` must
                 be unique within the organisation; duplicate `serial` values within the same
                 organisation are allowed. business_area is required and must always be
@@ -49749,6 +50106,51 @@ components:
                                                         type: array
                                                         items:
                                                             $ref: '#/components/schemas/EquipmentCategoryRelationship'
+                                            allocated_person:
+                                                type: object
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/UserRelationship'
+                                                    meta:
+                                                        $ref: '#/components/schemas/AllocationMeta'
+                                            allocated_scheme:
+                                                type: object
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/SchemeRelationship'
+                                                    meta:
+                                                        $ref: '#/components/schemas/AllocationMeta'
+                                            allocated_work_order:
+                                                type: object
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/WorkOrderRelationship'
+                                                    meta:
+                                                        $ref: '#/components/schemas/AllocationMeta'
+                                            allocated_location:
+                                                type: object
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/LocationRelationship'
+                                                    meta:
+                                                        $ref: '#/components/schemas/AllocationMeta'
+                                            allocated_vehicle:
+                                                type: object
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/VehicleRelationship'
+                                                    meta:
+                                                        $ref: '#/components/schemas/AllocationMeta'
         CreateEquipmentItemPreAllocation:
             required: true
             description: Create a pre-allocation (planned reservation) for an equipment item.
@@ -55747,6 +56149,22 @@ components:
                                                                                 description: The rule value.
                                                                                 examples:
                                                                                     - "123"
+        RoleGroupUsersRelationship:
+            required: true
+            description: A to-many relationship body of user resource identifiers.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: array
+                                description: The users to add or remove, at most 100 in one request.
+                                maxItems: 100
+                                items:
+                                    $ref: '#/components/schemas/UserRelationship'
         UpdateMember:
             required: true
             description: |
@@ -56904,6 +57322,39 @@ components:
                                                 type: string
                                                 format: date-time
                                                 description: The new expiry date, after the current one.
+        UpdateOrganisationCalendarSettings:
+            required: true
+            description: The calendar settings for the organisation to update.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                    - attributes
+                                properties:
+                                    type:
+                                        type: string
+                                        const: calendar-settings
+                                    attributes:
+                                        type: object
+                                        required:
+                                            - bank_holiday_nation
+                                        properties:
+                                            bank_holiday_nation:
+                                                type: string
+                                                description: The UK nation whose bank holidays the organisation keeps.
+                                                enum:
+                                                    - england-and-wales
+                                                    - scotland
+                                                    - northern-ireland
+                                                examples:
+                                                    - scotland
         UpdateOrganisationDocumentSettings:
             required: true
             description: The document-settings for the organisation to update.
@@ -57632,6 +58083,10 @@ components:
                                                     - completed
                                                     - archived
                                                 description: The current status of the project.
+                                            target_date:
+                                                type: string
+                                                format: date-time
+                                                description: The target completion date for the project.
                                     relationships:
                                         type: object
                                         required:
@@ -57655,6 +58110,40 @@ components:
                                                                 type: string
                                                                 format: uuid
                                                                 description: The ID of the organisation.
+                                            parent_project:
+                                                type: object
+                                                properties:
+                                                    data:
+                                                        oneOf:
+                                                            - type: object
+                                                              required:
+                                                                - type
+                                                                - id
+                                                              properties:
+                                                                type:
+                                                                    type: string
+                                                                    const: plane-projects
+                                                                id:
+                                                                    type: string
+                                                                    format: uuid
+                                                            - type: "null"
+                                            goal:
+                                                type: object
+                                                properties:
+                                                    data:
+                                                        oneOf:
+                                                            - type: object
+                                                              required:
+                                                                - type
+                                                                - id
+                                                              properties:
+                                                                type:
+                                                                    type: string
+                                                                    const: plane-goals
+                                                                id:
+                                                                    type: string
+                                                                    format: uuid
+                                                            - type: "null"
         UpdatePlaneProject:
             required: true
             description: The plane project to update.
@@ -57696,6 +58185,47 @@ components:
                                                     - completed
                                                     - archived
                                                 description: The current status of the project.
+                                            target_date:
+                                                type: string
+                                                format: date-time
+                                                description: The target completion date for the project.
+                                    relationships:
+                                        type: object
+                                        properties:
+                                            parent_project:
+                                                type: object
+                                                properties:
+                                                    data:
+                                                        oneOf:
+                                                            - type: object
+                                                              required:
+                                                                - type
+                                                                - id
+                                                              properties:
+                                                                type:
+                                                                    type: string
+                                                                    const: plane-projects
+                                                                id:
+                                                                    type: string
+                                                                    format: uuid
+                                                            - type: "null"
+                                            goal:
+                                                type: object
+                                                properties:
+                                                    data:
+                                                        oneOf:
+                                                            - type: object
+                                                              required:
+                                                                - type
+                                                                - id
+                                                              properties:
+                                                                type:
+                                                                    type: string
+                                                                    const: plane-goals
+                                                                id:
+                                                                    type: string
+                                                                    format: uuid
+                                                            - type: "null"
         CreatePlaneSessionEvent:
             required: true
             description: The plane session event to create.
@@ -64053,8 +64583,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Agent Issues
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: List agent issues
@@ -64079,8 +64607,6 @@ paths:
             summary: Create a new agent issue
             tags:
                 - Agent Issues
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: Create an agent issue
@@ -64108,8 +64634,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Agent Issues
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: Get an agent issue
@@ -64138,8 +64662,6 @@ paths:
             summary: Update an existing agent issue
             tags:
                 - Agent Issues
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: Update an agent issue
@@ -64168,8 +64690,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Agent Templates
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: List agent templates
@@ -64196,8 +64716,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Agent Templates
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: Get an agent template
@@ -64227,8 +64745,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Agents
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: List agents
@@ -64253,8 +64769,6 @@ paths:
             summary: Create a new agent
             tags:
                 - Agents
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: Create an agent
@@ -64282,8 +64796,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Agents
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: Get an agent
@@ -64312,8 +64824,6 @@ paths:
             summary: Update an existing agent
             tags:
                 - Agents
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: Update an agent
@@ -64343,8 +64853,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Agent Briefings
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: List agent briefings
@@ -64371,8 +64879,6 @@ paths:
             summary: Create a new agent briefing
             tags:
                 - Agent Briefings
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: Create an agent briefing
@@ -64400,14 +64906,12 @@ paths:
                 - OAuth2: []
             tags:
                 - Agent Briefings
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: Get an agent briefing
     /v3/agents/{agent_id}/generate-briefing:
         post:
-            description: Runs the AI agent to generate a new training compliance briefing using domain tools. Falls back to a golden briefing if agent generation fails.
+            description: Generation isn't implemented yet. Every call answers 500 with the error code CH.018.004 and creates no briefing. ctrl-hub/product#4181 will make it run the agent with its domain tools, falling back to a golden briefing, and answer 201 with the briefing it stores.
             operationId: GenerateBriefing
             parameters:
                 - $ref: '#/components/parameters/agent_id'
@@ -64422,11 +64926,9 @@ paths:
                 - Session: []
                 - Cookie: []
                 - OAuth2: []
-            summary: Generate a briefing using AI
+            summary: Generate a briefing using AI (not implemented)
             tags:
                 - Agent Briefings
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: Generate an agent briefing
@@ -64864,8 +65366,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Audit Events
-            x-ctrl-hub:
-                domain: auditor
             x-mint:
                 metadata:
                     title: List audit events
@@ -64891,11 +65391,43 @@ paths:
                 - OAuth2: []
             tags:
                 - Audit Events
-            x-ctrl-hub:
-                domain: auditor
             x-mint:
                 metadata:
                     title: Get an audit event
+    /v3/bank-holidays:
+        get:
+            description: |
+                List the UK bank holidays held for each nation, as gov.uk publishes them,
+                in date order. They are the same for every organisation. The list holds a
+                few years of holidays for three nations.
+
+                Any signed-in caller may read it.
+
+                This operation does not support `include`, so the response has no `included` member.
+            operationId: ListBankHolidays
+            parameters:
+                - $ref: '#/components/parameters/limit'
+                - $ref: '#/components/parameters/offset'
+                - $ref: '#/components/parameters/page'
+            responses:
+                "200":
+                    $ref: '#/components/responses/ListBankHolidays'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: List bank holidays
+            tags:
+                - Bank Holidays
+            x-mint:
+                metadata:
+                    title: List bank holidays
     /v3/briefing-recipients:
         get:
             description: |
@@ -65716,8 +66248,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Comments
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: List comments
@@ -65742,8 +66272,6 @@ paths:
             summary: Create a new comment
             tags:
                 - Comments
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: Create a comment
@@ -65771,8 +66299,6 @@ paths:
             summary: Delete a comment
             tags:
                 - Comments
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: Delete a comment
@@ -65799,8 +66325,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Comments
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: Get a comment
@@ -65829,8 +66353,6 @@ paths:
             summary: Update a comment
             tags:
                 - Comments
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: Update a comment
@@ -68443,6 +68965,11 @@ paths:
                 This is the same set the API enforces on write, so anyone listed here will be
                 accepted as an approver on an approval request for that document.
 
+                The caller needs `document-review-requests:create` on the work, or `schemes:view` on
+                its scheme, in one of their organisations. A caller whose organisation is party to the
+                work but who holds neither gets `401`. A caller whose organisation is not party to it
+                gets an empty list.
+
                 Each person carries only what choosing a reviewer needs: their id, name and email, and the
                 organisations they belong to that are party to the work. Their other attributes and
                 relationships, such as contact details, address and identities, are absent. There is no
@@ -69521,6 +70048,7 @@ paths:
                 (person, scheme, work order, location or vehicle). Optional `meta.starts_at`
                 records when the allocation should take effect. Recorded in the item's
                 audit-event history.
+                The allocation can never be cleared, so `data: null` is refused with a 400.
             operationId: AllocateLocationToEquipmentItem
             parameters:
                 - $ref: '#/components/parameters/equipment_item_id'
@@ -69580,6 +70108,7 @@ paths:
                 (person, scheme, work order, location or vehicle). Optional `meta.starts_at`
                 records when the allocation should take effect. Recorded in the item's
                 audit-event history.
+                The allocation can never be cleared, so `data: null` is refused with a 400.
             operationId: AllocatePersonToEquipmentItem
             parameters:
                 - $ref: '#/components/parameters/equipment_item_id'
@@ -69639,6 +70168,7 @@ paths:
                 (person, scheme, work order, location or vehicle). Optional `meta.starts_at`
                 records when the allocation should take effect. Recorded in the item's
                 audit-event history.
+                The allocation can never be cleared, so `data: null` is refused with a 400.
             operationId: AllocateSchemeToEquipmentItem
             parameters:
                 - $ref: '#/components/parameters/equipment_item_id'
@@ -69698,6 +70228,7 @@ paths:
                 (person, scheme, work order, location or vehicle). Optional `meta.starts_at`
                 records when the allocation should take effect. Recorded in the item's
                 audit-event history.
+                The allocation can never be cleared, so `data: null` is refused with a 400.
             operationId: AllocateVehicleToEquipmentItem
             parameters:
                 - $ref: '#/components/parameters/equipment_item_id'
@@ -69757,6 +70288,7 @@ paths:
                 (person, scheme, work order, location or vehicle). Optional `meta.starts_at`
                 records when the allocation should take effect. Recorded in the item's
                 audit-event history.
+                The allocation can never be cleared, so `data: null` is refused with a 400.
             operationId: AllocateWorkOrderToEquipmentItem
             parameters:
                 - $ref: '#/components/parameters/equipment_item_id'
@@ -73334,8 +73866,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Learnings
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: List learnings
@@ -73360,8 +73890,6 @@ paths:
             summary: Create a new learning
             tags:
                 - Learnings
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: Create a learning
@@ -73389,8 +73917,6 @@ paths:
             summary: Delete a learning
             tags:
                 - Learnings
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: Delete a learning
@@ -73417,8 +73943,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Learnings
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: Get a learning
@@ -73447,8 +73971,6 @@ paths:
             summary: Update an existing learning
             tags:
                 - Learnings
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: Update a learning
@@ -74812,6 +75334,52 @@ paths:
             x-mint:
                 metadata:
                     title: Register a device for push notifications
+    /v3/operation-deletions:
+        get:
+            description: |
+                List the operations deleted at or after `since`, oldest deletion first. A client that keeps its own copy of
+                operations reads this to remove the ones deleted since it last synced.
+
+                Each resource carries the operation's id and, in `attributes.deleted_at`, when it was deleted. It carries nothing
+                else about the operation. A caller sees only the deletions of operations their current `operations:view` grants
+                reach, by the same grants the list of operations applies. A caller who has since lost a grant sees no deletion
+                under it, so a client keeps a full read of operations as the backstop for lost access.
+
+                A deleted operation appears in no other list of operations.
+
+                **Choosing `since`.** A deletion is stamped with the time the server handled the request, before the deletion
+                commits, and by the clock of the server that handled it. So a deletion can become visible after a read that started
+                later than its `deleted_at`. A client that sends the start of its previous read as the next `since` can therefore
+                miss a deletion for good. Overlap the windows instead: send either the newest `deleted_at` already received or the
+                previous `since`, in both cases less a margin of at least a minute. A deletion read twice is harmless, because `since` is
+                inclusive and removing an operation that is already gone does nothing.
+
+                This operation does not support `filter` or `include`, so the response has no `included` member.
+            operationId: ListOperationDeletions
+            parameters:
+                - $ref: '#/components/parameters/operation_deletions_since'
+                - $ref: '#/components/parameters/limit'
+                - $ref: '#/components/parameters/offset'
+                - $ref: '#/components/parameters/page'
+            responses:
+                "200":
+                    $ref: '#/components/responses/ListOperationDeletions'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: List deleted operations
+            tags:
+                - Operations
+            x-mint:
+                metadata:
+                    title: List deleted operations
     /v3/operation-types:
         get:
             description: List all of the operation types visible to the caller.
@@ -77502,8 +78070,39 @@ paths:
                 metadata:
                     title: Update a role group
     /v3/orgs/{org_id}/iam/groups/{group_id}/relationships/members:
+        delete:
+            description: Remove the users in the body from the group. A user who is not a member is ignored. The group's other users and its service accounts are not changed, so concurrent additions and removals of different users all take effect.
+            operationId: RemoveIamGroupMembers
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+                - $ref: '#/components/parameters/group_id'
+            requestBody:
+                $ref: '#/components/requestBodies/RoleGroupUsersRelationship'
+            responses:
+                "204":
+                    $ref: '#/components/responses/NoContent'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "403":
+                    $ref: '#/components/responses/Forbidden'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Remove users from a group
+            tags:
+                - IAM Role Groups
+            x-mint:
+                metadata:
+                    title: Remove users from a group
         patch:
-            description: Replace the group's users with those in the body. If the body names any service accounts, they replace the group's service accounts; otherwise they are left as they are.
+            description: Replace the group's users with those in the body. If the body names any service accounts, they replace the group's service accounts; otherwise they are left as they are. The body replaces the whole list, so a concurrent change by someone else is overwritten. To add or remove particular users, use POST or DELETE on this path.
             operationId: ReplaceIamGroupRelationshipToMember
             parameters:
                 - $ref: '#/components/parameters/org_id'
@@ -77540,6 +78139,37 @@ paths:
             x-mint:
                 metadata:
                     title: Replace group members
+        post:
+            description: Add the users in the body to the group. A user who is already a member is left as they are. The group's other users and its service accounts are not changed, so concurrent additions and removals of different users all take effect.
+            operationId: AddIamGroupMembers
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+                - $ref: '#/components/parameters/group_id'
+            requestBody:
+                $ref: '#/components/requestBodies/RoleGroupUsersRelationship'
+            responses:
+                "204":
+                    $ref: '#/components/responses/NoContent'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "403":
+                    $ref: '#/components/responses/Forbidden'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Add users to a group
+            tags:
+                - IAM Role Groups
+            x-mint:
+                metadata:
+                    title: Add users to a group
     /v3/orgs/{org_id}/iam/member-stats:
         get:
             description: Get stats of members in an organisation.
@@ -77625,6 +78255,11 @@ paths:
                 Update a member's status within an organisation. Only `active` and `inactive`
                 are accepted via this endpoint; `pending` and `unknown` remain system-managed.
 
+                The caller needs permission to update users across the organisation. A
+                permission limited to some users, such as every member's permission on their
+                own record, is refused with 401. A caller cannot change their own status, and
+                is refused with 403.
+
                 `data.id` in the request body must match the `{member_id}` path parameter.
                 A mismatch returns `400 BadRequest`.
             operationId: UpdateMember
@@ -77640,6 +78275,8 @@ paths:
                     $ref: '#/components/responses/BadRequest'
                 "401":
                     $ref: '#/components/responses/Unauthorised'
+                "403":
+                    $ref: '#/components/responses/Forbidden'
                 "404":
                     $ref: '#/components/responses/NotFound'
                 "500":
@@ -79345,6 +79982,39 @@ paths:
             x-mint:
                 metadata:
                     title: Renew a reminder
+    /v3/orgs/{org_id}/settings/calendar:
+        patch:
+            description: |
+                Set the UK nation whose bank holidays the organisation keeps. Form
+                reminders on the organisation's forms skip that nation's bank holidays,
+                unless a reminder names another nation. Requires the
+                `calendar-settings:update` permission, granted organisation-wide.
+            operationId: UpdateOrganisationCalendarSettings
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+            requestBody:
+                $ref: '#/components/requestBodies/UpdateOrganisationCalendarSettings'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetOrganisation'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Update an organisation's calendar settings
+            tags:
+                - Organisations
+            x-mint:
+                metadata:
+                    title: Update organisation calendar settings
     /v3/orgs/{org_id}/settings/documents:
         patch:
             description: |
@@ -79799,8 +80469,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Plane Goals
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: List plane goals
@@ -79825,8 +80493,6 @@ paths:
             summary: Create a new plane goal
             tags:
                 - Plane Goals
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: Create a plane goal
@@ -79854,8 +80520,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Plane Goals
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: Get a plane goal
@@ -79884,8 +80548,6 @@ paths:
             summary: Update an existing plane goal
             tags:
                 - Plane Goals
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: Update a plane goal
@@ -79915,8 +80577,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Plane Plans
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: List plane plans
@@ -79941,8 +80601,6 @@ paths:
             summary: Create a new plane plan
             tags:
                 - Plane Plans
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: Create a plane plan
@@ -79970,8 +80628,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Plane Plans
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: Get a plane plan
@@ -80000,8 +80656,6 @@ paths:
             summary: Update an existing plane plan
             tags:
                 - Plane Plans
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: Update a plane plan
@@ -80030,8 +80684,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Plane Projects
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: List plane projects
@@ -80056,8 +80708,6 @@ paths:
             summary: Create a new plane project
             tags:
                 - Plane Projects
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: Create a plane project
@@ -80084,8 +80734,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Plane Projects
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: Get a plane project
@@ -80114,8 +80762,6 @@ paths:
             summary: Update an existing plane project
             tags:
                 - Plane Projects
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: Update a plane project
@@ -80145,8 +80791,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Plane Session Events
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: List plane session events
@@ -80171,8 +80815,6 @@ paths:
             summary: Create a new plane session event
             tags:
                 - Plane Session Events
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: Create a plane session event
@@ -80200,8 +80842,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Plane Session Events
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: Get a plane session event
@@ -80231,8 +80871,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Plane Sessions
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: List plane sessions
@@ -80257,8 +80895,6 @@ paths:
             summary: Create a new plane session
             tags:
                 - Plane Sessions
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: Create a plane session
@@ -80286,8 +80922,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Plane Sessions
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: Get a plane session
@@ -80316,8 +80950,6 @@ paths:
             summary: Update an existing plane session
             tags:
                 - Plane Sessions
-            x-ctrl-hub:
-                domain: plane
             x-mint:
                 metadata:
                     title: Update a plane session
@@ -84727,9 +85359,10 @@ paths:
                 The request body is optional and names the organisation the caller is acting
                 in. Without it, the organisation is the one that manages the user: the user
                 must be managed by an organisation, and the caller needs permission to update
-                the user there. With it, the caller needs permission to update users in the
-                named organisation and the user must be a member of it; a user who is not
-                returns 404 Not Found.
+                the user there. With it, the caller needs permission to update users across
+                the named organisation, and the user must be a member of it; a user who is not
+                returns 404 Not Found. A permission limited to some users, such as every
+                member's permission on their own record, is refused with 401.
 
                 The server chooses which email to send. A user managed by the acting
                 organisation who has never set a password (`password_set_at` is null) is sent
@@ -87448,7 +88081,7 @@ paths:
                 - Waste Movements
         post:
             description: |
-                Create a new waste movement (receipt of waste). Creation is retry-safe: sending the same client_reference twice returns the existing movement rather than creating a duplicate. Both answer 201, and the second carries the header `Idempotent-Replayed: true`.
+                Create a new waste movement (receipt of waste). Creation is retry-safe: sending the same client_reference twice returns the existing movement rather than creating a duplicate. Both answer 201, and the second carries the header `Idempotent-Replayed: true`. A caller who may not view the existing movement gets 409 with no movement data instead, which still tells a retrying client that its create landed.
             operationId: CreateWasteMovement
             requestBody:
                 $ref: '#/components/requestBodies/CreateWasteMovement'
@@ -87459,6 +88092,8 @@ paths:
                     $ref: '#/components/responses/BadRequest'
                 "401":
                     $ref: '#/components/responses/Unauthorised'
+                "409":
+                    $ref: '#/components/responses/Conflict'
                 "500":
                     $ref: '#/components/responses/InternalServerError'
             security:
@@ -89004,6 +89639,10 @@ tags:
         What falls due in an organisation between two dates, drawn from reminders, documents,
         competency records and work permits.
       name: Calendar
+    - description: |
+        The UK bank holidays of each nation, as gov.uk publishes them. Form reminders skip the
+        bank holidays of the nation an organisation keeps.
+      name: Bank Holidays
     - description: |
         Organisations are the center point for most resources in the platform. Most other endpoints are subresources of an organisation.
       name: Organisations
