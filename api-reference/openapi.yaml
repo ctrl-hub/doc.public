@@ -18998,6 +18998,123 @@ components:
                     type: string
                 email:
                     type: string
+        FormReminderOccurrence:
+            type: object
+            description: One person's obligation to fill in a form on one date of a form reminder.
+            required:
+                - id
+                - type
+                - attributes
+                - relationships
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the occurrence.
+                type:
+                    type: string
+                    const: form-reminder-occurrences
+                attributes:
+                    $ref: '#/components/schemas/FormReminderOccurrenceAttributes'
+                relationships:
+                    $ref: '#/components/schemas/FormReminderOccurrenceRelationships'
+        FormReminderOccurrenceAttributes:
+            type: object
+            required:
+                - local_date
+                - due_at
+                - grace_ends_at
+                - state
+                - closed_at
+            properties:
+                local_date:
+                    type: string
+                    format: date
+                    description: The date it fell on, in the person's timezone.
+                due_at:
+                    type: string
+                    format: date-time
+                    description: When it fell due.
+                grace_ends_at:
+                    type: string
+                    format: date-time
+                    description: When it counts as missed if no submission has closed it.
+                state:
+                    type: string
+                    description: "`due` while open within the grace period, `missed` while open after it, `met` when closed by a submission completed within it, and `late` when closed by one completed after it."
+                    enum:
+                        - due
+                        - met
+                        - late
+                        - missed
+                closed_at:
+                    type:
+                        - string
+                        - "null"
+                    format: date-time
+                    description: When the submission that closed it was completed on the device. Null while it is open.
+        FormReminderOccurrenceRelationships:
+            type: object
+            description: Relationships for a form reminder occurrence
+            required:
+                - organisation
+                - reminder
+                - form
+                - user
+            properties:
+                organisation:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/OrganisationRelationship'
+                reminder:
+                    type: object
+                    description: The reminder it is an occurrence of.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/FormReminderRelationship'
+                form:
+                    type: object
+                    description: The form to fill in.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/FormRelationship'
+                user:
+                    type: object
+                    description: The person who was due to fill it in.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/UserRelationship'
+                submission:
+                    type: object
+                    description: The submission that closed it. Absent while it is open.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/FormSubmissionRelationship'
+        FormReminderRelationship:
+            type: object
+            description: Represents a relationship to a form reminder
+            required:
+                - id
+                - type
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the form reminder
+                type:
+                    type: string
+                    const: form-reminders
         FormReminder:
             type: object
             description: A recurring reminder to fill in a form, for the people, teams and job roles it names.
@@ -33601,6 +33718,30 @@ components:
                               code: CH.029.016
                               meta:
                                 retry_after: 1200
+        ListFormReminderOccurrences:
+            description: A list of form reminder occurrences
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    title: A list of form reminder occurrences
+                                    type: array
+                                    items:
+                                        $ref: '#/components/schemas/FormReminderOccurrence'
+                            - $ref: '#/components/schemas/DocumentMeta'
+                            - $ref: '#/components/schemas/JSONAPI'
         ListFormReminders:
             description: A list of form reminders
             headers:
@@ -42012,6 +42153,43 @@ components:
                 type: string
                 format: uuid
             example: 6a1f0b2c-4d3e-4f5a-8b6c-7d8e9f0a1b2c
+        form_reminder_occurrences_filter:
+            name: filter
+            in: query
+            description: |
+                Filters the response data based on the value provided.
+
+                Available filters:
+
+                - `organisation`: The organisation in the path, as `eq(organisation,X)`. Rows always come from that organisation; the term is accepted so a client can name it.
+                - `form`: Filter by the form, e.g. `eq(form,X)`.
+                - `reminder`: Filter by the reminder, e.g. `eq(reminder,X)`.
+                - `user`: Filter by the person, e.g. `eq(user,X)`.
+                - `state`: Filter by state, e.g. `in(state,[due,missed])` for what is still to fill in.
+                - `due_at`: Filter by when it fell due, as an RFC 3339 time, e.g. `ge(due_at,2026-11-01T00:00:00Z)`.
+                - `grace_ends_at`: Filter by when its grace period ends, as an RFC 3339 time.
+                - `local_date`: Filter by the date it fell on in the person's timezone, as an RFC 3339 time at midnight UTC, e.g. `eq(local_date,2026-11-17T00:00:00Z)`.
+                - `id`: Filter by the occurrence's id, e.g. `in(id,[X,Y])`.
+                - `submission`: Filter by the submission that closed it, e.g. `eq(submission,X)`.
+
+                For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
+            required: false
+            schema:
+                type: string
+                default: ""
+        form_reminder_occurrences_sort:
+            in: query
+            name: sort
+            description: The list is sorted latest due first, `-due_at`, which is the default and the only sort offered.
+            required: false
+            style: form
+            explode: false
+            schema:
+                type: array
+                items:
+                    type: string
+                    enum:
+                        - -due_at
         form_reminders_filter:
             name: filter
             in: query
@@ -78060,6 +78238,41 @@ paths:
             x-mint:
                 metadata:
                     title: Send feedback
+    /v3/orgs/{org_id}/form-reminder-occurrences:
+        get:
+            description: |
+                List who was due to fill in a form, when, and whether they did, latest due first unless sorted otherwise. An occurrence is created when a form reminder falls due for a person. `and(eq(user,X),in(state,[due,missed]))` lists what one person still has to fill in.
+
+                Every active member who is not a record member sees their own occurrences, through a default grant. Record members and members who are not active get none. A holder of `forms:create` on a form sees all of that form's. A holder of `form-reminder-occurrences:view` sees those its grant reaches.
+
+                This operation does not support `include`, so the response has no `included` member.
+            operationId: ListFormReminderOccurrences
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+                - $ref: '#/components/parameters/limit'
+                - $ref: '#/components/parameters/offset'
+                - $ref: '#/components/parameters/page'
+                - $ref: '#/components/parameters/form_reminder_occurrences_filter'
+                - $ref: '#/components/parameters/form_reminder_occurrences_sort'
+            responses:
+                "200":
+                    $ref: '#/components/responses/ListFormReminderOccurrences'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: List form reminder occurrences
+            tags:
+                - Form Reminders
+            x-mint:
+                metadata:
+                    title: List form reminder occurrences
     /v3/orgs/{org_id}/form-reminders:
         get:
             description: |
@@ -80231,7 +80444,7 @@ paths:
                     title: List reminder pauses
         post:
             description: |
-                Stop every form reminder in the organisation from falling due for one person, from `starts_on` to `ends_on` inclusive, for leave or an absence. A paused date produces nothing, so it never shows as missed. A pause runs for at most 366 days, must not have ended already, and must not overlap another pause for the same person (409).
+                Stop every form reminder in the organisation from falling due for one person, from `starts_on` to `ends_on` inclusive, for leave or an absence. A paused date produces nothing, so it never shows as missed. The person's open occurrences already on its dates are removed with it, while met and late ones stay. The pause's own audit event is the record of that removal: the removed occurrences have none of their own. A pause runs for at most 366 days, must not have ended already, and must not overlap another pause for the same person (409).
 
                 A member may pause their own reminders from today on. A pause that starts before today, for an unexpected absence, needs `forms:create` across the organisation. The days it pauses that have already passed cannot be unpaused: removing the pause later keeps them, and a pause that has ended cannot be removed at all. Check the person and dates of a backdated pause before saving it. Pausing someone else's requires `forms:create` across the organisation, or `reminder-pauses:manage` reaching that person, and the person must be a member of the organisation.
             operationId: CreateReminderPause
