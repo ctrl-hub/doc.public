@@ -215,6 +215,68 @@ components:
                 type:
                     type: string
                     const: customer-accounts
+        QueryResolutionCatalog:
+            type: object
+            description: The resolvable resource types, each with the relationships that can be traversed from it and the attributes that can be projected.
+            required:
+                - types
+            properties:
+                types:
+                    type: array
+                    description: The resolvable resource types, each with the relationships that can be traversed from it and the attributes that can be projected.
+                    items:
+                        type: object
+                        required:
+                            - type
+                            - label
+                            - relationships
+                            - attributes
+                        properties:
+                            type:
+                                type: string
+                                description: The JSON:API resource type (e.g. "operations").
+                            label:
+                                type: string
+                                description: The default human label for the type.
+                            nomenclature:
+                                type: string
+                                description: The org-configurable nomenclature key for a governance type, when applicable.
+                            relationships:
+                                type: array
+                                items:
+                                    type: object
+                                    required:
+                                        - name
+                                        - target_type
+                                        - to_many
+                                        - label
+                                    properties:
+                                        name:
+                                            type: string
+                                            description: "The relationship name to follow (a rel: tag name)."
+                                        target_type:
+                                            type: string
+                                            description: The resource type the relationship resolves to.
+                                        to_many:
+                                            type: boolean
+                                            description: Whether the relationship resolves to many targets.
+                                        label:
+                                            type: string
+                                            description: The default label of the target type.
+                            attributes:
+                                type: array
+                                items:
+                                    type: object
+                                    required:
+                                        - name
+                                        - label
+                                    properties:
+                                        name:
+                                            type: string
+                                            description: The attribute name to project (may be a dotted nested path).
+                                        label:
+                                            type: string
+                                            description: The default column label for the attribute.
         Error:
             type: object
             description: An error response
@@ -22599,18 +22661,22 @@ components:
                                 properties:
                                     from:
                                         type: number
+                                        format: double
                                         description: "Lower bound of the first band, and the anchor every other band is measured from. Values below it group into a band of their own rather than being folded into the first. Anchoring here rather than at the smallest value in the data is what keeps a band stable as the data changes."
                                     width:
                                         type: number
+                                        format: double
                                         description: "How wide each band is, in the field's stored unit, which for a duration is seconds (3600 is an hour). A non-zero width describes the bands by width; leave it out to describe them by thresholds instead."
                                     to:
                                         type: number
+                                        format: double
                                         description: "Optional upper bound of the width bands. Everything at or above it groups into a single open-ended top band, which is what makes a \"2h+\" band possible. Setting it also makes the band count arithmetic, so an excessive one is refused rather than silently widened; an open-ended bin's band count is whatever the data spans."
                                     thresholds:
                                         type: array
                                         minItems: 1
                                         items:
                                             type: number
+                                            format: double
                                         description: "Explicit ascending lower bounds of each band, in the field's stored unit, for named bands such as 0-1h / 1-2h / 2h+. The last band is open-ended. Values below the first threshold group into a band of their own. A non-empty list describes the bands by threshold; leave it out to describe them by width instead."
                 measures:
                     type: array
@@ -22713,6 +22779,7 @@ components:
             description: Relationships for a query
             required:
                 - organisation
+                - form
                 - author
             properties:
                 organisation:
@@ -22724,6 +22791,8 @@ components:
                             $ref: '#/components/schemas/OrganisationRelationship'
                 form:
                     type: object
+                    required:
+                        - data
                     properties:
                         data:
                             oneOf:
@@ -22748,6 +22817,92 @@ components:
                     properties:
                         data:
                             $ref: '#/components/schemas/AuthorRelationship'
+        QueryResultRow:
+            type: object
+            description: >-
+                One row of a query's results. Its attributes are the query's columns, keyed by each column's key, so they differ from query to query. A row also carries <key>__id beside each author column (creator_id, author_id), holding the id its name was resolved from.
+            required:
+                - id
+                - type
+                - attributes
+            properties:
+                id:
+                    type: string
+                    description: >-
+                        The submission id of a detail row, the submission id and the entry position of a row at the entry grain (<submission>:<entry>), or the row's index for an aggregate row.
+                type:
+                    type: string
+                    const: query-result-rows
+                attributes:
+                    type: object
+                    description: The row's values, keyed by column key.
+                    additionalProperties: true
+        QueryResultColumn:
+            type: object
+            description: Describes one column of a query's results.
+            required:
+                - key
+                - label
+                - type
+            properties:
+                key:
+                    type: string
+                    description: The key the column's value has in each row's attributes.
+                label:
+                    type: string
+                    description: The column's default header.
+                type:
+                    type: string
+                    description: A hint at how to render the column's values, such as string, number, date or duration.
+                field:
+                    type: string
+                    description: >-
+                        The field id the column reads when its key is not that id, such as a child of a repeating row expanded into one column per entry, keyed <field>.<n>.
+                nomenclature:
+                    type: string
+                    description: The organisation-configurable term for a resolved governance column, such as governance.work_orders.
+                bucket:
+                    type: string
+                    description: The time grain a date dimension was grouped at (day, week, month, quarter or year).
+                bin:
+                    type: object
+                    description: >-
+                        The bands a numeric dimension was grouped into, in the field's stored unit. A banded column's cells hold each band's lower bound, or -inf for the band below the first.
+                    required:
+                        - from
+                    properties:
+                        from:
+                            type: number
+                            format: double
+                        width:
+                            type: number
+                            format: double
+                        to:
+                            type: number
+                            format: double
+                        thresholds:
+                            type: array
+                            items:
+                                type: number
+                                format: double
+                measure:
+                    type: object
+                    description: The aggregate that produced the column, absent on a dimension and on a detail column.
+                    required:
+                        - func
+                    properties:
+                        func:
+                            type: string
+                        field:
+                            type: string
+                        percentile:
+                            type: integer
+                decimals:
+                    type: integer
+                    description: The decimal places the column's cells were rounded to, when they were rounded.
+                raw_key:
+                    type: string
+                    description: The key of the column's value as it came out of the database, when the cell itself was rewritten for display.
         RegistrationIncludes:
             type: array
             description: Related resources that can be included when a registration is returned
@@ -22801,6 +22956,8 @@ components:
             required:
                 - status
                 - row_count
+                - error
+                - artifact
             properties:
                 status:
                     $ref: '#/components/schemas/ReportRunStatus'
@@ -22826,6 +22983,7 @@ components:
             required:
                 - scheduled_at
                 - started_at
+                - completed_at
             properties:
                 scheduled_at:
                     type: string
@@ -22965,6 +23123,8 @@ components:
                 - schedule
                 - recipients
                 - state
+                - options
+                - paused_reason
             properties:
                 name:
                     type: string
@@ -22996,6 +23156,8 @@ components:
             required:
                 - created_at
                 - updated_at
+                - next_run_at
+                - last_run_at
             properties:
                 created_at:
                     type: string
@@ -35371,6 +35533,57 @@ components:
                                 included:
                                     $ref: '#/components/schemas/QueryIncludes'
                             - $ref: '#/components/schemas/JSONAPI'
+        GetQueryResults:
+            description: >-
+                The query's result rows, as a JSON:API collection of query-result-rows. The column descriptors, pagination and execution time are in meta.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                            - meta
+                        properties:
+                            data:
+                                type: array
+                                items:
+                                    $ref: '#/components/schemas/QueryResultRow'
+                            meta:
+                                type: object
+                                required:
+                                    - columns
+                                    - pagination
+                                    - duration_ms
+                                properties:
+                                    columns:
+                                        type: array
+                                        items:
+                                            $ref: '#/components/schemas/QueryResultColumn'
+                                    pagination:
+                                        type: object
+                                        required:
+                                            - limit
+                                            - offset
+                                            - count
+                                            - total
+                                        properties:
+                                            limit:
+                                                type: integer
+                                                description: The most rows a page holds.
+                                            offset:
+                                                type: integer
+                                                description: The position of the page's first row.
+                                            count:
+                                                type: integer
+                                                description: The rows on this page.
+                                            total:
+                                                type: integer
+                                                format: int64
+                                                description: The rows across every page, or the groups for an aggregate query.
+                                    duration_ms:
+                                        type: integer
+                                        format: int64
+                                        description: How long the query took to run, in milliseconds, as the server measured it.
         ListRegistrations:
             description: Get a list of registrations.
             headers:
@@ -43488,8 +43701,10 @@ components:
             name: date_values
             in: query
             description: >-
-                Parameter values for `date_op` (e.g. `30` for `last_n_days`, or the two ends of a `between`). Repeat the parameter for multiple values. Ignored when `date_op` is absent.
+                The values `date_op` takes, comma separated: the number of days for `last_n_days`, the two ends of a `between`, or the one date of a `before` or `after`. Ignored when `date_op` is absent. A repeated parameter (`date_values=a&date_values=b`) is read as its values comma separated.
             required: false
+            style: form
+            explode: false
             schema:
                 type: array
                 items:
@@ -59633,18 +59848,22 @@ components:
                                                             properties:
                                                                 from:
                                                                     type: number
+                                                                    format: double
                                                                     description: "Lower bound of the first band, and the anchor every other band is measured from. Values below it group into a band of their own rather than being folded into the first. Anchoring here rather than at the smallest value in the data is what keeps a band stable as the data changes."
                                                                 width:
                                                                     type: number
+                                                                    format: double
                                                                     description: "How wide each band is, in the field's stored unit, which for a duration is seconds (3600 is an hour). A non-zero width describes the bands by width; leave it out to describe them by thresholds instead."
                                                                 to:
                                                                     type: number
+                                                                    format: double
                                                                     description: "Optional upper bound of the width bands. Everything at or above it groups into a single open-ended top band, which is what makes a \"2h+\" band possible. Setting it also makes the band count arithmetic, so an excessive one is refused rather than silently widened; an open-ended bin's band count is whatever the data spans."
                                                                 thresholds:
                                                                     type: array
                                                                     minItems: 1
                                                                     items:
                                                                         type: number
+                                                                        format: double
                                                                     description: "Explicit ascending lower bounds of each band, in the field's stored unit, for named bands such as 0-1h / 1-2h / 2h+. The last band is open-ended. Values below the first threshold group into a band of their own. A non-empty list describes the bands by threshold; leave it out to describe them by width instead."
                                             measures:
                                                 type: array
@@ -59904,18 +60123,22 @@ components:
                                                             properties:
                                                                 from:
                                                                     type: number
+                                                                    format: double
                                                                     description: "Lower bound of the first band, and the anchor every other band is measured from. Values below it group into a band of their own rather than being folded into the first. Anchoring here rather than at the smallest value in the data is what keeps a band stable as the data changes."
                                                                 width:
                                                                     type: number
+                                                                    format: double
                                                                     description: "How wide each band is, in the field's stored unit, which for a duration is seconds (3600 is an hour). A non-zero width describes the bands by width; leave it out to describe them by thresholds instead."
                                                                 to:
                                                                     type: number
+                                                                    format: double
                                                                     description: "Optional upper bound of the width bands. Everything at or above it groups into a single open-ended top band, which is what makes a \"2h+\" band possible. Setting it also makes the band count arithmetic, so an excessive one is refused rather than silently widened; an open-ended bin's band count is whatever the data spans."
                                                                 thresholds:
                                                                     type: array
                                                                     minItems: 1
                                                                     items:
                                                                         type: number
+                                                                        format: double
                                                                     description: "Explicit ascending lower bounds of each band, in the field's stored unit, for named bands such as 0-1h / 1-2h / 2h+. The last band is open-ended. Values below the first threshold group into a band of their own. A non-empty list describes the bands by threshold; leave it out to describe them by width instead."
                                             measures:
                                                 type: array
@@ -82793,8 +83016,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Queries
-            x-ctrl-hub:
-                domain: queries
             x-mint:
                 metadata:
                     title: List queries
@@ -82819,8 +83040,6 @@ paths:
             summary: Create a new query
             tags:
                 - Queries
-            x-ctrl-hub:
-                domain: queries
             x-mint:
                 metadata:
                     title: Create a query
@@ -82848,8 +83067,6 @@ paths:
             summary: Delete a query
             tags:
                 - Queries
-            x-ctrl-hub:
-                domain: queries
             x-mint:
                 metadata:
                     title: Delete a query
@@ -82875,8 +83092,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Queries
-            x-ctrl-hub:
-                domain: queries
             x-mint:
                 metadata:
                     title: Get a query
@@ -82905,14 +83120,12 @@ paths:
             summary: Update an existing query
             tags:
                 - Queries
-            x-ctrl-hub:
-                domain: queries
             x-mint:
                 metadata:
                     title: Update a query
     /v3/queries/{query_id}/export:
         get:
-            description: Execute a query and stream the results as CSV. Served by a custom handler (not generated), so this operation intentionally carries no x-ctrl-hub domain tag; it exists in the spec so the operation middleware admits the path.
+            description: Execute a query and answer its results as CSV.
             operationId: ExportQuery
             parameters:
                 - $ref: '#/components/parameters/query_id'
@@ -82923,6 +83136,14 @@ paths:
                             schema:
                                 type: string
                     description: CSV export of the query results.
+                    headers:
+                        Content-Disposition:
+                            description: Names the file after the query, as `query-<query id>.csv`, so a browser saves it rather than renders it.
+                            required: true
+                            schema:
+                                example: attachment; filename="query-0193e5a4-6a51-7e43-8a4e-0f8c4a2b1d3e.csv"
+                                type: string
+                            example: attachment; filename="query-0193e5a4-6a51-7e43-8a4e-0f8c4a2b1d3e.csv"
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -82942,7 +83163,7 @@ paths:
                     title: Export a query as CSV
     /v3/queries/{query_id}/results:
         get:
-            description: Execute a query and return its result rows. Served by a custom handler (not generated), so this operation intentionally carries no x-ctrl-hub domain tag; it exists in the spec so the operation middleware admits the path.
+            description: Execute a query and return its result rows.
             operationId: RunQuery
             parameters:
                 - $ref: '#/components/parameters/query_id'
@@ -82953,11 +83174,7 @@ paths:
                 - $ref: '#/components/parameters/date_values'
             responses:
                 "200":
-                    content:
-                        application/vnd.api+json:
-                            schema:
-                                type: object
-                    description: The query result rows, as a JSON:API collection of query-result-rows (dynamic attributes, with column descriptors and pagination in meta). A row carries an attribute per column, plus <key>__id beside each author column (creator_id, author_id) holding the id its name was resolved from.
+                    $ref: '#/components/responses/GetQueryResults'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -82977,7 +83194,7 @@ paths:
                     title: Run a query
     /v3/queries/preview:
         post:
-            description: Execute an unsaved query definition and return its result rows, without persisting it (used by the data explorer for ad-hoc queries). Served by a custom handler (not generated), so this operation intentionally carries no x-ctrl-hub domain tag; it exists in the spec so the operation middleware admits the path.
+            description: Execute an unsaved query definition and return its result rows, without persisting it (used by the data explorer for ad-hoc queries).
             operationId: PreviewQuery
             parameters:
                 - $ref: '#/components/parameters/limit'
@@ -82989,11 +83206,7 @@ paths:
                 $ref: '#/components/requestBodies/CreateQuery'
             responses:
                 "200":
-                    content:
-                        application/vnd.api+json:
-                            schema:
-                                type: object
-                    description: The query result rows, as a JSON:API collection of query-result-rows (dynamic attributes, with column descriptors and pagination in meta). A row carries an attribute per column, plus <key>__id beside each author column (creator_id, author_id) holding the id its name was resolved from.
+                    $ref: '#/components/responses/GetQueryResults'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -83011,7 +83224,7 @@ paths:
                     title: Preview a query
     /v3/query-resolution-catalogue:
         get:
-            description: Return the x-source resolution catalog - per resource type, the relationships that can be traversed and the attributes that can be projected - used by the analytics builder to configure per-column resolution. Static, org-agnostic metadata. Served by a custom handler (not generated), so this operation intentionally carries no x-ctrl-hub domain tag; it exists in the spec so the operation middleware admits the path.
+            description: Return the x-source resolution catalog - per resource type, the relationships that can be traversed and the attributes that can be projected - used by the analytics builder to configure per-column resolution. Static, org-agnostic metadata.
             operationId: ResolutionCatalog
             responses:
                 "200":
@@ -83020,66 +83233,7 @@ paths:
                             schema:
                                 properties:
                                     data:
-                                        properties:
-                                            types:
-                                                description: The resolvable resource types, each with the relationships that can be traversed from it and the attributes that can be projected.
-                                                items:
-                                                    properties:
-                                                        attributes:
-                                                            items:
-                                                                properties:
-                                                                    label:
-                                                                        description: The default column label for the attribute.
-                                                                        type: string
-                                                                    name:
-                                                                        description: The attribute name to project (may be a dotted nested path).
-                                                                        type: string
-                                                                required:
-                                                                    - name
-                                                                    - label
-                                                                type: object
-                                                            type: array
-                                                        label:
-                                                            description: The default human label for the type.
-                                                            type: string
-                                                        nomenclature:
-                                                            description: The org-configurable nomenclature key for a governance type, when applicable.
-                                                            type: string
-                                                        relationships:
-                                                            items:
-                                                                properties:
-                                                                    label:
-                                                                        description: The default label of the target type.
-                                                                        type: string
-                                                                    name:
-                                                                        description: 'The relationship name to follow (a rel: tag name).'
-                                                                        type: string
-                                                                    target_type:
-                                                                        description: The resource type the relationship resolves to.
-                                                                        type: string
-                                                                    to_many:
-                                                                        description: Whether the relationship resolves to many targets.
-                                                                        type: boolean
-                                                                required:
-                                                                    - name
-                                                                    - target_type
-                                                                    - to_many
-                                                                    - label
-                                                                type: object
-                                                            type: array
-                                                        type:
-                                                            description: The JSON:API resource type (e.g. "operations").
-                                                            type: string
-                                                    required:
-                                                        - type
-                                                        - label
-                                                        - relationships
-                                                        - attributes
-                                                    type: object
-                                                type: array
-                                        required:
-                                            - types
-                                        type: object
+                                        $ref: '#/components/schemas/QueryResolutionCatalog'
                                 required:
                                     - data
                                 type: object
@@ -83273,8 +83427,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Reports
-            x-ctrl-hub:
-                domain: queries
             x-mint:
                 metadata:
                     title: List report runs
@@ -83302,23 +83454,18 @@ paths:
                 - OAuth2: []
             tags:
                 - Reports
-            x-ctrl-hub:
-                domain: queries
             x-mint:
                 metadata:
                     title: Get a report run
     /v3/report-runs/{report_run_id}/artifact:
         get:
             description: |
-                Stream the file a report run produced.
+                Answer the file a report run produced.
 
                 There are no signed download URLs anywhere in this platform, so this is how a linked
                 artifact is fetched: the request is authenticated and authorised like any other, and the
-                bytes are streamed through it. An artifact whose retention window has passed returns 404
+                bytes are answered through it. An artifact whose retention window has passed returns 404
                 rather than an empty file, because the run's record outlives its bytes.
-
-                Served by a custom handler rather than a generated one, because it returns a file rather
-                than a JSON:API document.
             operationId: DownloadReportRunArtifact
             parameters:
                 - $ref: '#/components/parameters/report_run_id'
@@ -83333,6 +83480,7 @@ paths:
                     headers:
                         Content-Disposition:
                             description: Names the file so a browser saves rather than renders it.
+                            required: true
                             schema:
                                 type: string
                         X-Request-ID:
@@ -83352,10 +83500,6 @@ paths:
             summary: Download a report run's artifact
             tags:
                 - Reports
-            x-ctrl-hub:
-                domain: queries
-                entity: ReportRun
-                manual: true
             x-mint:
                 metadata:
                     title: Download a report run's artifact
@@ -83385,8 +83529,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Reports
-            x-ctrl-hub:
-                domain: queries
             x-mint:
                 metadata:
                     title: List reports
@@ -83416,8 +83558,6 @@ paths:
             summary: Create a new report
             tags:
                 - Reports
-            x-ctrl-hub:
-                domain: queries
             x-mint:
                 metadata:
                     title: Create a report
@@ -83449,8 +83589,6 @@ paths:
             summary: Delete a report
             tags:
                 - Reports
-            x-ctrl-hub:
-                domain: queries
             x-mint:
                 metadata:
                     title: Delete a report
@@ -83477,8 +83615,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Reports
-            x-ctrl-hub:
-                domain: queries
             x-mint:
                 metadata:
                     title: Get a report
@@ -83513,8 +83649,6 @@ paths:
             summary: Update a report
             tags:
                 - Reports
-            x-ctrl-hub:
-                domain: queries
             x-mint:
                 metadata:
                     title: Update a report
@@ -83528,9 +83662,6 @@ paths:
                 moment it was asked for, which is what keeps it distinct from the scheduled slot it sits
                 between, so asking for one twice produces two runs rather than being deduplicated as a
                 re-dispatch.
-
-                Served by a custom handler rather than a generated one, because it is a verb over an
-                existing resource rather than a write to it.
             operationId: RunReportNow
             parameters:
                 - $ref: '#/components/parameters/report_id'
@@ -83552,10 +83683,6 @@ paths:
             summary: Run a report now
             tags:
                 - Reports
-            x-ctrl-hub:
-                domain: queries
-                entity: Report
-                manual: true
             x-mint:
                 metadata:
                     title: Run a report now
