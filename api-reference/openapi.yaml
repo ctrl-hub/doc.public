@@ -215,6 +215,68 @@ components:
                 type:
                     type: string
                     const: customer-accounts
+        QueryResolutionCatalog:
+            type: object
+            description: The resolvable resource types, each with the relationships that can be traversed from it and the attributes that can be projected.
+            required:
+                - types
+            properties:
+                types:
+                    type: array
+                    description: The resolvable resource types, each with the relationships that can be traversed from it and the attributes that can be projected.
+                    items:
+                        type: object
+                        required:
+                            - type
+                            - label
+                            - relationships
+                            - attributes
+                        properties:
+                            type:
+                                type: string
+                                description: The JSON:API resource type (e.g. "operations").
+                            label:
+                                type: string
+                                description: The default human label for the type.
+                            nomenclature:
+                                type: string
+                                description: The org-configurable nomenclature key for a governance type, when applicable.
+                            relationships:
+                                type: array
+                                items:
+                                    type: object
+                                    required:
+                                        - name
+                                        - target_type
+                                        - to_many
+                                        - label
+                                    properties:
+                                        name:
+                                            type: string
+                                            description: "The relationship name to follow (a rel: tag name)."
+                                        target_type:
+                                            type: string
+                                            description: The resource type the relationship resolves to.
+                                        to_many:
+                                            type: boolean
+                                            description: Whether the relationship resolves to many targets.
+                                        label:
+                                            type: string
+                                            description: The default label of the target type.
+                            attributes:
+                                type: array
+                                items:
+                                    type: object
+                                    required:
+                                        - name
+                                        - label
+                                    properties:
+                                        name:
+                                            type: string
+                                            description: The attribute name to project (may be a dotted nested path).
+                                        label:
+                                            type: string
+                                            description: The default column label for the attribute.
         Error:
             type: object
             description: An error response
@@ -488,6 +550,34 @@ components:
                     type: string
                     format: date-time
                     description: The date and time when the action was soft-deleted, if applicable.
+                job_role_assignees:
+                    type: array
+                    description: |
+                        The users each job role in `triggering_job_roles` resolved when a workflow step
+                        created the action. A user resolved by two roles is in both entries. A role's
+                        `user_ids` is empty when every user it resolved was a record member, and the action
+                        dropped them. It is set once at creation: a later change to `assigned_users` does not
+                        update it. Absent when no job role resolved a user. Only actions a workflow step
+                        created from this change on have entries. An action created by hand, or from before
+                        this change, can list a role in `triggering_job_roles` with no entry here, so match
+                        entries to roles by `job_role_id`, not by position.
+                    items:
+                        type: object
+                        x-go-type-name: ActionJobRoleAssignees
+                        required:
+                            - job_role_id
+                            - user_ids
+                        properties:
+                            job_role_id:
+                                type: string
+                                format: uuid
+                                description: The job role, one of `triggering_job_roles`.
+                            user_ids:
+                                type: array
+                                description: The users who held the job role.
+                                items:
+                                    type: string
+                                    format: uuid
         ActionRelationships:
             type: object
             description: |
@@ -3208,6 +3298,25 @@ components:
                                     type: string
                                     format: uuid
                                     description: The impersonation session the change was made in.
+                        elevated_by:
+                            type: object
+                            description: The Ctrl Hub staff member who made the change as themselves, under an elevation into the organisation, with the elevation. Absent for a change made under no elevation.
+                            required:
+                                - user_id
+                                - name
+                                - elevation_id
+                            properties:
+                                user_id:
+                                    type: string
+                                    format: uuid
+                                    description: The staff member's user id.
+                                name:
+                                    type: string
+                                    description: The staff member's name, or their email when they have none, as it was when the elevation was opened.
+                                elevation_id:
+                                    type: string
+                                    format: uuid
+                                    description: The elevation the change was made under.
                     description: Additional context about the request
                 reason:
                     type: string
@@ -7528,6 +7637,8 @@ components:
                 - acting_role
                 - organisation_id
                 - at
+                - principal_type
+                - principal_id
             properties:
                 principal_type:
                     type:
@@ -7591,6 +7702,7 @@ components:
                 - hazard_snapshot
                 - control_measure
                 - responsible_party
+                - implemented_on
             properties:
                 id:
                     type: string
@@ -7686,6 +7798,8 @@ components:
                 - access
                 - created_at
                 - updated_at
+                - rejection_reason
+                - resulting_revision
             properties:
                 reason:
                     type: string
@@ -12280,6 +12394,7 @@ components:
                 - subject_type
                 - format
                 - status
+                - omissions
             properties:
                 subject_type:
                     $ref: '#/components/schemas/ExportSubjectType'
@@ -12299,6 +12414,44 @@ components:
                     description: |
                         The file the export produced. Null while the export is still pending, and on one that
                         failed, since neither has a file.
+                omissions:
+                    type: array
+                    description: |
+                        The subjects a `form-submission-versions` export left out because they had no archived PDF
+                        to collect, with the reason for each. Recorded when the export completes, so empty while it
+                        is pending, and always empty for an export that renders its documents.
+                    items:
+                        type: object
+                        required:
+                            - subject
+                            - reason
+                            - label
+                        properties:
+                            subject:
+                                type: string
+                                format: uuid
+                                description: The identifier of the subject that was left out.
+                            reason:
+                                type: string
+                                enum:
+                                    - absent
+                                    - pending
+                                    - failed
+                                    - draft
+                                    - deleted
+                                description: |
+                                    Why the subject has no document: `absent` when none was ever archived, usually because
+                                    it was submitted before archiving began; `pending` while its document is still being
+                                    produced; `failed` when it could not be produced; `draft` for a draft, which never has
+                                    one; `deleted` when it was deleted after the export was requested.
+                            label:
+                                type:
+                                    - string
+                                    - "null"
+                                description: |
+                                    A readable name for the subject, such as the form name, short reference and version.
+                                    Null when it could not be named, or when the caller may not view the subject, such as
+                                    a submission shared in from another organisation.
         ExportMeta:
             type: object
             description: Metadata for an export
@@ -12357,6 +12510,19 @@ components:
                         The subjects the export covers, in the order the document prints them. Read them through
                         `subject_type`, which says what kind of record each identifier stands for. A competency
                         holder is identified by the user who holds the records, which is why these are users.
+                        Empty for a `form-submission-versions` export, whose subjects are in `submission_versions`.
+                submission_versions:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            type: array
+                            items:
+                                $ref: '#/components/schemas/FormSubmissionVersionRelationship'
+                    description: |
+                        The form submission versions a `form-submission-versions` export covers, in the order the
+                        bundle holds them. Absent on every other kind of export.
         ExportSubjectType:
             type: string
             description: |
@@ -12367,8 +12533,13 @@ components:
                 records you can export them.
 
                 `competency-holders` is an export of people's competency summaries.
+
+                `form-submission-versions` collects the archived PDFs of form submission versions into one PDF or
+                a ZIP. Nothing is rendered: each version's document already exists. It is authorised by the
+                `form-submissions` view grant, because a version is viewed through its submission.
             enum:
                 - competency-holders
+                - form-submission-versions
         ExportFormat:
             type: string
             description: |
@@ -15451,6 +15622,7 @@ components:
                 - ppe
                 - location
                 - magnitude
+                - recorded_at
             properties:
                 start_time:
                     type: string
@@ -15461,7 +15633,17 @@ components:
                     format: date-time
                     description: When the exposure ended. Always after the start time.
                 ppe:
-                    $ref: '#/components/schemas/HavsExposurePPE'
+                    allOf:
+                        - $ref: '#/components/schemas/HavsExposurePPE'
+                        - type: object
+                          required:
+                            - anti_vibration_gloves
+                            - eye_protection
+                          properties:
+                            anti_vibration_gloves:
+                                type: boolean
+                            eye_protection:
+                                type: boolean
                 location:
                     description: Where the exposure took place, or null when no position was available.
                     oneOf:
@@ -15474,6 +15656,11 @@ components:
                     description: The vibration magnitude in m/s², copied from the category's recommended initial value when the exposure was recorded.
                     examples:
                         - 5
+                recorded_at:
+                    type: string
+                    format: date-time
+                    readOnly: true
+                    description: When the record was saved on the device, or when the server created it if the device sent no time. At create, a device time before end_time is refused. If no device time is supplied, or an accepted device time is ahead of server time, the stored time is the later of server time and end_time. A later correction may move end_time after it, and recorded_at stays as it is. It never changes. meta.locks_at, 24 hours later, is the deadline for corrections and deletes.
         HavsExposureMeta:
             type: object
             description: |
@@ -15482,6 +15669,7 @@ components:
                 - points
                 - a8
                 - trigger_time
+                - locks_at
                 - created_at
                 - updated_at
             properties:
@@ -15503,12 +15691,33 @@ components:
                     description: Hours of use of this tool alone to reach the exposure action value (100 points), 8 × (2.5 / magnitude)².
                     examples:
                         - 2
+                locks_at:
+                    type: string
+                    format: date-time
+                    description: recorded_at plus 24 hours, the deadline for changing the record, for every caller. A correction is judged by its edit time, described under edited_at on the update request, not by its arrival. So one made by locks_at may arrive later, within 7 days of being made, and is accepted if it also passes the other edited_at bounds and the edit-order check against last_edited_at. A delete is judged by when it arrives, so it must arrive by locks_at.
+                last_edited_at:
+                    type: string
+                    format: date-time
+                    description: The edit time of the last correction applied, kept to the millisecond. The edit time is the edited_at the device sent. One up to 5 minutes ahead is taken as now, and with no edited_at the edit time is the arrival time. Either of those is raised to recorded_at if that is later. Absent until the record is first corrected. A correction with an earlier edit time is refused.
                 created_at:
                     type: string
                     format: date-time
                 updated_at:
                     type: string
                     format: date-time
+                can:
+                    type: object
+                    description: What the caller may do with this record, judged from their grants as the update and delete operations judge them. A manager's rights come from the management relationship that covers the record's subject. It ignores the 24-hour lock, which locks_at gives. The list, get, create and update operations set it on every record they return. It is optional because it is absent when nothing judged the caller's rights, so a client must handle a record without it.
+                    required:
+                        - update
+                        - delete
+                    properties:
+                        update:
+                            type: boolean
+                            description: Whether the caller's grants allow them to correct this record.
+                        delete:
+                            type: boolean
+                            description: Whether the caller's grants allow them to delete this record.
         HavsExposureRelationships:
             type: object
             description: Relationships for a HAVS exposure
@@ -15552,7 +15761,7 @@ components:
                             $ref: '#/components/schemas/HavsEquipmentRelationship'
         HavsExposurePPE:
             type: object
-            description: The personal protective equipment worn during the exposure.
+            description: The safety equipment worn during the exposure. mask and ear_defenders are required. anti_vibration_gloves and eye_protection are optional. A create stores one left out as false, and an update keeps the stored answer. Every read returns all four. A record stored before anti_vibration_gloves and eye_protection were added also reads false for both, because those questions were never asked.
             required:
                 - mask
                 - ear_defenders
@@ -15563,6 +15772,12 @@ components:
                 ear_defenders:
                     type: boolean
                     description: Whether ear defenders were worn.
+                anti_vibration_gloves:
+                    type: boolean
+                    description: Whether anti-vibration gloves were worn. Optional. A create stores false when it is left out, and an update keeps the stored answer.
+                eye_protection:
+                    type: boolean
+                    description: Whether eye protection was worn. Optional. A create stores false when it is left out, and an update keeps the stored answer.
         HavsEquipmentRelationship:
             type: object
             description: Represents a relationship to a HAVS equipment category (HSE Table 1)
@@ -16924,6 +17139,105 @@ components:
                     properties:
                         data:
                             $ref: '#/components/schemas/OrganisationRelationship'
+        Elevation:
+            type: object
+            description: |
+                A Ctrl Hub staff member's entry into a customer organisation they are not a member of, with tenant roles
+                they chose. While it is open, the public API adds a grant of each role in that organisation to the staff
+                member's own access. It is not a membership: the staff member is not listed among the organisation's
+                members and takes no seat. A timed elevation ends at `expires_at`. A perpetual one has none, and lasts until
+                the staff member leaves or a Platform Admin ends it.
+            required:
+                - id
+                - type
+                - attributes
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the elevation.
+                type:
+                    type: string
+                    const: elevations
+                attributes:
+                    type: object
+                    required:
+                        - organisation_id
+                        - organisation_name
+                        - roles
+                        - reason
+                        - perpetual
+                        - started_at
+                        - staff
+                    properties:
+                        organisation_id:
+                            type: string
+                            format: uuid
+                            description: The organisation the staff member entered.
+                        organisation_name:
+                            type: string
+                            description: The organisation's name, or empty when it can no longer be read.
+                        roles:
+                            type: array
+                            items:
+                                type: string
+                            description: The ids (`domain:role`) of the tenant roles the staff member holds in the organisation.
+                        reason:
+                            type: string
+                            description: Why the staff member entered the organisation, as they gave it.
+                        perpetual:
+                            type: boolean
+                            description: Whether the elevation has no end time.
+                        started_at:
+                            type: string
+                            format: date-time
+                            description: When the elevation was opened.
+                        expires_at:
+                            type: string
+                            format: date-time
+                            description: When a timed elevation ends on its own. Absent for a perpetual one.
+                        staff:
+                            $ref: '#/components/schemas/ImpersonationParty'
+                        ended_at:
+                            type: string
+                            format: date-time
+                            description: When the elevation was ended. Absent while it has not been ended, even once past `expires_at`.
+                        end_reason:
+                            type: string
+                            enum:
+                                - expired
+                                - ended
+                                - revoked
+                                - role-lost
+                            description: |
+                                How the elevation ended: it ran out (`expired`), the staff member left (`ended`), another staff member
+                                or the switch for elevations ended it (`revoked`), or the staff member lost the access that allowed it
+                                (`role-lost`). Absent while it has not been ended.
+                        ended_by:
+                            $ref: '#/components/schemas/ImpersonationParty'
+                            description: The user who ended the elevation. Absent while it is open, and when a job ended it.
+        ImpersonationParty:
+            type: object
+            description: The staff member or the person in an impersonation session.
+            required:
+                - id
+                - first_name
+                - last_name
+                - email
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The user's unique identifier.
+                first_name:
+                    type: string
+                    description: The user's first name, or empty when they have not given one.
+                last_name:
+                    type: string
+                    description: The user's last name, or empty when they have not given one.
+                email:
+                    type: string
+                    description: The user's email address.
         Impersonation:
             type: object
             description: |
@@ -17011,28 +17325,6 @@ components:
                             description: |
                                 The support case or ticket the session was started for. Absent when none was given, and on
                                 `GET /v3/me/impersonation`.
-        ImpersonationParty:
-            type: object
-            description: The staff member or the person in an impersonation session.
-            required:
-                - id
-                - first_name
-                - last_name
-                - email
-            properties:
-                id:
-                    type: string
-                    format: uuid
-                    description: The user's unique identifier.
-                first_name:
-                    type: string
-                    description: The user's first name, or empty when they have not given one.
-                last_name:
-                    type: string
-                    description: The user's last name, or empty when they have not given one.
-                email:
-                    type: string
-                    description: The user's email address.
         Meter:
             type: object
             description: A meter
@@ -18665,6 +18957,134 @@ components:
                 - havs
             examples:
                 - havs
+        ExposureDay:
+            type: object
+            description: |
+                One person's exposure on one Europe/London day, and their effective limit that day, computed when
+                asked for. A limit applies to the person's whole dose, so the totals count their records in every
+                organisation. A day is listed when they have records in this organisation that day, or when its
+                day or week reaches amber. Another organisation's records show only as part of a total.
+            required:
+                - id
+                - type
+                - attributes
+                - relationships
+            properties:
+                id:
+                    type: string
+                    description: |
+                        The person's user id, the exposure type and the date, joined by colons. It is unique within
+                        the organisation in the path: the same person and day in another organisation has the same id
+                        and other totals. Clients should read `subject`, `exposure_type` and `date` rather than parse
+                        the id.
+                    example: 3d4e5f6a-7b8c-4d9e-8f0a-1b2c3d4e5f6a:havs:2026-11-11
+                type:
+                    type: string
+                    const: exposure-days
+                attributes:
+                    $ref: '#/components/schemas/ExposureDayAttributes'
+                relationships:
+                    $ref: '#/components/schemas/ExposureDayRelationships'
+        ExposureDayAttributes:
+            type: object
+            description: Attributes of an exposure day
+            required:
+                - exposure_type
+                - unit
+                - date
+                - total
+                - band
+                - weekly_total
+                - weekly_band
+                - amber
+                - red
+                - weekly_amber
+                - weekly_red
+                - source
+            properties:
+                exposure_type:
+                    $ref: '#/components/schemas/ExposureType'
+                unit:
+                    type: string
+                    description: The unit the totals and limits are in, such as `points` for HAVS.
+                    examples:
+                        - points
+                date:
+                    type: string
+                    format: date
+                    description: The Europe/London calendar day. A record counts towards the day it starts on.
+                total:
+                    type: number
+                    format: double
+                    description: The person's total that day, from their records in every organisation.
+                    examples:
+                        - 420
+                band:
+                    $ref: '#/components/schemas/ExposureBand'
+                weekly_total:
+                    type: number
+                    format: double
+                    description: The person's total over the rolling 7 days ending on `date`, from their records in every organisation.
+                    examples:
+                        - 1240
+                weekly_band:
+                    $ref: '#/components/schemas/ExposureBand'
+                amber:
+                    type: number
+                    format: double
+                    description: The daily action value in force that day.
+                    examples:
+                        - 100
+                red:
+                    type: number
+                    format: double
+                    description: The daily limit value in force that day.
+                    examples:
+                        - 400
+                weekly_amber:
+                    type: number
+                    format: double
+                    description: The action value over the rolling 7 days ending on `date`.
+                    examples:
+                        - 500
+                weekly_red:
+                    type: number
+                    format: double
+                    description: The limit value over the rolling 7 days ending on `date`.
+                    examples:
+                        - 2000
+                source:
+                    type: string
+                    description: |
+                        The layer that set red, and so `weekly_red`: `hse`, `organisation` or `health_plan`, as on an
+                        effective exposure limit.
+                    enum:
+                        - hse
+                        - organisation
+                        - health_plan
+        ExposureDayRelationships:
+            type: object
+            description: Relationships for an exposure day
+            required:
+                - subject
+            properties:
+                subject:
+                    type: object
+                    description: The person the day is for.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/UserRelationship'
+        ExposureBand:
+            type: string
+            description: |
+                Where a total falls against its limit: `green` below amber, `amber` at or above amber and below red
+                (near-limit), `red` at or above red (breach).
+            enum:
+                - green
+                - amber
+                - red
         ExposureLimit:
             type: object
             description: |
@@ -18700,6 +19120,8 @@ components:
                 - unit
                 - amber
                 - red
+                - weekly_amber
+                - weekly_red
                 - source
                 - date
             properties:
@@ -18722,12 +19144,28 @@ components:
                     description: The limit value in force.
                     examples:
                         - 100
+                weekly_amber:
+                    type: number
+                    format: double
+                    description: |
+                        The action value over the rolling 7 days ending on `date`: that day and the 6 before it. It is
+                        five times `amber` for HAVS.
+                    examples:
+                        - 250
+                weekly_red:
+                    type: number
+                    format: double
+                    description: |
+                        The limit value over the rolling 7 days ending on `date`: that day and the 6 before it. It is
+                        five times `red` for HAVS, so `source` names the layer that set it too.
+                    examples:
+                        - 500
                 source:
                     type: string
                     description: |
-                        The layer that set red: `hse` (the HSE limit value), `organisation` (the organisation's
-                        threshold) or `health_plan` (a health plan's cap). When two layers set the same red, the more
-                        specific is named.
+                        The layer that set red, and so `weekly_red`: `hse` (the HSE limit value), `organisation` (the
+                        organisation's threshold) or `health_plan` (a health plan's cap). When two layers set the same
+                        red, the more specific is named.
                     enum:
                         - hse
                         - organisation
@@ -18750,6 +19188,84 @@ components:
                     properties:
                         data:
                             $ref: '#/components/schemas/UserRelationship'
+        ExposureSummary:
+            type: object
+            description: |
+                One Europe/London day's exposure totals over the people the caller may view, computed when asked
+                for. `total` and `people` count only records in this organisation. The breach and near-limit
+                counts band each person's dose in every organisation, as an exposure day does.
+            required:
+                - id
+                - type
+                - attributes
+            properties:
+                id:
+                    type: string
+                    description: |
+                        The exposure type and the date, joined by a colon. It is unique within the organisation in the
+                        path: another organisation's summary for the same day has the same id and other totals.
+                    example: havs:2026-11-11
+                type:
+                    type: string
+                    const: exposure-summaries
+                attributes:
+                    $ref: '#/components/schemas/ExposureSummaryAttributes'
+        ExposureSummaryAttributes:
+            type: object
+            description: Attributes of an exposure summary
+            required:
+                - exposure_type
+                - unit
+                - date
+                - total
+                - people
+                - breaches
+                - near_limits
+                - weekly_breaches
+                - weekly_near_limits
+            properties:
+                exposure_type:
+                    $ref: '#/components/schemas/ExposureType'
+                unit:
+                    type: string
+                    description: The unit `total` is in, such as `points` for HAVS.
+                    examples:
+                        - points
+                date:
+                    type: string
+                    format: date
+                    description: The Europe/London calendar day.
+                total:
+                    type: number
+                    format: double
+                    description: The total of every included person's dose that day, from their records in this organisation.
+                    examples:
+                        - 1830
+                people:
+                    type: integer
+                    description: The number of people with records in this organisation that day.
+                    examples:
+                        - 12
+                breaches:
+                    type: integer
+                    description: The number of people whose day reached their daily red.
+                    examples:
+                        - 1
+                near_limits:
+                    type: integer
+                    description: The number of people whose day reached their daily amber but not red.
+                    examples:
+                        - 3
+                weekly_breaches:
+                    type: integer
+                    description: The number of people whose rolling 7 days ending that day reached their weekly red.
+                    examples:
+                        - 0
+                weekly_near_limits:
+                    type: integer
+                    description: The number of people whose rolling 7 days ending that day reached their weekly amber but not red.
+                    examples:
+                        - 2
         ExposureThreshold:
             type: object
             description: |
@@ -19018,6 +19534,20 @@ components:
                     $ref: '#/components/schemas/FormReminderOccurrenceAttributes'
                 relationships:
                     $ref: '#/components/schemas/FormReminderOccurrenceRelationships'
+        FormReminderOccurrenceIncludes:
+            type: array
+            description: Related resources that can be included when a form reminder occurrence is returned
+            items:
+                discriminator:
+                    propertyName: type
+                    mapping:
+                        forms: "#/components/schemas/Form"
+                        form-reminders: "#/components/schemas/FormReminder"
+                        users: "#/components/schemas/User"
+                oneOf:
+                    - $ref: '#/components/schemas/Form'
+                    - $ref: '#/components/schemas/FormReminder'
+                    - $ref: '#/components/schemas/User'
         FormReminderOccurrenceAttributes:
             type: object
             required:
@@ -19177,7 +19707,7 @@ components:
                         - "null"
                     format: date
                     readOnly: true
-                    description: The next date the reminder falls due, skipping bank holidays, counted from now in Europe/London. Today counts only until its time of day has passed. Null when it falls on no date in the next two years, and also when the bank holidays or the organisation's settings could not be read, so null does not by itself mean it will never fall due.
+                    description: The next date the reminder falls due, skipping bank holidays, counted from now in Europe/London. Today counts only until its time of day has passed. Null when it falls on no date in the next two years, and also when the bank holidays or the organisation's settings could not be read, so null does not by itself mean it will never fall due. Always null on a reminder included with another resource.
         FormReminderRelationships:
             type: object
             description: Relationships for a form reminder
@@ -19300,7 +19830,7 @@ components:
                         - "07:30"
         FormReminderAudience:
             type: object
-            description: Who a form reminder is for. Teams and job roles are resolved to people each time it falls due, and a person named more than once is reminded once. At most 500 ids in all, each a member, team or job role of the organisation. Each list is returned sorted.
+            description: Who a form reminder is for. Teams and job roles are resolved to people each time it falls due, and a person named more than once is reminded once. At most 500 ids in all, each a member, team or job role of the organisation. Each list is returned sorted. A reminder included with another resource has every list empty.
             required:
                 - user_ids
                 - team_ids
@@ -19324,6 +19854,60 @@ components:
                     items:
                         type: string
                         format: uuid
+        FormSubmissionCreator:
+            type: object
+            description: A person who created form submissions, and how many of the selected submissions they created.
+            required:
+                - id
+                - type
+                - attributes
+                - relationships
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The id of the user who created the submissions.
+                type:
+                    type: string
+                    const: form-submission-creators
+                attributes:
+                    $ref: '#/components/schemas/FormSubmissionCreatorAttributes'
+                relationships:
+                    $ref: '#/components/schemas/FormSubmissionCreatorRelationships'
+        FormSubmissionCreatorIncludes:
+            type: array
+            description: Related resources that can be included when form submission creators are returned
+            items:
+                discriminator:
+                    propertyName: type
+                    mapping:
+                        users: "#/components/schemas/User"
+                oneOf:
+                    - $ref: '#/components/schemas/User'
+        FormSubmissionCreatorAttributes:
+            type: object
+            required:
+                - submissions
+            properties:
+                submissions:
+                    type: integer
+                    format: int64
+                    minimum: 1
+                    description: How many of the selected submissions the person created.
+        FormSubmissionCreatorRelationships:
+            type: object
+            description: Relationships for a form submission creator
+            required:
+                - user
+            properties:
+                user:
+                    type: object
+                    description: The person who created the submissions.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/UserRelationship'
         HealthPlan:
             type: object
             description: |
@@ -20545,6 +21129,16 @@ components:
                     $ref: '#/components/schemas/ReminderPauseRelationships'
                 meta:
                     $ref: '#/components/schemas/ReminderPauseMeta'
+        ReminderPauseIncludes:
+            type: array
+            description: Related resources that can be included when a reminder pause is returned
+            items:
+                discriminator:
+                    propertyName: type
+                    mapping:
+                        users: "#/components/schemas/User"
+                oneOf:
+                    - $ref: '#/components/schemas/User'
         ReminderPauseAttributes:
             type: object
             required:
@@ -22157,6 +22751,7 @@ components:
                 - duty_holders
                 - planning_information
                 - file_log
+                - principal_contractor_id
             properties:
                 project_information:
                     $ref: '#/components/schemas/PCIProjectInformation'
@@ -22184,6 +22779,9 @@ components:
                 - reference
                 - description
                 - version
+                - associated_activity
+                - identified_by
+                - identified_on
             properties:
                 id:
                     type: string
@@ -22248,6 +22846,8 @@ components:
                 - access
                 - created_at
                 - updated_at
+                - rejection_reason
+                - resulting_revision
             properties:
                 reason:
                     type: string
@@ -22599,18 +23199,22 @@ components:
                                 properties:
                                     from:
                                         type: number
+                                        format: double
                                         description: "Lower bound of the first band, and the anchor every other band is measured from. Values below it group into a band of their own rather than being folded into the first. Anchoring here rather than at the smallest value in the data is what keeps a band stable as the data changes."
                                     width:
                                         type: number
+                                        format: double
                                         description: "How wide each band is, in the field's stored unit, which for a duration is seconds (3600 is an hour). A non-zero width describes the bands by width; leave it out to describe them by thresholds instead."
                                     to:
                                         type: number
+                                        format: double
                                         description: "Optional upper bound of the width bands. Everything at or above it groups into a single open-ended top band, which is what makes a \"2h+\" band possible. Setting it also makes the band count arithmetic, so an excessive one is refused rather than silently widened; an open-ended bin's band count is whatever the data spans."
                                     thresholds:
                                         type: array
                                         minItems: 1
                                         items:
                                             type: number
+                                            format: double
                                         description: "Explicit ascending lower bounds of each band, in the field's stored unit, for named bands such as 0-1h / 1-2h / 2h+. The last band is open-ended. Values below the first threshold group into a band of their own. A non-empty list describes the bands by threshold; leave it out to describe them by width instead."
                 measures:
                     type: array
@@ -22713,6 +23317,7 @@ components:
             description: Relationships for a query
             required:
                 - organisation
+                - form
                 - author
             properties:
                 organisation:
@@ -22724,6 +23329,8 @@ components:
                             $ref: '#/components/schemas/OrganisationRelationship'
                 form:
                     type: object
+                    required:
+                        - data
                     properties:
                         data:
                             oneOf:
@@ -22748,6 +23355,92 @@ components:
                     properties:
                         data:
                             $ref: '#/components/schemas/AuthorRelationship'
+        QueryResultRow:
+            type: object
+            description: >-
+                One row of a query's results. Its attributes are the query's columns, keyed by each column's key, so they differ from query to query. A row also carries <key>__id beside each author column (creator_id, author_id), holding the id its name was resolved from.
+            required:
+                - id
+                - type
+                - attributes
+            properties:
+                id:
+                    type: string
+                    description: >-
+                        The submission id of a detail row, the submission id and the entry position of a row at the entry grain (<submission>:<entry>), or the row's index for an aggregate row.
+                type:
+                    type: string
+                    const: query-result-rows
+                attributes:
+                    type: object
+                    description: The row's values, keyed by column key.
+                    additionalProperties: true
+        QueryResultColumn:
+            type: object
+            description: Describes one column of a query's results.
+            required:
+                - key
+                - label
+                - type
+            properties:
+                key:
+                    type: string
+                    description: The key the column's value has in each row's attributes.
+                label:
+                    type: string
+                    description: The column's default header.
+                type:
+                    type: string
+                    description: A hint at how to render the column's values, such as string, number, date or duration.
+                field:
+                    type: string
+                    description: >-
+                        The field id the column reads when its key is not that id, such as a child of a repeating row expanded into one column per entry, keyed <field>.<n>.
+                nomenclature:
+                    type: string
+                    description: The organisation-configurable term for a resolved governance column, such as governance.work_orders.
+                bucket:
+                    type: string
+                    description: The time grain a date dimension was grouped at (day, week, month, quarter or year).
+                bin:
+                    type: object
+                    description: >-
+                        The bands a numeric dimension was grouped into, in the field's stored unit. A banded column's cells hold each band's lower bound, or -inf for the band below the first.
+                    required:
+                        - from
+                    properties:
+                        from:
+                            type: number
+                            format: double
+                        width:
+                            type: number
+                            format: double
+                        to:
+                            type: number
+                            format: double
+                        thresholds:
+                            type: array
+                            items:
+                                type: number
+                                format: double
+                measure:
+                    type: object
+                    description: The aggregate that produced the column, absent on a dimension and on a detail column.
+                    required:
+                        - func
+                    properties:
+                        func:
+                            type: string
+                        field:
+                            type: string
+                        percentile:
+                            type: integer
+                decimals:
+                    type: integer
+                    description: The decimal places the column's cells were rounded to, when they were rounded.
+                raw_key:
+                    type: string
+                    description: The key of the column's value as it came out of the database, when the cell itself was rewritten for display.
         RegistrationIncludes:
             type: array
             description: Related resources that can be included when a registration is returned
@@ -22760,6 +23453,44 @@ components:
                 oneOf:
                     - $ref: '#/components/schemas/User'
                     - $ref: '#/components/schemas/SkillsRegister'
+        ReminderCounts:
+            type: object
+            description: How many of an organisation's reminders are waiting on someone to renew them.
+            required:
+                - id
+                - type
+                - attributes
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The organisation the counts are for.
+                type:
+                    type: string
+                    const: reminder-counts
+                attributes:
+                    $ref: '#/components/schemas/ReminderCountsAttributes'
+        ReminderCountsAttributes:
+            type: object
+            description: Attributes of an organisation's reminder counts
+            required:
+                - lapsed
+                - due
+            properties:
+                lapsed:
+                    type: integer
+                    format: int64
+                    minimum: 0
+                    description: How many of the organisation's reminders have lapsed.
+                    examples:
+                        - 2
+                due:
+                    type: integer
+                    format: int64
+                    minimum: 0
+                    description: How many of the organisation's active reminders are inside their lead window. A reminder's window opens its longest lead time before it expires, using its own lead times or its category's when it sets none. A reminder with no lead times at all enters it when it expires. Renewing a reminder moves its expiry, and takes it back out of the window.
+                    examples:
+                        - 5
         ReportRun:
             type: object
             description: One delivery of a report, kept as the record of what was sent and when
@@ -22801,6 +23532,8 @@ components:
             required:
                 - status
                 - row_count
+                - error
+                - artifact
             properties:
                 status:
                     $ref: '#/components/schemas/ReportRunStatus'
@@ -22826,6 +23559,7 @@ components:
             required:
                 - scheduled_at
                 - started_at
+                - completed_at
             properties:
                 scheduled_at:
                     type: string
@@ -22965,6 +23699,8 @@ components:
                 - schedule
                 - recipients
                 - state
+                - options
+                - paused_reason
             properties:
                 name:
                     type: string
@@ -22996,6 +23732,8 @@ components:
             required:
                 - created_at
                 - updated_at
+                - next_run_at
+                - last_run_at
             properties:
                 created_at:
                     type: string
@@ -23680,8 +24418,10 @@ components:
                 - reason
                 - acknowledged
                 - signed_in_at
-                - signed_out_at
                 - on_site
+                - construction_phase_plan_revision
+                - recorder
+                - sign_out_recorder
             properties:
                 attendee_name:
                     type: string
@@ -23717,6 +24457,7 @@ components:
                         - integer
                         - "null"
                     readOnly: true
+                    x-omitempty: false
                     description: |
                         The CPP revision whose induction points were put to the attendee. Server-derived from the
                         plan's current revision. Null when they were not put, or the plan had not been handed over.
@@ -23730,7 +24471,7 @@ components:
                         - "null"
                     format: date-time
                     description: |
-                        When the attendee left. Null means they are still on site.
+                        When the attendee left. Absent while they are still on site: read `on_site` to tell.
 
                         May be backdated: at close of play a register is reconciled in one sitting, so the
                         departure time is often stated after the fact. `signed_out_recorded_at` keeps when it
@@ -30785,6 +31526,31 @@ components:
                                 data:
                                     $ref: '#/components/schemas/DocumentUpload'
                             - $ref: '#/components/schemas/JSONAPI'
+        PayloadTooLarge:
+            description: >-
+                The request body is larger than this operation accepts. Send a smaller file or image.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        properties:
+                            errors:
+                                type: array
+                                items:
+                                    $ref: '#/components/schemas/Error'
+                    example:
+                        errors:
+                            - id: 5b2e9c47-1f3a-4d86-a0b9-7c4e2d1f6a38
+                              status: "413"
+                              title: request body exceeds the maximum permitted size
+                              code: CH.000.025
         ListDocuments:
             description: Get a list of documents.
             headers:
@@ -31694,6 +32460,24 @@ components:
                                         $ref: '#/components/schemas/FormSubmissionArtefact'
                             - $ref: '#/components/schemas/DocumentMeta'
                             - $ref: '#/components/schemas/JSONAPI'
+                            - type: object
+                              properties:
+                                meta:
+                                    type: object
+                                    properties:
+                                        stats:
+                                            type: object
+                                            properties:
+                                                archiving_started_at:
+                                                    type: string
+                                                    format: date-time
+                                                    description: |
+                                                        When the first archived document in this environment was recorded, in UTC.
+                                                        Every submitted version created at or after this time has a record, or
+                                                        will have one within moments. A version created before it that has no
+                                                        record was submitted before archiving began, and will not get one. Being
+                                                        created before it is not enough on its own: a backfill can give an older
+                                                        version a record. Absent when no document has been recorded yet.
         GetFormSubmissionVersion:
             description: A form submission version.
             headers:
@@ -32728,6 +33512,28 @@ components:
                                 data:
                                     $ref: '#/components/schemas/ManagerRole'
                             - $ref: '#/components/schemas/JSONAPI'
+        ListMyElevations:
+            description: The caller's elevations open now.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    type: array
+                                    items:
+                                        $ref: '#/components/schemas/Elevation'
+                            - $ref: '#/components/schemas/JSONAPI'
         GetImpersonation:
             description: The impersonation session the request is served under, or null when there is none.
             headers:
@@ -32839,7 +33645,6 @@ components:
                                     type: array
                                     items:
                                         $ref: '#/components/schemas/Notification'
-                            - $ref: '#/components/schemas/DocumentMeta'
                             - $ref: '#/components/schemas/JSONAPI'
                             - type: object
                               required:
@@ -32848,8 +33653,12 @@ components:
                                 meta:
                                     type: object
                                     required:
-                                        - stats
+                                        - pagination
                                     properties:
+                                        features:
+                                            $ref: '#/components/schemas/Features'
+                                        pagination:
+                                            $ref: '#/components/schemas/Pagination'
                                         stats:
                                             type: object
                                             required:
@@ -32901,13 +33710,20 @@ components:
                                     type: array
                                     items:
                                         $ref: '#/components/schemas/Notification'
-                            - $ref: '#/components/schemas/DocumentMeta'
                             - $ref: '#/components/schemas/JSONAPI'
                             - type: object
+                              required:
+                                - meta
                               properties:
                                 meta:
                                     type: object
+                                    required:
+                                        - pagination
                                     properties:
+                                        features:
+                                            $ref: '#/components/schemas/Features'
+                                        pagination:
+                                            $ref: '#/components/schemas/Pagination'
                                         stats:
                                             type: object
                                             required:
@@ -33605,6 +34421,30 @@ components:
                     $ref: '#/components/headers/content-length'
                 X-Request-ID:
                     $ref: '#/components/headers/x-request-id'
+        ListExposureDays:
+            description: Get a list of exposure days.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    title: A list of exposure days
+                                    type: array
+                                    items:
+                                        $ref: '#/components/schemas/ExposureDay'
+                            - $ref: '#/components/schemas/DocumentMeta'
+                            - $ref: '#/components/schemas/JSONAPI'
         GetExposureLimit:
             description: Get an effective exposure limit.
             headers:
@@ -33624,6 +34464,29 @@ components:
                               properties:
                                 data:
                                     $ref: '#/components/schemas/ExposureLimit'
+                            - $ref: '#/components/schemas/JSONAPI'
+        GetExposureSummary:
+            description: Get an exposure summary, one entry per day.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    title: An exposure summary per day
+                                    type: array
+                                    items:
+                                        $ref: '#/components/schemas/ExposureSummary'
                             - $ref: '#/components/schemas/JSONAPI'
         ListExposureThresholds:
             description: Get a list of exposure thresholds.
@@ -33740,6 +34603,8 @@ components:
                                     type: array
                                     items:
                                         $ref: '#/components/schemas/FormReminderOccurrence'
+                                included:
+                                    $ref: '#/components/schemas/FormReminderOccurrenceIncludes'
                             - $ref: '#/components/schemas/DocumentMeta'
                             - $ref: '#/components/schemas/JSONAPI'
         ListFormReminders:
@@ -33785,6 +34650,32 @@ components:
                               properties:
                                 data:
                                     $ref: '#/components/schemas/FormReminder'
+                            - $ref: '#/components/schemas/JSONAPI'
+        ListFormSubmissionCreators:
+            description: A list of form submission creators
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    title: A list of form submission creators
+                                    type: array
+                                    items:
+                                        $ref: '#/components/schemas/FormSubmissionCreator'
+                                included:
+                                    $ref: '#/components/schemas/FormSubmissionCreatorIncludes'
+                            - $ref: '#/components/schemas/DocumentMeta'
                             - $ref: '#/components/schemas/JSONAPI'
         ListHealthPlans:
             description: Get a list of health plans.
@@ -34542,6 +35433,8 @@ components:
                                     type: array
                                     items:
                                         $ref: '#/components/schemas/ReminderPause'
+                                included:
+                                    $ref: '#/components/schemas/ReminderPauseIncludes'
                             - $ref: '#/components/schemas/DocumentMeta'
                             - $ref: '#/components/schemas/JSONAPI'
         GetReminderPause:
@@ -35371,6 +36264,57 @@ components:
                                 included:
                                     $ref: '#/components/schemas/QueryIncludes'
                             - $ref: '#/components/schemas/JSONAPI'
+        GetQueryResults:
+            description: >-
+                The query's result rows, as a JSON:API collection of query-result-rows. The column descriptors, pagination and execution time are in meta.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                            - meta
+                        properties:
+                            data:
+                                type: array
+                                items:
+                                    $ref: '#/components/schemas/QueryResultRow'
+                            meta:
+                                type: object
+                                required:
+                                    - columns
+                                    - pagination
+                                    - duration_ms
+                                properties:
+                                    columns:
+                                        type: array
+                                        items:
+                                            $ref: '#/components/schemas/QueryResultColumn'
+                                    pagination:
+                                        type: object
+                                        required:
+                                            - limit
+                                            - offset
+                                            - count
+                                            - total
+                                        properties:
+                                            limit:
+                                                type: integer
+                                                description: The most rows a page holds.
+                                            offset:
+                                                type: integer
+                                                description: The position of the page's first row.
+                                            count:
+                                                type: integer
+                                                description: The rows on this page.
+                                            total:
+                                                type: integer
+                                                format: int64
+                                                description: The rows across every page, or the groups for an aggregate query.
+                                    duration_ms:
+                                        type: integer
+                                        format: int64
+                                        description: How long the query took to run, in milliseconds, as the server measured it.
         ListRegistrations:
             description: Get a list of registrations.
             headers:
@@ -35418,6 +36362,26 @@ components:
                                     $ref: '#/components/schemas/Registration'
                                 included:
                                     $ref: '#/components/schemas/RegistrationIncludes'
+                            - $ref: '#/components/schemas/JSONAPI'
+        GetReminderCounts:
+            description: An organisation's reminder counts.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    $ref: '#/components/schemas/ReminderCounts'
                             - $ref: '#/components/schemas/JSONAPI'
         ListReportRuns:
             description: List of report runs.
@@ -35840,6 +36804,30 @@ components:
                                     $ref: '#/components/schemas/SiteAttendance'
                                 included:
                                     $ref: '#/components/schemas/SiteAttendanceIncludes'
+                            - $ref: '#/components/schemas/JSONAPI'
+        SignOutSiteAttendancesDocument:
+            description: |
+                The attendances the request signed out, as they are now. The answer is not a page of a
+                collection, so it carries no pagination.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    type: array
+                                    items:
+                                        $ref: '#/components/schemas/SiteAttendance'
                             - $ref: '#/components/schemas/JSONAPI'
         ListSkillsRegisterSchemeCategories:
             description: Get a list of skills register scheme categories.
@@ -38075,12 +39063,13 @@ components:
         limit:
             name: limit
             in: query
-            description: Limit the number of resources returned by the API
+            description: Limit the number of resources returned by the API, at most 1000
             required: false
             schema:
                 type: integer
                 format: int64
                 minimum: 1
+                maximum: 1000
                 default: 100
         offset:
             name: offset
@@ -38108,7 +39097,8 @@ components:
                         type: integer
                         format: int64
                         minimum: 1
-                        description: Limit the number of resources returned by the API. Defaults to the operation's `limit` default.
+                        maximum: 1000
+                        description: Limit the number of resources returned by the API, at most 1000. Defaults to the operation's `limit` default.
                     offset:
                         type: integer
                         format: int64
@@ -38327,6 +39317,11 @@ components:
                 - `contains(code,xxx)`: Filter assessment definitions where code contains value.
                 - `eq(organisation,xxx)`: Filter assessment definitions by organisation ID.
                 - `eq(created_at,xxx)`: Filter assessment definitions by created date.
+                - `eq(available_to,xxx)`: Only the assessment definitions an organisation can use: its own, and those named by a
+                  competency requirement specification on a job role that an organisation with an active bridge into it
+                  shares. Still limited by what you may view. Takes one organisation ID. It cannot be combined with a
+                  filter on `organisation`, or used as a top-level `or(...)`; either is a 400. Inside a nested `or(...)`
+                  the term and any `organisation` term are dropped without a 400, so that group matches fewer records.
 
                 For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
             required: false
@@ -40940,6 +41935,26 @@ components:
             schema:
                 type: string
                 default: ""
+        havs_exposures_sort:
+            in: query
+            name: sort
+            description: A comma separated list of fields to sort by. Without one, exposures are listed in the order the server created them (created_at, then id), which for a record synced late is not the order recorded_at gives. Records that tie on every sort field are ordered by id.
+            required: false
+            style: form
+            explode: false
+            schema:
+                type: array
+                items:
+                    type: string
+                    enum:
+                        - start_time
+                        - -start_time
+                        - end_time
+                        - -end_time
+                        - recorded_at
+                        - -recorded_at
+                        - created_at
+                        - -created_at
         havs_exposure_id:
             name: havs_exposure_id
             in: path
@@ -41078,6 +42093,11 @@ components:
                 - `contains(name,xxx)`: Filter inductions where name contains value.
                 - `eq(organisation,xxx)`: Filter inductions by organisation ID.
                 - `eq(created_at,xxx)`: Filter inductions by created date.
+                - `eq(available_to,xxx)`: Only the inductions an organisation can use: its own, and those named by a
+                  competency requirement specification on a job role that an organisation with an active bridge into it
+                  shares. Still limited by what you may view. Takes one organisation ID. It cannot be combined with a
+                  filter on `organisation`, or used as a top-level `or(...)`; either is a 400. Inside a nested `or(...)`
+                  the term and any `organisation` term are dropped without a 400, so that group matches fewer records.
 
                 For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
             required: false
@@ -41542,6 +42562,15 @@ components:
                 type: string
                 format: uuid
             example: 7d4b1e36-92a8-4c5f-b0e3-61f8a2c9d714
+        elevation_id:
+            name: elevation_id
+            in: path
+            required: true
+            description: The unique identifier of the elevation.
+            schema:
+                type: string
+                format: uuid
+            example: 4b6d8f0a-2e3c-4b7d-9f1a-3e5b7d9f1a2c
         meters_include:
             name: include
             in: query
@@ -42085,6 +43114,37 @@ components:
                 type: string
                 format: uuid
             example: a71fd460-4e25-4eb3-9183-a85f24b0700d
+        exposure_type:
+            name: exposure_type
+            in: query
+            required: true
+            description: The exposure type to resolve the limit for.
+            schema:
+                $ref: '#/components/schemas/ExposureType'
+            example: havs
+        exposure_days_filter:
+            name: filter
+            in: query
+            description: |
+                Selects the days and people. Required, because it carries the window.
+
+                - `ge(date,YYYY-MM-DD)`: **Required.** The window's first Europe/London day.
+                - `le(date,YYYY-MM-DD)`: **Required.** The window's last day. A window spans at most 93 days.
+                - `eq(subject,xxx)` or `in(subject,[xxx,yyy])`: only these people.
+                - `eq(band,red)` or `in(band,[amber,red])`: only days in these daily bands. The breach list is
+                  `in(band,[amber,red])`.
+                - `eq(weekly_band,red)` or `in(weekly_band,[amber,red])`: only days in these weekly bands.
+
+                Terms are comma separated, or wrapped in `and(...)`, and combine with AND. Each field other than
+                `date` may appear in one term. An `or(...)`, a repeated term, text after a term, any other term and a
+                term that does not parse are refused with a 400 rather than ignored.
+
+                For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
+            required: true
+            schema:
+                type: string
+                minLength: 1
+                example: and(ge(date,2026-11-01),le(date,2026-11-30),in(band,[amber,red]))
         user_id:
             name: user_id
             in: path
@@ -42094,14 +43154,6 @@ components:
                 type: string
                 format: uuid
             example: 550e8400-e29b-41d4-a716-446655440000
-        exposure_type:
-            name: exposure_type
-            in: query
-            required: true
-            description: The exposure type to resolve the limit for.
-            schema:
-                $ref: '#/components/schemas/ExposureType'
-            example: havs
         at:
             name: at
             in: query
@@ -42111,6 +43163,26 @@ components:
                 type: string
                 format: date-time
             example: "2026-11-10T09:00:00Z"
+        exposure_summary_filter:
+            name: filter
+            in: query
+            description: |
+                Selects the days and people. Required, because it carries the window.
+
+                - `ge(date,YYYY-MM-DD)`: **Required.** The window's first Europe/London day.
+                - `le(date,YYYY-MM-DD)`: **Required.** The window's last day. A window spans at most 93 days.
+                - `eq(subject,xxx)` or `in(subject,[xxx,yyy])`: only these people.
+
+                Terms are comma separated, or wrapped in `and(...)`, and combine with AND. `subject` may appear in
+                one term. An `or(...)`, a repeated term, text after a term, any other term and a term that does not parse are refused
+                with a 400 rather than ignored.
+
+                For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
+            required: true
+            schema:
+                type: string
+                minLength: 1
+                example: ge(date,2026-11-01),le(date,2026-11-30)
         exposure_thresholds_filter:
             name: filter
             in: query
@@ -42171,6 +43243,7 @@ components:
                 - `local_date`: Filter by the date it fell on in the person's timezone, as an RFC 3339 time at midnight UTC, e.g. `eq(local_date,2026-11-17T00:00:00Z)`.
                 - `id`: Filter by the occurrence's id, e.g. `in(id,[X,Y])`.
                 - `submission`: Filter by the submission that closed it, e.g. `eq(submission,X)`.
+                - `managed_by`: The caller's own user id, as `eq(managed_by,X)`. Lists the occurrences of the people the caller manages through a live management relationship and holds `users:view-reminder-occurrences` over, which the default Line manager role gives. Any other value is refused with 400. It cannot be used inside `or(...)`.
 
                 For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
             required: false
@@ -42190,6 +43263,21 @@ components:
                     type: string
                     enum:
                         - -due_at
+        form_reminder_occurrences_include:
+            name: include
+            in: query
+            description: A comma separated list of related resources to include.
+            required: false
+            style: form
+            explode: false
+            schema:
+                type: array
+                items:
+                    type: string
+                    enum:
+                        - form
+                        - reminder
+                        - user
         form_reminders_filter:
             name: filter
             in: query
@@ -42232,6 +43320,19 @@ components:
                 type: string
                 format: uuid
             example: 3f6a1c2e-8d4b-4e7a-9b1c-5d2e3f4a6b7c
+        form_submission_creators_include:
+            name: include
+            in: query
+            description: A comma separated list of related resources to include.
+            required: false
+            style: form
+            explode: false
+            schema:
+                type: array
+                items:
+                    type: string
+                    enum:
+                        - user
         health_plans_filter:
             name: filter
             in: query
@@ -42617,6 +43718,11 @@ components:
                 - `held_by(<user_id>)`: Filter for schemes where the given user holds at least one role (any role). Example: `held_by(22222222-2222-2222-2222-222222222222)`.
                 - `has_role_assignment(<project_role_id>,<user_id>)`: Filter for schemes where the given user holds the given role specifically. Example: `has_role_assignment(11111111-1111-1111-1111-111111111111,22222222-2222-2222-2222-222222222222)`.
 
+                Job role filters that match on the scheme or beneath it:
+
+                - `assigned_role(<job_role_id>[,<user_id>,...])`: Filter for schemes where an active holder of the given job role is posted on the scheme, or on any work order or operation beneath it. With user IDs, one of those users must hold it. Up to 50 user IDs. Send the clause once, because the arguments of a repeated clause are merged. Example: `assigned_role(11111111-1111-1111-1111-111111111111,22222222-2222-2222-2222-222222222222)`.
+                - `assigned_user(<user_id>)`: Filter for schemes where the given user holds any job role on the scheme, or on any work order or operation beneath it. Example: `assigned_user(22222222-2222-2222-2222-222222222222)`.
+
                 For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
             required: false
             schema:
@@ -42762,6 +43868,19 @@ components:
                         - -ends_on
                         - created_at
                         - -created_at
+        reminder_pauses_include:
+            name: include
+            in: query
+            description: A comma separated list of related resources to include.
+            required: false
+            style: form
+            explode: false
+            schema:
+                type: array
+                items:
+                    type: string
+                    enum:
+                        - user
         reminder_pause_id:
             name: reminder_pause_id
             in: path
@@ -43488,8 +44607,10 @@ components:
             name: date_values
             in: query
             description: >-
-                Parameter values for `date_op` (e.g. `30` for `last_n_days`, or the two ends of a `between`). Repeat the parameter for multiple values. Ignored when `date_op` is absent.
+                The values `date_op` takes, comma separated: the number of days for `last_n_days`, the two ends of a `between`, or the one date of a `before` or `after`. Ignored when `date_op` is absent. A repeated parameter (`date_values=a&date_values=b`) is read as its values comma separated.
             required: false
+            style: form
+            explode: false
             schema:
                 type: array
                 items:
@@ -43534,6 +44655,16 @@ components:
                 type: string
                 format: uuid
             example: 8a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
+        reminder_counts_filter:
+            name: filter
+            in: query
+            description: |
+                Names the organisation to count, as `eq(organisation,X)`. It is required, and takes no other term. A filter that names no organisation, more than one, or anything else is refused.
+
+                For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
+            required: true
+            schema:
+                type: string
         report_runs_sort:
             in: query
             name: sort
@@ -44301,6 +45432,11 @@ components:
                 - `contains(name,xxx)`: Filter training items where name contains value.
                 - `eq(organisation,xxx)`: Filter training items by organisation ID.
                 - `eq(created_at,xxx)`: Filter training items by created date.
+                - `eq(available_to,xxx)`: Only the training items an organisation can use: its own, and those named by a
+                  competency requirement specification on a job role that an organisation with an active bridge into it
+                  shares. Still limited by what you may view. Takes one organisation ID. It cannot be combined with a
+                  filter on `organisation`, or used as a top-level `or(...)`; either is a 400. Inside a nested `or(...)`
+                  the term and any `organisation` term are dropped without a 400, so that group matches fewer records.
 
                 For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
             required: false
@@ -45706,6 +46842,8 @@ components:
                                                     - string
                                                     - "null"
                                                 format: date-time
+                                                x-go-type: json.RawMessage
+                                                x-go-type-skip-optional-pointer: true
                                                 description: When the action is due. Send null to clear the due date.
                                     relationships:
                                         type: object
@@ -50940,9 +52078,12 @@ components:
                                                 $ref: '#/components/schemas/ExportFormat'
                                     relationships:
                                         type: object
+                                        description: |
+                                            Send the subjects in the relationship their `subject_type` uses: `subjects` for
+                                            `competency-holders`, `submission_versions` for `form-submission-versions`. The
+                                            other one is ignored.
                                         required:
                                             - organisation
-                                            - subjects
                                         properties:
                                             organisation:
                                                 type: object
@@ -50994,6 +52135,23 @@ components:
                                                                     description: |
                                                                         The identifier of the subject to export. For `competency-holders`
                                                                         this is the user who holds the records.
+                                            submission_versions:
+                                                type: object
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        type: array
+                                                        minItems: 1
+                                                        maxItems: 50
+                                                        description: |
+                                                            The form submission versions whose archived PDFs to collect, at most
+                                                            fifty, for a `form-submission-versions` export. The caller must be able
+                                                            to view each version's submission. A version may belong to another
+                                                            organisation, such as one shared in through a scheme; the export is still
+                                                            filed under the organisation named here.
+                                                        items:
+                                                            $ref: '#/components/schemas/FormSubmissionVersionRelationship'
         CreateF10Notification:
             required: true
             description: |
@@ -51765,6 +52923,11 @@ components:
                                                           97284ef4-143c-4f2b-a9ef-46cfaf702809: "582a6d1a-d918-42cb-b5c8-2467738d647a"
                                             upgrade:
                                                 $ref: '#/components/schemas/SubmissionUpgrade'
+                                            completed_at:
+                                                type: string
+                                                format: date-time
+                                                description: >-
+                                                    When the person finished filling in the form on their device. It decides whether the reminder occurrence named in `reminder_occurrence` was met on time, so a submission made on time offline and synced later still counts as met. The value is trusted within bounds: a time later than the server's receipt is taken as the receipt time, and one before the occurrence fell due is taken as its due time. Omitted, the receipt time is used. Ignored without `reminder_occurrence`.
                                     relationships:
                                         type: object
                                         required:
@@ -51814,6 +52977,23 @@ components:
                                                             type:
                                                                 type: string
                                                                 const: organisations
+                                                            id:
+                                                                type: string
+                                                                format: uuid
+                                            reminder_occurrence:
+                                                type: object
+                                                description: >-
+                                                    The form reminder occurrence this submission answers, from the reminder's notification. It must be the caller's own and for this form, or the request is refused with 422. The submission closes it as met, or late when `completed_at` is after its grace period, and marks its notification read. An occurrence that no longer exists, or is already closed, is left alone and the submission is still made. The submission is never refused once it is stored: if the occurrence cannot be closed then, it stays open and the submission is returned as made. Without it, the person's open occurrences stay open.
+                                                properties:
+                                                    data:
+                                                        type: object
+                                                        required:
+                                                            - type
+                                                            - id
+                                                        properties:
+                                                            type:
+                                                                type: string
+                                                                const: form-reminder-occurrences
                                                             id:
                                                                 type: string
                                                                 format: uuid
@@ -52297,6 +53477,10 @@ components:
                                                 description: Must be after the start time and no more than 24 hours after it. The exposure must have ended, so this may be at most 5 minutes later than now. The 5 minutes allows for a device clock running fast.
                                             ppe:
                                                 $ref: '#/components/schemas/HavsExposurePPE'
+                                            recorded_at:
+                                                type: string
+                                                format: date-time
+                                                description: When the device saved the record. The 24-hour edit and delete lock runs from it. A record is saved after the exposure ends, so this must be no earlier than the end time and at most 5 minutes later than now. A time in that 5 minutes is stored as now, or as the end time if that is later. Omit it to use the time the server creates the record, or the end time if that is later.
                                             location:
                                                 description: Where the exposure took place. Omit or send null when no position is available. A zero point is rejected as a placeholder. A location naming neither british_national_grid nor lat_long, such as GeoJSON, is rejected.
                                                 oneOf:
@@ -52369,6 +53553,10 @@ components:
                                                 description: Must be after the start time and no more than 24 hours after it. The exposure must have ended, so this may be at most 5 minutes later than now. The 5 minutes allows for a device clock running fast.
                                             ppe:
                                                 $ref: '#/components/schemas/HavsExposurePPE'
+                                            edited_at:
+                                                type: string
+                                                format: date-time
+                                                description: When the edit was made on the device. It must be no earlier than recorded_at, no more than 7 days before now, and at most 5 minutes later than now, or the edit is refused with a 400 (CH.015.138). The edit time is the edited_at the device sent. One up to 5 minutes ahead is taken as now, and with no edited_at the edit time is the arrival time. Either of those is raised to recorded_at if that is later. An edit whose edit time is after meta.locks_at is refused with a 409 (CH.015.136). Edits apply in the order they were made, compared to the millisecond. An edit time earlier than meta.last_edited_at is refused with a 409 (CH.015.140), and an equal one is applied, as a retry is. The record's recorded_at cannot be changed.
                                             location:
                                                 description: Where the exposure took place. Omit or send null to clear it. A zero point is rejected as a placeholder. A location naming neither british_national_grid nor lat_long, such as GeoJSON, is rejected.
                                                 oneOf:
@@ -56384,6 +57572,33 @@ components:
                                                 properties:
                                                     data:
                                                         $ref: '#/components/schemas/FormRelationship'
+        SearchFormSubmissionCreators:
+            required: true
+            description: |
+                Which submissions to count. The filter travels in the body so that a long list of ids fits.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                    - attributes
+                                properties:
+                                    type:
+                                        type: string
+                                        const: form-submission-creator-searches
+                                    attributes:
+                                        type: object
+                                        properties:
+                                            filter:
+                                                type: string
+                                                description: |
+                                                    A filter with the syntax and vocabulary of the `filter` query parameter of `GET /v3/form-submissions`. Leave it out, or send an empty string, to count every submission the caller can list.
         CreateHealthPlan:
             required: true
             description: A cap on a person's limit for one exposure type over a period.
@@ -59633,18 +60848,22 @@ components:
                                                             properties:
                                                                 from:
                                                                     type: number
+                                                                    format: double
                                                                     description: "Lower bound of the first band, and the anchor every other band is measured from. Values below it group into a band of their own rather than being folded into the first. Anchoring here rather than at the smallest value in the data is what keeps a band stable as the data changes."
                                                                 width:
                                                                     type: number
+                                                                    format: double
                                                                     description: "How wide each band is, in the field's stored unit, which for a duration is seconds (3600 is an hour). A non-zero width describes the bands by width; leave it out to describe them by thresholds instead."
                                                                 to:
                                                                     type: number
+                                                                    format: double
                                                                     description: "Optional upper bound of the width bands. Everything at or above it groups into a single open-ended top band, which is what makes a \"2h+\" band possible. Setting it also makes the band count arithmetic, so an excessive one is refused rather than silently widened; an open-ended bin's band count is whatever the data spans."
                                                                 thresholds:
                                                                     type: array
                                                                     minItems: 1
                                                                     items:
                                                                         type: number
+                                                                        format: double
                                                                     description: "Explicit ascending lower bounds of each band, in the field's stored unit, for named bands such as 0-1h / 1-2h / 2h+. The last band is open-ended. Values below the first threshold group into a band of their own. A non-empty list describes the bands by threshold; leave it out to describe them by width instead."
                                             measures:
                                                 type: array
@@ -59904,18 +61123,22 @@ components:
                                                             properties:
                                                                 from:
                                                                     type: number
+                                                                    format: double
                                                                     description: "Lower bound of the first band, and the anchor every other band is measured from. Values below it group into a band of their own rather than being folded into the first. Anchoring here rather than at the smallest value in the data is what keeps a band stable as the data changes."
                                                                 width:
                                                                     type: number
+                                                                    format: double
                                                                     description: "How wide each band is, in the field's stored unit, which for a duration is seconds (3600 is an hour). A non-zero width describes the bands by width; leave it out to describe them by thresholds instead."
                                                                 to:
                                                                     type: number
+                                                                    format: double
                                                                     description: "Optional upper bound of the width bands. Everything at or above it groups into a single open-ended top band, which is what makes a \"2h+\" band possible. Setting it also makes the band count arithmetic, so an excessive one is refused rather than silently widened; an open-ended bin's band count is whatever the data spans."
                                                                 thresholds:
                                                                     type: array
                                                                     minItems: 1
                                                                     items:
                                                                         type: number
+                                                                        format: double
                                                                     description: "Explicit ascending lower bounds of each band, in the field's stored unit, for named bands such as 0-1h / 1-2h / 2h+. The last band is open-ended. Values below the first threshold group into a band of their own. A non-empty list describes the bands by threshold; leave it out to describe them by width instead."
                                             measures:
                                                 type: array
@@ -60869,6 +62092,8 @@ components:
                                                     - string
                                                     - "null"
                                                 format: date-time
+                                                x-go-type: json.RawMessage
+                                                x-go-type-skip-optional-pointer: true
                                                 description: |
                                                     Setting this signs the attendee out, and may be backdated to when they
                                                     actually left, but not before they arrived or into the future. Null clears a
@@ -64949,9 +66174,6 @@ paths:
             summary: List actions
             tags:
                 - Actions
-            x-ctrl-hub:
-                domain: actions
-                entity: Action
             x-mint:
                 metadata:
                     title: List actions
@@ -64983,9 +66205,6 @@ paths:
             summary: Create a new action
             tags:
                 - Actions
-            x-ctrl-hub:
-                domain: actions
-                entity: Action
             x-mint:
                 metadata:
                     title: Create an action
@@ -65013,9 +66232,6 @@ paths:
             summary: Delete an action
             tags:
                 - Actions
-            x-ctrl-hub:
-                domain: actions
-                entity: Action
             x-mint:
                 metadata:
                     title: Delete an action
@@ -65043,9 +66259,6 @@ paths:
             summary: Get an action
             tags:
                 - Actions
-            x-ctrl-hub:
-                domain: actions
-                entity: Action
             x-mint:
                 metadata:
                     title: Get an action
@@ -65077,9 +66290,6 @@ paths:
             summary: Update an action
             tags:
                 - Actions
-            x-ctrl-hub:
-                domain: actions
-                entity: Action
             x-mint:
                 metadata:
                     title: Update an action
@@ -65114,10 +66324,6 @@ paths:
             summary: Close an action
             tags:
                 - Actions
-            x-ctrl-hub:
-                domain: actions
-                entity: Action
-                manual: true
             x-mint:
                 metadata:
                     title: Close an action
@@ -65151,10 +66357,6 @@ paths:
             summary: Reopen an action
             tags:
                 - Actions
-            x-ctrl-hub:
-                domain: actions
-                entity: Action
-                manual: true
             x-mint:
                 metadata:
                     title: Reopen an action
@@ -67287,9 +68489,6 @@ paths:
             summary: List construction phase plan risk resources
             tags:
                 - Construction Phase Plans
-            x-ctrl-hub:
-                domain: cdm
-                entity: ConstructionPhasePlanRisk
             x-mint:
                 metadata:
                     title: List construction phase plan risk resources
@@ -67302,7 +68501,7 @@ paths:
             requestBody:
                 $ref: '#/components/requestBodies/CreateConstructionPhasePlanRisk'
             responses:
-                "200":
+                "201":
                     $ref: '#/components/responses/GetConstructionPhasePlanRisk'
                 "400":
                     $ref: '#/components/responses/BadRequest'
@@ -67323,9 +68522,6 @@ paths:
             summary: Create a construction phase plan risk
             tags:
                 - Construction Phase Plans
-            x-ctrl-hub:
-                domain: cdm
-                entity: ConstructionPhasePlanRisk
             x-mint:
                 metadata:
                     title: Create a construction phase plan risk
@@ -67359,9 +68555,6 @@ paths:
             summary: Delete a construction phase plan risk
             tags:
                 - Construction Phase Plans
-            x-ctrl-hub:
-                domain: cdm
-                entity: ConstructionPhasePlanRisk
             x-mint:
                 metadata:
                     title: Delete a construction phase plan risk
@@ -67390,9 +68583,6 @@ paths:
             summary: Get a construction phase plan risk
             tags:
                 - Construction Phase Plans
-            x-ctrl-hub:
-                domain: cdm
-                entity: ConstructionPhasePlanRisk
             x-mint:
                 metadata:
                     title: Get a construction phase plan risk
@@ -67427,9 +68617,6 @@ paths:
             summary: Update a construction phase plan risk
             tags:
                 - Construction Phase Plans
-            x-ctrl-hub:
-                domain: cdm
-                entity: ConstructionPhasePlanRisk
             x-mint:
                 metadata:
                     title: Update a construction phase plan risk
@@ -67444,7 +68631,7 @@ paths:
             requestBody:
                 $ref: '#/components/requestBodies/CreateCDMAttachment'
             responses:
-                "200":
+                "201":
                     $ref: '#/components/responses/GetDocument'
                 "400":
                     $ref: '#/components/responses/BadRequest'
@@ -67463,9 +68650,6 @@ paths:
             summary: Attach a file to a construction phase plan risk
             tags:
                 - Construction Phase Plans
-            x-ctrl-hub:
-                domain: cdm
-                entity: Document
             x-mint:
                 metadata:
                     title: Attach a file to a construction phase plan risk
@@ -67498,9 +68682,6 @@ paths:
             summary: Remove a file from a construction phase plan risk
             tags:
                 - Construction Phase Plans
-            x-ctrl-hub:
-                domain: cdm
-                entity: Document
             x-mint:
                 metadata:
                     title: Remove a file from a construction phase plan risk
@@ -67533,9 +68714,6 @@ paths:
             summary: List construction phase plan resources
             tags:
                 - Construction Phase Plans
-            x-ctrl-hub:
-                domain: cdm
-                entity: ConstructionPhasePlan
             x-mint:
                 metadata:
                     title: List construction phase plan resources
@@ -67548,7 +68726,7 @@ paths:
             requestBody:
                 $ref: '#/components/requestBodies/CreateConstructionPhasePlan'
             responses:
-                "200":
+                "201":
                     $ref: '#/components/responses/GetConstructionPhasePlan'
                 "400":
                     $ref: '#/components/responses/BadRequest'
@@ -67569,9 +68747,6 @@ paths:
             summary: Create a construction phase plan
             tags:
                 - Construction Phase Plans
-            x-ctrl-hub:
-                domain: cdm
-                entity: ConstructionPhasePlan
             x-mint:
                 metadata:
                     title: Create a construction phase plan
@@ -67602,9 +68777,6 @@ paths:
             summary: Get a construction phase plan
             tags:
                 - Construction Phase Plans
-            x-ctrl-hub:
-                domain: cdm
-                entity: ConstructionPhasePlan
             x-mint:
                 metadata:
                     title: Get a construction phase plan
@@ -67639,9 +68811,6 @@ paths:
             summary: Update a construction phase plan
             tags:
                 - Construction Phase Plans
-            x-ctrl-hub:
-                domain: cdm
-                entity: ConstructionPhasePlan
             x-mint:
                 metadata:
                     title: Update a construction phase plan
@@ -67656,7 +68825,7 @@ paths:
             requestBody:
                 $ref: '#/components/requestBodies/CreateConstructionPhasePlanAttestation'
             responses:
-                "200":
+                "201":
                     $ref: '#/components/responses/GetConstructionPhasePlan'
                 "400":
                     $ref: '#/components/responses/BadRequest'
@@ -67675,9 +68844,6 @@ paths:
             summary: Sign off a construction phase plan section
             tags:
                 - Construction Phase Plans
-            x-ctrl-hub:
-                domain: cdm
-                entity: ConstructionPhasePlan
             x-mint:
                 metadata:
                     title: Sign off a construction phase plan section
@@ -67692,7 +68858,7 @@ paths:
                 - $ref: '#/components/parameters/acting_organisation_id'
                 - $ref: '#/components/parameters/construction_phase_plan_id'
             responses:
-                "200":
+                "201":
                     $ref: '#/components/responses/GetConstructionPhasePlanRevision'
                 "400":
                     $ref: '#/components/responses/BadRequest'
@@ -67713,9 +68879,6 @@ paths:
             summary: Hand over a construction phase plan
             tags:
                 - Construction Phase Plans
-            x-ctrl-hub:
-                domain: cdm
-                entity: ConstructionPhasePlanRevision
             x-mint:
                 metadata:
                     title: Hand over a construction phase plan
@@ -67749,9 +68912,6 @@ paths:
             summary: List the changes proposed to a construction phase plan
             tags:
                 - Construction Phase Plans
-            x-ctrl-hub:
-                domain: cdm
-                entity: ConstructionPhasePlanProposedChange
             x-mint:
                 metadata:
                     title: List the changes proposed to a construction phase plan
@@ -67766,7 +68926,7 @@ paths:
             requestBody:
                 $ref: '#/components/requestBodies/CreateConstructionPhasePlanProposedChange'
             responses:
-                "200":
+                "201":
                     $ref: '#/components/responses/GetConstructionPhasePlanProposedChange'
                 "400":
                     $ref: '#/components/responses/BadRequest'
@@ -67787,9 +68947,6 @@ paths:
             summary: Propose a change to a construction phase plan
             tags:
                 - Construction Phase Plans
-            x-ctrl-hub:
-                domain: cdm
-                entity: ConstructionPhasePlanProposedChange
             x-mint:
                 metadata:
                     title: Propose a change to a construction phase plan
@@ -67820,9 +68977,6 @@ paths:
             summary: Get a change proposed to a construction phase plan
             tags:
                 - Construction Phase Plans
-            x-ctrl-hub:
-                domain: cdm
-                entity: ConstructionPhasePlanProposedChange
             x-mint:
                 metadata:
                     title: Get a change proposed to a construction phase plan
@@ -67858,9 +69012,6 @@ paths:
             summary: Accept a change proposed to a construction phase plan
             tags:
                 - Construction Phase Plans
-            x-ctrl-hub:
-                domain: cdm
-                entity: ConstructionPhasePlanProposedChange
             x-mint:
                 metadata:
                     title: Accept a change proposed to a construction phase plan
@@ -67898,9 +69049,6 @@ paths:
             summary: Reject a change proposed to a construction phase plan
             tags:
                 - Construction Phase Plans
-            x-ctrl-hub:
-                domain: cdm
-                entity: ConstructionPhasePlanProposedChange
             x-mint:
                 metadata:
                     title: Reject a change proposed to a construction phase plan
@@ -67933,9 +69081,6 @@ paths:
             summary: List a construction phase plan's revisions
             tags:
                 - Construction Phase Plans
-            x-ctrl-hub:
-                domain: cdm
-                entity: ConstructionPhasePlanRevision
             x-mint:
                 metadata:
                     title: List a construction phase plan's revisions
@@ -67966,9 +69111,6 @@ paths:
             summary: Read a construction phase plan as at a revision
             tags:
                 - Construction Phase Plans
-            x-ctrl-hub:
-                domain: cdm
-                entity: ConstructionPhasePlanRevision
             x-mint:
                 metadata:
                     title: Read a construction phase plan as at a revision
@@ -69652,6 +70794,8 @@ paths:
                     $ref: '#/components/responses/Unauthorised'
                 "409":
                     $ref: '#/components/responses/Conflict'
+                "413":
+                    $ref: '#/components/responses/PayloadTooLarge'
                 "500":
                     $ref: '#/components/responses/InternalServerError'
             security:
@@ -71667,9 +72811,6 @@ paths:
             summary: List F10 notification resources
             tags:
                 - Pre-Construction Information
-            x-ctrl-hub:
-                domain: cdm
-                entity: F10Notification
             x-mint:
                 metadata:
                     title: List F10 notification resources
@@ -71682,7 +72823,7 @@ paths:
             requestBody:
                 $ref: '#/components/requestBodies/CreateF10Notification'
             responses:
-                "200":
+                "201":
                     $ref: '#/components/responses/GetF10Notification'
                 "400":
                     $ref: '#/components/responses/BadRequest'
@@ -71701,9 +72842,6 @@ paths:
             summary: Record an F10 notification
             tags:
                 - Pre-Construction Information
-            x-ctrl-hub:
-                domain: cdm
-                entity: F10Notification
             x-mint:
                 metadata:
                     title: Record an F10 notification
@@ -71733,9 +72871,6 @@ paths:
             summary: Get an F10 notification
             tags:
                 - Pre-Construction Information
-            x-ctrl-hub:
-                domain: cdm
-                entity: F10Notification
             x-mint:
                 metadata:
                     title: Get an F10 notification
@@ -71750,7 +72885,7 @@ paths:
             requestBody:
                 $ref: '#/components/requestBodies/CreateCDMAttachment'
             responses:
-                "200":
+                "201":
                     $ref: '#/components/responses/GetDocument'
                 "400":
                     $ref: '#/components/responses/BadRequest'
@@ -71769,9 +72904,6 @@ paths:
             summary: Attach a file to an F10 notification
             tags:
                 - Pre-Construction Information
-            x-ctrl-hub:
-                domain: cdm
-                entity: Document
             x-mint:
                 metadata:
                     title: Attach a file to an F10 notification
@@ -72436,9 +73568,15 @@ paths:
                 whether it is ready yet. Filter by `eq(submission,<id>)` to answer that for a whole version list in
                 one request, or by `eq(version,<id>)` for a single version.
 
-                A version with no record here has no document. That is the normal state for anything submitted
-                before archiving was switched on, and it is distinguishable from a document that is still
-                generating, which has a record with a `pending` status.
+                A version with no record here has no document yet. `meta.stats.archiving_started_at` says which
+                of two reasons applies. It is the `created_at` of the first record written in this environment,
+                not a configured switch-on time. The subscriber that writes records starts from the newest event,
+                so the first record belongs to the first version submitted after archiving began. A version
+                created before that time with no record here was submitted before archiving began, and will not
+                get one. A version created at or after it will get a record shortly, because the record is
+                written by a subscriber a moment after the version is submitted. A document that is still
+                generating has a record with a `pending` status. When no artefact exists in the environment at
+                all, `archiving_started_at` is absent.
 
                 Authorised by the same view grants that govern reading the submissions themselves. An artefact
                 carries no permissions of its own: it is the same information, in a different format.
@@ -72448,6 +73586,9 @@ paths:
                 to page through and nothing is ever truncated. `included` is absent for the same reason a caller
                 cannot ask for it: every relationship on an artefact is a resource the caller already had in hand
                 when it named the scope.
+
+                Served by a hand-written handler rather than a generated one, because the generated handler
+                cannot add `meta.stats`.
             operationId: ListFormSubmissionArtefacts
             parameters:
                 - $ref: '#/components/parameters/form_submission_artefacts_sort'
@@ -72470,6 +73611,7 @@ paths:
                 - Submissions
             x-ctrl-hub:
                 domain: dataCapture
+                manual: true
             x-mint:
                 metadata:
                     title: List archived submission documents
@@ -73252,6 +74394,7 @@ paths:
                 - $ref: '#/components/parameters/limit'
                 - $ref: '#/components/parameters/offset'
                 - $ref: '#/components/parameters/page'
+                - $ref: '#/components/parameters/havs_exposures_sort'
             responses:
                 "200":
                     $ref: '#/components/responses/ListHavsExposures'
@@ -73314,7 +74457,10 @@ paths:
                     title: Record a HAVS exposure
     /v3/havs-exposures/{havs_exposure_id}:
         delete:
-            description: Soft delete a HAVS exposure record.
+            description: |
+                Soft delete a HAVS exposure record.
+
+                A record can be deleted only until its `meta.locks_at`, 24 hours after its `recorded_at`, by every caller alike. A delete that arrives later is refused with a 409 (`CH.015.136`).
             operationId: DeleteHavsExposure
             parameters:
                 - $ref: '#/components/parameters/havs_exposure_id'
@@ -73327,6 +74473,8 @@ paths:
                     $ref: '#/components/responses/Unauthorised'
                 "404":
                     $ref: '#/components/responses/NotFound'
+                "409":
+                    $ref: '#/components/responses/Conflict'
                 "500":
                     $ref: '#/components/responses/InternalServerError'
             security:
@@ -73376,6 +74524,8 @@ paths:
                 Naming a different category copies that category's recommended initial magnitude onto the record, as a create does, and is refused as a create is when the category is unknown or its magnitude is zero or less. Without one, the magnitude copied when the record was created is kept. The category and magnitude changes are audited with the other fields.
 
                 The subject is fixed. A body that names a different subject is rejected.
+
+                A record can be corrected only until its `meta.locks_at`, 24 hours after `recorded_at`, by every caller alike. Each correction has an edit time. It is the `edited_at` the device sent, which is refused with a 400 (`CH.015.138`) if it is before `recorded_at`, more than 7 days old, or more than 5 minutes ahead. One up to 5 minutes ahead is taken as now. Without `edited_at` the edit time is the arrival time, and either of those is raised to `recorded_at` if that is later. A correction whose edit time is after `meta.locks_at` is refused with a 409 (`CH.015.136`). Corrections apply in the order they were made, compared to the millisecond, so one whose edit time is before `meta.last_edited_at` is refused with a 409 (`CH.015.140`).
             operationId: UpdateHavsExposure
             parameters:
                 - $ref: '#/components/parameters/havs_exposure_id'
@@ -73390,6 +74540,8 @@ paths:
                     $ref: '#/components/responses/Unauthorised'
                 "404":
                     $ref: '#/components/responses/NotFound'
+                "409":
+                    $ref: '#/components/responses/Conflict'
                 "500":
                     $ref: '#/components/responses/InternalServerError'
             security:
@@ -73469,6 +74621,8 @@ paths:
                     $ref: '#/components/responses/Unauthorised'
                 "409":
                     $ref: '#/components/responses/Conflict'
+                "413":
+                    $ref: '#/components/responses/PayloadTooLarge'
                 "500":
                     $ref: '#/components/responses/InternalServerError'
             security:
@@ -75309,6 +76463,57 @@ paths:
             x-mint:
                 metadata:
                     title: Update a manager role
+    /v3/me/elevations:
+        get:
+            description: |
+                Answers with the caller's elevations open now, oldest first: each customer organisation a Ctrl Hub staff
+                member entered from the admin app, the roles they hold there and when it ends. While one is open, the public
+                API adds a grant of each role in that organisation to the caller's own access, so the console can work in
+                it. The caller is not a member of it. Anyone else, and a staff member with none open, is answered with an
+                empty list. The console reads it to list these organisations apart from the caller's memberships.
+
+                While one is open, every change to sign-in or access is refused with a 403 and `CH.003.190`, in every
+                organisation, until the caller leaves it.
+            operationId: ListMyElevations
+            responses:
+                "200":
+                    $ref: '#/components/responses/ListMyElevations'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - Cookie: []
+            summary: List the organisations you have entered as Ctrl Hub staff
+            tags:
+                - Users
+    /v3/me/elevations/{elevation_id}:
+        delete:
+            description: |
+                Ends one of the caller's open elevations, recorded as ended by them, and audited and posted to Ctrl Hub's Slack
+                as ending it from the admin app is. From the next request the caller's access no longer includes its roles. An
+                elevation that is not the caller's, or is no longer open, is a 404 with `CH.003.182`.
+            operationId: EndMyElevation
+            parameters:
+                - $ref: '#/components/parameters/elevation_id'
+            responses:
+                "204":
+                    $ref: '#/components/responses/NoContent'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - Cookie: []
+            summary: Leave an organisation you entered as Ctrl Hub staff
+            tags:
+                - Users
     /v3/me/impersonation:
         delete:
             description: |
@@ -75604,10 +76809,6 @@ paths:
             summary: List your notifications
             tags:
                 - Notifications
-            x-ctrl-hub:
-                domain: notifications
-                entity: Notification
-                manual: true
             x-mint:
                 metadata:
                     title: List your notifications
@@ -75650,10 +76851,6 @@ paths:
             summary: Update several of your notifications
             tags:
                 - Notifications
-            x-ctrl-hub:
-                domain: notifications
-                entity: Notification
-                manual: true
             x-mint:
                 metadata:
                     title: Update several notifications
@@ -75682,9 +76879,6 @@ paths:
             summary: Get one of your notifications
             tags:
                 - Notifications
-            x-ctrl-hub:
-                domain: notifications
-                entity: Notification
             x-mint:
                 metadata:
                     title: Get a notification
@@ -75723,9 +76917,6 @@ paths:
             summary: Update one of your notifications
             tags:
                 - Notifications
-            x-ctrl-hub:
-                domain: notifications
-                entity: Notification
             x-mint:
                 metadata:
                     title: Update a notification
@@ -75757,10 +76948,6 @@ paths:
             summary: Archive everything you have read
             tags:
                 - Notifications
-            x-ctrl-hub:
-                domain: notifications
-                entity: Notification
-                manual: true
             x-mint:
                 metadata:
                     title: Archive everything you have read
@@ -75821,10 +77008,6 @@ paths:
             summary: Mark your whole inbox read
             tags:
                 - Notifications
-            x-ctrl-hub:
-                domain: notifications
-                entity: Notification
-                manual: true
             x-mint:
                 metadata:
                     title: Mark your inbox read
@@ -78046,14 +79229,66 @@ paths:
             x-mint:
                 metadata:
                     title: Update the prepresentative for an interaction
+    /v3/orgs/{org_id}/exposure-days:
+        get:
+            description: |
+                List each person's exposure on each Europe/London day of a window, against their effective limit
+                that day: the breach list and the trend on a person's page.
+
+                A row is one person and one day that has records in this organisation, or whose total or rolling
+                7-day total reaches amber. It carries the day's total and the week's total (that day and the 6 before it), the
+                effective daily and weekly amber and red (as `GET /v3/orgs/{org_id}/exposure-limits/{user_id}`
+                resolves them), the layer that set red, and a band for each: `green` below amber, `amber` at or
+                above amber (near-limit) and `red` at or above red (breach). Rows are newest day first, then by
+                person. The resource has no includes, so `included` is absent.
+
+                A person's totals and bands count their records in every organisation, because a limit applies to
+                their whole dose. A day whose records are all in another organisation is listed only when it
+                reaches amber. No organisation, record or split by organisation is returned: another
+                organisation's records show only as part of a total.
+
+                Only the people the caller holds `exposure-limits:view` on are included: a HAVS Operator themselves,
+                a manager the people their management relationships reach, and Occupational Health everyone in the
+                organisation. A caller who holds it on nobody gets an empty list. Former members are included, so
+                someone who has left keeps their past days and breaches.
+            operationId: ListExposureDays
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+                - $ref: '#/components/parameters/exposure_type'
+                - $ref: '#/components/parameters/exposure_days_filter'
+                - $ref: '#/components/parameters/limit'
+                - $ref: '#/components/parameters/offset'
+                - $ref: '#/components/parameters/page'
+            responses:
+                "200":
+                    $ref: '#/components/responses/ListExposureDays'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: List exposure days
+            tags:
+                - Exposure Limits
+            x-mint:
+                metadata:
+                    title: List exposure days
     /v3/orgs/{org_id}/exposure-limits/{user_id}:
         get:
             description: |
                 Resolve a person's effective amber and red values for an exposure type at an instant, most
                 restrictive wins: the HSE values (100 and 400 points for HAVS), the organisation's thresholds in
                 force on that Europe/London date, and the cap of each of the person's health plans in force then,
-                with amber at half the cap. The response names the layer that set red, and never carries a health
-                plan or a health note.
+                with amber at half the cap. The weekly amber and red cover the rolling 7 days ending on that date,
+                at five times the daily values for HAVS. The response names the layer that set red, and never
+                carries a health plan or a health note.
 
                 Requires the `exposure-limits:view` permission on the person: a HAVS Operator holds it for
                 themselves, a manager for the people their management relationships reach, and Occupational Health
@@ -78086,6 +79321,45 @@ paths:
             x-mint:
                 metadata:
                     title: Get a person's exposure limit
+    /v3/orgs/{org_id}/exposure-summary:
+        get:
+            description: |
+                Daily exposure totals over a window, for the exposure dashboards: one entry for every Europe/London
+                day of the window, days with no records included, oldest first. Each has the total of the day's
+                doses, the number of people with records that day, and the number of people whose day was a breach
+                (`red`) or near-limit (`amber`) against their daily limit, and against their weekly limit over the
+                rolling 7 days ending that day. The bands are those `GET /v3/orgs/{org_id}/exposure-days` returns.
+
+                It is over the same people as `GET /v3/orgs/{org_id}/exposure-days`: the members, current and
+                former, the caller holds `exposure-limits:view` on. Totals count only each person's records in this
+                organisation. The response is not paginated. The resource has no includes, so `included` is
+                absent.
+            operationId: GetExposureSummary
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+                - $ref: '#/components/parameters/exposure_type'
+                - $ref: '#/components/parameters/exposure_summary_filter'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetExposureSummary'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Get an exposure summary
+            tags:
+                - Exposure Limits
+            x-mint:
+                metadata:
+                    title: Get an exposure summary
     /v3/orgs/{org_id}/exposure-thresholds:
         get:
             description: |
@@ -78245,7 +79519,7 @@ paths:
 
                 Every active member who is not a record member sees their own occurrences, through a default grant. Record members and members who are not active get none. A holder of `forms:create` on a form sees all of that form's. A holder of `form-reminder-occurrences:view` sees those its grant reaches.
 
-                This operation does not support `include`, so the response has no `included` member.
+                `include=form,reminder,user` adds the form, the reminder and the person. While included resources are not yet authorised (ctrl-hub/product#3082), every occurrence's reminder is included, whether or not the caller may list it. So an included reminder always has an empty `audience` and a null `next_due_on`. Read the reminder itself for them.
             operationId: ListFormReminderOccurrences
             parameters:
                 - $ref: '#/components/parameters/org_id'
@@ -78254,6 +79528,7 @@ paths:
                 - $ref: '#/components/parameters/page'
                 - $ref: '#/components/parameters/form_reminder_occurrences_filter'
                 - $ref: '#/components/parameters/form_reminder_occurrences_sort'
+                - $ref: '#/components/parameters/form_reminder_occurrences_include'
             responses:
                 "200":
                     $ref: '#/components/responses/ListFormReminderOccurrences'
@@ -78438,6 +79713,48 @@ paths:
             x-mint:
                 metadata:
                     title: Update a form reminder
+    /v3/orgs/{org_id}/form-submission-creators/search:
+        post:
+            description: |
+                List the people who created the form submissions a filter selects, with how many of those submissions each created. The most prolific creator comes first. Creators with the same count are ordered by id.
+
+                The filter is sent in the body, because a scope such as `in(related_resources.id,[...])` can hold hundreds of ids and outgrow a URL. It takes the vocabulary of the `filter` parameter of `GET /v3/form-submissions`, and `or(...)` is allowed. A term that does not parse is answered with a 400, rather than dropped, because a dropped term would widen the list. With no filter, every submission the caller can list is counted.
+
+                The submissions counted are exactly those `GET /v3/form-submissions` lists for the same filter, under the caller's own grants. That includes submissions reached through a scheme share. The organisation in the path is not added to the filter: it scopes the route and resolves `include=user`. To count one organisation's submissions, put `eq(organisation,<id>)` in the filter.
+
+                Only creators who are users are listed. A submission created by any other kind of principal, such as a service account, is not counted. Each resource's id is the user's id. `include=user` adds the person.
+
+                `include=user` resolves a user only when they are a member of the organisation in the path and the caller may view them. A creator reached through a scheme share, such as a member of a contractor, is counted but may come back with no included user. Show such a creator without a name rather than leaving them out, because their submissions are in the list.
+
+                The list is paginated by `limit` and `offset`, and `meta.pagination` counts the distinct creators.
+            operationId: SearchFormSubmissionCreators
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+                - $ref: '#/components/parameters/limit'
+                - $ref: '#/components/parameters/offset'
+                - $ref: '#/components/parameters/page'
+                - $ref: '#/components/parameters/form_submission_creators_include'
+            requestBody:
+                $ref: '#/components/requestBodies/SearchFormSubmissionCreators'
+            responses:
+                "200":
+                    $ref: '#/components/responses/ListFormSubmissionCreators'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Search form submission creators
+            tags:
+                - Submissions
+            x-mint:
+                metadata:
+                    title: Search form submission creators
     /v3/orgs/{org_id}/health-plans:
         get:
             description: |
@@ -80414,7 +81731,7 @@ paths:
 
                 Every member sees their own pauses. A holder of `forms:create` across the organisation, or of `reminder-pauses:view`, sees everyone's that their grant reaches.
 
-                This operation does not support `include`, so the response has no `included` member.
+                `include=user` adds the paused person.
             operationId: ListReminderPauses
             parameters:
                 - $ref: '#/components/parameters/org_id'
@@ -80423,6 +81740,7 @@ paths:
                 - $ref: '#/components/parameters/page'
                 - $ref: '#/components/parameters/reminder_pauses_filter'
                 - $ref: '#/components/parameters/reminder_pauses_sort'
+                - $ref: '#/components/parameters/reminder_pauses_include'
             responses:
                 "200":
                     $ref: '#/components/responses/ListReminderPauses'
@@ -81856,9 +83174,6 @@ paths:
             summary: List pre-construction information hazard resources
             tags:
                 - Pre-Construction Information
-            x-ctrl-hub:
-                domain: cdm
-                entity: PreConstructionInformationHazard
             x-mint:
                 metadata:
                     title: List pre-construction information hazard resources
@@ -81871,7 +83186,7 @@ paths:
             requestBody:
                 $ref: '#/components/requestBodies/CreatePreConstructionInformationHazard'
             responses:
-                "200":
+                "201":
                     $ref: '#/components/responses/GetPreConstructionInformationHazard'
                 "400":
                     $ref: '#/components/responses/BadRequest'
@@ -81892,9 +83207,6 @@ paths:
             summary: Create a pre-construction information hazard
             tags:
                 - Pre-Construction Information
-            x-ctrl-hub:
-                domain: cdm
-                entity: PreConstructionInformationHazard
             x-mint:
                 metadata:
                     title: Create a pre-construction information hazard
@@ -81928,9 +83240,6 @@ paths:
             summary: Delete a pre-construction information hazard
             tags:
                 - Pre-Construction Information
-            x-ctrl-hub:
-                domain: cdm
-                entity: PreConstructionInformationHazard
             x-mint:
                 metadata:
                     title: Delete a pre-construction information hazard
@@ -81959,9 +83268,6 @@ paths:
             summary: Get a pre-construction information hazard
             tags:
                 - Pre-Construction Information
-            x-ctrl-hub:
-                domain: cdm
-                entity: PreConstructionInformationHazard
             x-mint:
                 metadata:
                     title: Get a pre-construction information hazard
@@ -81996,9 +83302,6 @@ paths:
             summary: Update a pre-construction information hazard
             tags:
                 - Pre-Construction Information
-            x-ctrl-hub:
-                domain: cdm
-                entity: PreConstructionInformationHazard
             x-mint:
                 metadata:
                     title: Update a pre-construction information hazard
@@ -82013,7 +83316,7 @@ paths:
             requestBody:
                 $ref: '#/components/requestBodies/CreateCDMAttachment'
             responses:
-                "200":
+                "201":
                     $ref: '#/components/responses/GetDocument'
                 "400":
                     $ref: '#/components/responses/BadRequest'
@@ -82032,9 +83335,6 @@ paths:
             summary: Attach a file to a pre-construction information hazard
             tags:
                 - Pre-Construction Information
-            x-ctrl-hub:
-                domain: cdm
-                entity: Document
             x-mint:
                 metadata:
                     title: Attach a file to a pre-construction information hazard
@@ -82067,9 +83367,6 @@ paths:
             summary: Remove a file from a pre-construction information hazard
             tags:
                 - Pre-Construction Information
-            x-ctrl-hub:
-                domain: cdm
-                entity: Document
             x-mint:
                 metadata:
                     title: Remove a file from a pre-construction information hazard
@@ -82102,9 +83399,6 @@ paths:
             summary: List pre-construction information resources
             tags:
                 - Pre-Construction Information
-            x-ctrl-hub:
-                domain: cdm
-                entity: PreConstructionInformation
             x-mint:
                 metadata:
                     title: List pre-construction information resources
@@ -82117,7 +83411,7 @@ paths:
             requestBody:
                 $ref: '#/components/requestBodies/CreatePreConstructionInformation'
             responses:
-                "200":
+                "201":
                     $ref: '#/components/responses/GetPreConstructionInformation'
                 "400":
                     $ref: '#/components/responses/BadRequest'
@@ -82138,9 +83432,6 @@ paths:
             summary: Create a pre-construction information
             tags:
                 - Pre-Construction Information
-            x-ctrl-hub:
-                domain: cdm
-                entity: PreConstructionInformation
             x-mint:
                 metadata:
                     title: Create a pre-construction information
@@ -82171,9 +83462,6 @@ paths:
             summary: Get a pre-construction information
             tags:
                 - Pre-Construction Information
-            x-ctrl-hub:
-                domain: cdm
-                entity: PreConstructionInformation
             x-mint:
                 metadata:
                     title: Get a pre-construction information
@@ -82208,9 +83496,6 @@ paths:
             summary: Update a pre-construction information
             tags:
                 - Pre-Construction Information
-            x-ctrl-hub:
-                domain: cdm
-                entity: PreConstructionInformation
             x-mint:
                 metadata:
                     title: Update a pre-construction information
@@ -82225,7 +83510,7 @@ paths:
             requestBody:
                 $ref: '#/components/requestBodies/CreatePreConstructionInformationAttestation'
             responses:
-                "200":
+                "201":
                     $ref: '#/components/responses/GetPreConstructionInformation'
                 "400":
                     $ref: '#/components/responses/BadRequest'
@@ -82244,9 +83529,6 @@ paths:
             summary: Sign off a pre-construction information section
             tags:
                 - Pre-Construction Information
-            x-ctrl-hub:
-                domain: cdm
-                entity: PreConstructionInformation
             x-mint:
                 metadata:
                     title: Sign off a pre-construction information section
@@ -82261,7 +83543,7 @@ paths:
                 - $ref: '#/components/parameters/acting_organisation_id'
                 - $ref: '#/components/parameters/pre_construction_information_id'
             responses:
-                "200":
+                "201":
                     $ref: '#/components/responses/GetPreConstructionInformationRevision'
                 "400":
                     $ref: '#/components/responses/BadRequest'
@@ -82282,9 +83564,6 @@ paths:
             summary: Hand over a pre-construction information
             tags:
                 - Pre-Construction Information
-            x-ctrl-hub:
-                domain: cdm
-                entity: PreConstructionInformationRevision
             x-mint:
                 metadata:
                     title: Hand over a pre-construction information
@@ -82318,9 +83597,6 @@ paths:
             summary: List the changes proposed to a pre-construction information
             tags:
                 - Pre-Construction Information
-            x-ctrl-hub:
-                domain: cdm
-                entity: PreConstructionInformationProposedChange
             x-mint:
                 metadata:
                     title: List the changes proposed to a pre-construction information
@@ -82335,7 +83611,7 @@ paths:
             requestBody:
                 $ref: '#/components/requestBodies/CreatePreConstructionInformationProposedChange'
             responses:
-                "200":
+                "201":
                     $ref: '#/components/responses/GetPreConstructionInformationProposedChange'
                 "400":
                     $ref: '#/components/responses/BadRequest'
@@ -82356,9 +83632,6 @@ paths:
             summary: Propose a change to a pre-construction information
             tags:
                 - Pre-Construction Information
-            x-ctrl-hub:
-                domain: cdm
-                entity: PreConstructionInformationProposedChange
             x-mint:
                 metadata:
                     title: Propose a change to a pre-construction information
@@ -82389,9 +83662,6 @@ paths:
             summary: Get a change proposed to a pre-construction information
             tags:
                 - Pre-Construction Information
-            x-ctrl-hub:
-                domain: cdm
-                entity: PreConstructionInformationProposedChange
             x-mint:
                 metadata:
                     title: Get a change proposed to a pre-construction information
@@ -82427,9 +83697,6 @@ paths:
             summary: Accept a change proposed to a pre-construction information
             tags:
                 - Pre-Construction Information
-            x-ctrl-hub:
-                domain: cdm
-                entity: PreConstructionInformationProposedChange
             x-mint:
                 metadata:
                     title: Accept a change proposed to a pre-construction information
@@ -82467,9 +83734,6 @@ paths:
             summary: Reject a change proposed to a pre-construction information
             tags:
                 - Pre-Construction Information
-            x-ctrl-hub:
-                domain: cdm
-                entity: PreConstructionInformationProposedChange
             x-mint:
                 metadata:
                     title: Reject a change proposed to a pre-construction information
@@ -82502,9 +83766,6 @@ paths:
             summary: List a pre-construction information's revisions
             tags:
                 - Pre-Construction Information
-            x-ctrl-hub:
-                domain: cdm
-                entity: PreConstructionInformationRevision
             x-mint:
                 metadata:
                     title: List a pre-construction information's revisions
@@ -82535,9 +83796,6 @@ paths:
             summary: Read a pre-construction information as at a revision
             tags:
                 - Pre-Construction Information
-            x-ctrl-hub:
-                domain: cdm
-                entity: PreConstructionInformationRevision
             x-mint:
                 metadata:
                     title: Read a pre-construction information as at a revision
@@ -82793,8 +84051,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Queries
-            x-ctrl-hub:
-                domain: queries
             x-mint:
                 metadata:
                     title: List queries
@@ -82819,8 +84075,6 @@ paths:
             summary: Create a new query
             tags:
                 - Queries
-            x-ctrl-hub:
-                domain: queries
             x-mint:
                 metadata:
                     title: Create a query
@@ -82848,8 +84102,6 @@ paths:
             summary: Delete a query
             tags:
                 - Queries
-            x-ctrl-hub:
-                domain: queries
             x-mint:
                 metadata:
                     title: Delete a query
@@ -82875,8 +84127,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Queries
-            x-ctrl-hub:
-                domain: queries
             x-mint:
                 metadata:
                     title: Get a query
@@ -82905,14 +84155,12 @@ paths:
             summary: Update an existing query
             tags:
                 - Queries
-            x-ctrl-hub:
-                domain: queries
             x-mint:
                 metadata:
                     title: Update a query
     /v3/queries/{query_id}/export:
         get:
-            description: Execute a query and stream the results as CSV. Served by a custom handler (not generated), so this operation intentionally carries no x-ctrl-hub domain tag; it exists in the spec so the operation middleware admits the path.
+            description: Execute a query and answer its results as CSV.
             operationId: ExportQuery
             parameters:
                 - $ref: '#/components/parameters/query_id'
@@ -82923,6 +84171,14 @@ paths:
                             schema:
                                 type: string
                     description: CSV export of the query results.
+                    headers:
+                        Content-Disposition:
+                            description: Names the file after the query, as `query-<query id>.csv`, so a browser saves it rather than renders it.
+                            required: true
+                            schema:
+                                example: attachment; filename="query-0193e5a4-6a51-7e43-8a4e-0f8c4a2b1d3e.csv"
+                                type: string
+                            example: attachment; filename="query-0193e5a4-6a51-7e43-8a4e-0f8c4a2b1d3e.csv"
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -82942,7 +84198,7 @@ paths:
                     title: Export a query as CSV
     /v3/queries/{query_id}/results:
         get:
-            description: Execute a query and return its result rows. Served by a custom handler (not generated), so this operation intentionally carries no x-ctrl-hub domain tag; it exists in the spec so the operation middleware admits the path.
+            description: Execute a query and return its result rows.
             operationId: RunQuery
             parameters:
                 - $ref: '#/components/parameters/query_id'
@@ -82953,11 +84209,7 @@ paths:
                 - $ref: '#/components/parameters/date_values'
             responses:
                 "200":
-                    content:
-                        application/vnd.api+json:
-                            schema:
-                                type: object
-                    description: The query result rows, as a JSON:API collection of query-result-rows (dynamic attributes, with column descriptors and pagination in meta). A row carries an attribute per column, plus <key>__id beside each author column (creator_id, author_id) holding the id its name was resolved from.
+                    $ref: '#/components/responses/GetQueryResults'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -82977,7 +84229,7 @@ paths:
                     title: Run a query
     /v3/queries/preview:
         post:
-            description: Execute an unsaved query definition and return its result rows, without persisting it (used by the data explorer for ad-hoc queries). Served by a custom handler (not generated), so this operation intentionally carries no x-ctrl-hub domain tag; it exists in the spec so the operation middleware admits the path.
+            description: Execute an unsaved query definition and return its result rows, without persisting it (used by the data explorer for ad-hoc queries).
             operationId: PreviewQuery
             parameters:
                 - $ref: '#/components/parameters/limit'
@@ -82989,11 +84241,7 @@ paths:
                 $ref: '#/components/requestBodies/CreateQuery'
             responses:
                 "200":
-                    content:
-                        application/vnd.api+json:
-                            schema:
-                                type: object
-                    description: The query result rows, as a JSON:API collection of query-result-rows (dynamic attributes, with column descriptors and pagination in meta). A row carries an attribute per column, plus <key>__id beside each author column (creator_id, author_id) holding the id its name was resolved from.
+                    $ref: '#/components/responses/GetQueryResults'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -83011,7 +84259,7 @@ paths:
                     title: Preview a query
     /v3/query-resolution-catalogue:
         get:
-            description: Return the x-source resolution catalog - per resource type, the relationships that can be traversed and the attributes that can be projected - used by the analytics builder to configure per-column resolution. Static, org-agnostic metadata. Served by a custom handler (not generated), so this operation intentionally carries no x-ctrl-hub domain tag; it exists in the spec so the operation middleware admits the path.
+            description: Return the x-source resolution catalog - per resource type, the relationships that can be traversed and the attributes that can be projected - used by the analytics builder to configure per-column resolution. Static, org-agnostic metadata.
             operationId: ResolutionCatalog
             responses:
                 "200":
@@ -83020,66 +84268,7 @@ paths:
                             schema:
                                 properties:
                                     data:
-                                        properties:
-                                            types:
-                                                description: The resolvable resource types, each with the relationships that can be traversed from it and the attributes that can be projected.
-                                                items:
-                                                    properties:
-                                                        attributes:
-                                                            items:
-                                                                properties:
-                                                                    label:
-                                                                        description: The default column label for the attribute.
-                                                                        type: string
-                                                                    name:
-                                                                        description: The attribute name to project (may be a dotted nested path).
-                                                                        type: string
-                                                                required:
-                                                                    - name
-                                                                    - label
-                                                                type: object
-                                                            type: array
-                                                        label:
-                                                            description: The default human label for the type.
-                                                            type: string
-                                                        nomenclature:
-                                                            description: The org-configurable nomenclature key for a governance type, when applicable.
-                                                            type: string
-                                                        relationships:
-                                                            items:
-                                                                properties:
-                                                                    label:
-                                                                        description: The default label of the target type.
-                                                                        type: string
-                                                                    name:
-                                                                        description: 'The relationship name to follow (a rel: tag name).'
-                                                                        type: string
-                                                                    target_type:
-                                                                        description: The resource type the relationship resolves to.
-                                                                        type: string
-                                                                    to_many:
-                                                                        description: Whether the relationship resolves to many targets.
-                                                                        type: boolean
-                                                                required:
-                                                                    - name
-                                                                    - target_type
-                                                                    - to_many
-                                                                    - label
-                                                                type: object
-                                                            type: array
-                                                        type:
-                                                            description: The JSON:API resource type (e.g. "operations").
-                                                            type: string
-                                                    required:
-                                                        - type
-                                                        - label
-                                                        - relationships
-                                                        - attributes
-                                                    type: object
-                                                type: array
-                                        required:
-                                            - types
-                                        type: object
+                                        $ref: '#/components/schemas/QueryResolutionCatalog'
                                 required:
                                     - data
                                 type: object
@@ -83244,6 +84433,36 @@ paths:
             x-mint:
                 metadata:
                     title: Update a registration
+    /v3/reminders/counts:
+        get:
+            description: |
+                Count an organisation's reminders that are waiting on someone: those that have lapsed, and the active ones inside their lead window. The console shows the two added together beside its Reminders entry.
+
+                The filter must name exactly one organisation, as `eq(organisation,X)`. A filter that names none, more than one, or any other term is refused.
+
+                Requires `reminders:view` across the organisation.
+            operationId: CountReminders
+            parameters:
+                - $ref: '#/components/parameters/reminder_counts_filter'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetReminderCounts'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Count reminders waiting to be renewed
+            tags:
+                - Reminders
+            x-mint:
+                metadata:
+                    title: Count reminders waiting to be renewed
     /v3/report-runs:
         get:
             description: |
@@ -83273,8 +84492,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Reports
-            x-ctrl-hub:
-                domain: queries
             x-mint:
                 metadata:
                     title: List report runs
@@ -83302,23 +84519,18 @@ paths:
                 - OAuth2: []
             tags:
                 - Reports
-            x-ctrl-hub:
-                domain: queries
             x-mint:
                 metadata:
                     title: Get a report run
     /v3/report-runs/{report_run_id}/artifact:
         get:
             description: |
-                Stream the file a report run produced.
+                Answer the file a report run produced.
 
                 There are no signed download URLs anywhere in this platform, so this is how a linked
                 artifact is fetched: the request is authenticated and authorised like any other, and the
-                bytes are streamed through it. An artifact whose retention window has passed returns 404
+                bytes are answered through it. An artifact whose retention window has passed returns 404
                 rather than an empty file, because the run's record outlives its bytes.
-
-                Served by a custom handler rather than a generated one, because it returns a file rather
-                than a JSON:API document.
             operationId: DownloadReportRunArtifact
             parameters:
                 - $ref: '#/components/parameters/report_run_id'
@@ -83333,6 +84545,7 @@ paths:
                     headers:
                         Content-Disposition:
                             description: Names the file so a browser saves rather than renders it.
+                            required: true
                             schema:
                                 type: string
                         X-Request-ID:
@@ -83352,10 +84565,6 @@ paths:
             summary: Download a report run's artifact
             tags:
                 - Reports
-            x-ctrl-hub:
-                domain: queries
-                entity: ReportRun
-                manual: true
             x-mint:
                 metadata:
                     title: Download a report run's artifact
@@ -83385,8 +84594,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Reports
-            x-ctrl-hub:
-                domain: queries
             x-mint:
                 metadata:
                     title: List reports
@@ -83416,8 +84623,6 @@ paths:
             summary: Create a new report
             tags:
                 - Reports
-            x-ctrl-hub:
-                domain: queries
             x-mint:
                 metadata:
                     title: Create a report
@@ -83449,8 +84654,6 @@ paths:
             summary: Delete a report
             tags:
                 - Reports
-            x-ctrl-hub:
-                domain: queries
             x-mint:
                 metadata:
                     title: Delete a report
@@ -83477,8 +84680,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Reports
-            x-ctrl-hub:
-                domain: queries
             x-mint:
                 metadata:
                     title: Get a report
@@ -83513,8 +84714,6 @@ paths:
             summary: Update a report
             tags:
                 - Reports
-            x-ctrl-hub:
-                domain: queries
             x-mint:
                 metadata:
                     title: Update a report
@@ -83528,9 +84727,6 @@ paths:
                 moment it was asked for, which is what keeps it distinct from the scheduled slot it sits
                 between, so asking for one twice produces two runs rather than being deduplicated as a
                 re-dispatch.
-
-                Served by a custom handler rather than a generated one, because it is a verb over an
-                existing resource rather than a write to it.
             operationId: RunReportNow
             parameters:
                 - $ref: '#/components/parameters/report_id'
@@ -83552,10 +84748,6 @@ paths:
             summary: Run a report now
             tags:
                 - Reports
-            x-ctrl-hub:
-                domain: queries
-                entity: Report
-                manual: true
             x-mint:
                 metadata:
                     title: Run a report now
@@ -84434,9 +85626,6 @@ paths:
             summary: List site attendance resources
             tags:
                 - Site Attendances
-            x-ctrl-hub:
-                domain: cdm
-                entity: SiteAttendance
             x-mint:
                 metadata:
                     title: List site attendances
@@ -84452,7 +85641,7 @@ paths:
             requestBody:
                 $ref: '#/components/requestBodies/CreateSiteAttendance'
             responses:
-                "200":
+                "201":
                     $ref: '#/components/responses/GetSiteAttendance'
                 "400":
                     $ref: '#/components/responses/BadRequest'
@@ -84469,9 +85658,6 @@ paths:
             summary: Sign a person in to site
             tags:
                 - Site Attendances
-            x-ctrl-hub:
-                domain: cdm
-                entity: SiteAttendance
             x-mint:
                 metadata:
                     title: Sign a person in to site
@@ -84503,9 +85689,6 @@ paths:
             summary: Get a site attendance resource
             tags:
                 - Site Attendances
-            x-ctrl-hub:
-                domain: cdm
-                entity: SiteAttendance
             x-mint:
                 metadata:
                     title: Get a site attendance
@@ -84537,9 +85720,6 @@ paths:
             summary: Sign a person out, or correct their attendance
             tags:
                 - Site Attendances
-            x-ctrl-hub:
-                domain: cdm
-                entity: SiteAttendance
             x-mint:
                 metadata:
                     title: Sign a person out of site
@@ -84557,7 +85737,7 @@ paths:
                 $ref: '#/components/requestBodies/SignOutSiteAttendances'
             responses:
                 "200":
-                    $ref: '#/components/responses/ListSiteAttendances'
+                    $ref: '#/components/responses/SignOutSiteAttendancesDocument'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -84573,10 +85753,6 @@ paths:
             summary: Sign several people out of site at once
             tags:
                 - Site Attendances
-            x-ctrl-hub:
-                domain: cdm
-                entity: SiteAttendance
-                manual: true
             x-mint:
                 metadata:
                     title: Sign several people out of site
