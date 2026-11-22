@@ -43753,6 +43753,7 @@ components:
                 - `organisation_in`: Filter schemes by organisation ID(s)
                 - `eq(contract,xxx)`: Filter schemes that are assigned to the given scheme contract ID.
                 - `eq(status,xxx)`: Filter schemes by lifecycle status. One of `in_planning`, `in_progress`, `on_hold`, `complete`, `cancelled`.
+                - `contains(name,xxx)`: Filter schemes where name contains value, ignoring case. It is answered from a search index that trails writes by a short time, so a scheme created or renamed moments ago may be missing from the list and from `meta.pagination` until the index catches up.
                 - `ge(modified_at,<timestamp>)`: Filter by the date a scheme last changed, which is the `meta.modified_at` of the response. It moves when the scheme is edited and when its work orders, operations or their assignments change. Accepts an RFC 3339 timestamp and supports the range operators `ge`, `le`, `gt`, `lt` (and `eq`). Example (changed since a given time): `ge(modified_at,2026-07-01T00:00:00Z)`. To read what changed, sort by `modified_at` and, for the next read, start again from the last timestamp seen with `ge`, a few seconds earlier than it. The timestamp is set before the change is saved, so a write that started earlier can become visible after a read has already passed its timestamp. Remove the schemes that come back twice by `id`.
 
                 Project-role filters (cross-resource lookups against project role assignments):
@@ -81377,7 +81378,7 @@ paths:
                     title: Update a scheme template
     /v3/orgs/{org_id}/projects/schemes:
         get:
-            description: List all of the schemes in an organisation.
+            description: 'List all of the schemes in an organisation. A `name` filter is answered from a search index, which trails writes by a short time: a scheme created or renamed moments ago may be missing from the list and from `meta.pagination` until the index catches up.'
             operationId: ListSchemesOrgScoped
             parameters:
                 - $ref: '#/components/parameters/org_id'
@@ -85345,7 +85346,7 @@ paths:
                     title: Get the removal impact of a scheme share
     /v3/schemes:
         get:
-            description: List all of the schemes in an organisation.
+            description: 'List all of the schemes in an organisation. A `name` filter is answered from a search index, which trails writes by a short time: a scheme created or renamed moments ago may be missing from the list and from `meta.pagination` until the index catches up.'
             operationId: ListSchemes
             parameters:
                 - $ref: '#/components/parameters/schemes_include'
@@ -85481,7 +85482,11 @@ paths:
                     title: List a scheme's history
     /v3/search:
         get:
-            description: Search for schemes, work orders, and operations by name.
+            description: |
+                Search for schemes, work orders, and operations by name.
+
+                Schemes are found through a search index that trails writes. A scheme created, or renamed to match,
+                moments ago may be missing from the results until the index catches up.
             operationId: ListSearchResults
             parameters:
                 - $ref: '#/components/parameters/search_results_include'
@@ -85599,6 +85604,9 @@ paths:
                 the supplied organisation(s) via scheme-shares. Mirrors `/v3/search` but only
                 returns resources reachable via a scheme-share — direct organisation-owned
                 resources are excluded.
+
+                Schemes are found through a search index that trails writes. A scheme created, or renamed to match,
+                moments ago may be missing from the results until the index catches up.
 
                 The organisation(s) to look up shares for are supplied via the standard
                 `filter` parameter using the `organisation` key — e.g.
