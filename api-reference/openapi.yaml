@@ -1225,6 +1225,19 @@ components:
                         Returned on My people only. How the caller manages this person: `direct` when the caller
                         is their primary manager, `chain` when the caller is a primary manager higher up their
                         primary chain, and `secondary` when the caller is one of their secondary managers.
+                management_lines:
+                    type: array
+                    description: |
+                        Returned on My people only. The ids of the caller's own live management relationships that
+                        reach this person: their primary or secondary relationship onto the person, and any primary
+                        relationship of theirs higher up the person's primary chain. Relationships held by anyone
+                        else are left out. A manager's grants from `GET /v3/whatcanido` are scoped to these ids as
+                        `a.management_line=<id>`, so a client can tell which of them applies to the person.
+                    items:
+                        type: string
+                        format: uuid
+                    examples:
+                        - ["3e4f5a6b-7c8d-4e9f-9a0b-2c3d4e5f6a7b"]
         UserRelationships:
             type: object
             description: Relationships for a user
@@ -15748,19 +15761,6 @@ components:
                 updated_at:
                     type: string
                     format: date-time
-                can:
-                    type: object
-                    description: What the caller may do with this record, judged from their grants as the update and delete operations judge them. A manager's rights come from the management relationship that covers the record's subject. It ignores the 24-hour lock, which locks_at gives. The list, get, create and update operations set it on every record they return. It is optional because it is absent when nothing judged the caller's rights, so a client must handle a record without it.
-                    required:
-                        - update
-                        - delete
-                    properties:
-                        update:
-                            type: boolean
-                            description: Whether the caller's grants allow them to correct this record.
-                        delete:
-                            type: boolean
-                            description: Whether the caller's grants allow them to delete this record.
         HavsExposureRelationships:
             type: object
             description: Relationships for a HAVS exposure
@@ -43753,6 +43753,7 @@ components:
                 - `organisation_in`: Filter schemes by organisation ID(s)
                 - `eq(contract,xxx)`: Filter schemes that are assigned to the given scheme contract ID.
                 - `eq(status,xxx)`: Filter schemes by lifecycle status. One of `in_planning`, `in_progress`, `on_hold`, `complete`, `cancelled`.
+                - `contains(name,xxx)`: Filter schemes where name contains value, ignoring case. It is answered from a search index that trails writes by a short time, so a scheme created or renamed moments ago may be missing from the list and from `meta.pagination` until the index catches up.
                 - `ge(modified_at,<timestamp>)`: Filter by the date a scheme last changed, which is the `meta.modified_at` of the response. It moves when the scheme is edited and when its work orders, operations or their assignments change. Accepts an RFC 3339 timestamp and supports the range operators `ge`, `le`, `gt`, `lt` (and `eq`). Example (changed since a given time): `ge(modified_at,2026-07-01T00:00:00Z)`. To read what changed, sort by `modified_at` and, for the next read, start again from the last timestamp seen with `ge`, a few seconds earlier than it. The timestamp is set before the change is saved, so a write that started earlier can become visible after a read has already passed its timestamp. Remove the schemes that come back twice by `id`.
 
                 Project-role filters (cross-resource lookups against project role assignments):
@@ -81377,7 +81378,7 @@ paths:
                     title: Update a scheme template
     /v3/orgs/{org_id}/projects/schemes:
         get:
-            description: List all of the schemes in an organisation.
+            description: 'List all of the schemes in an organisation. A `name` filter is answered from a search index, which trails writes by a short time: a scheme created or renamed moments ago may be missing from the list and from `meta.pagination` until the index catches up.'
             operationId: ListSchemesOrgScoped
             parameters:
                 - $ref: '#/components/parameters/org_id'
@@ -85345,7 +85346,7 @@ paths:
                     title: Get the removal impact of a scheme share
     /v3/schemes:
         get:
-            description: List all of the schemes in an organisation.
+            description: 'List all of the schemes in an organisation. A `name` filter is answered from a search index, which trails writes by a short time: a scheme created or renamed moments ago may be missing from the list and from `meta.pagination` until the index catches up.'
             operationId: ListSchemes
             parameters:
                 - $ref: '#/components/parameters/schemes_include'
@@ -85481,7 +85482,11 @@ paths:
                     title: List a scheme's history
     /v3/search:
         get:
-            description: Search for schemes, work orders, and operations by name.
+            description: |
+                Search for schemes, work orders, and operations by name.
+
+                Schemes are found through a search index that trails writes. A scheme created, or renamed to match,
+                moments ago may be missing from the results until the index catches up.
             operationId: ListSearchResults
             parameters:
                 - $ref: '#/components/parameters/search_results_include'
@@ -85599,6 +85604,9 @@ paths:
                 the supplied organisation(s) via scheme-shares. Mirrors `/v3/search` but only
                 returns resources reachable via a scheme-share — direct organisation-owned
                 resources are excluded.
+
+                Schemes are found through a search index that trails writes. A scheme created, or renamed to match,
+                moments ago may be missing from the results until the index catches up.
 
                 The organisation(s) to look up shares for are supplied via the standard
                 `filter` parameter using the `organisation` key — e.g.
