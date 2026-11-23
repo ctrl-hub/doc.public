@@ -1225,6 +1225,19 @@ components:
                         Returned on My people only. How the caller manages this person: `direct` when the caller
                         is their primary manager, `chain` when the caller is a primary manager higher up their
                         primary chain, and `secondary` when the caller is one of their secondary managers.
+                management_lines:
+                    type: array
+                    description: |
+                        Returned on My people only. The ids of the caller's own live management relationships that
+                        reach this person: their primary or secondary relationship onto the person, and any primary
+                        relationship of theirs higher up the person's primary chain. Relationships held by anyone
+                        else are left out. A manager's grants from `GET /v3/whatcanido` are scoped to these ids as
+                        `a.management_line=<id>`, so a client can tell which of them applies to the person.
+                    items:
+                        type: string
+                        format: uuid
+                    examples:
+                        - ["3e4f5a6b-7c8d-4e9f-9a0b-2c3d4e5f6a7b"]
         UserRelationships:
             type: object
             description: Relationships for a user
@@ -12395,6 +12408,7 @@ components:
                 - format
                 - status
                 - omissions
+                - truncated
             properties:
                 subject_type:
                     $ref: '#/components/schemas/ExportSubjectType'
@@ -12452,6 +12466,19 @@ components:
                                     A readable name for the subject, such as the form name, short reference and version.
                                     Null when it could not be named, or when the caller may not view the subject, such as
                                     a submission shared in from another organisation.
+                query:
+                    oneOf:
+                        - $ref: '#/components/schemas/ExportQuery'
+                        - type: "null"
+                    description: |
+                        The list query that defines a `workflow-insight-submissions` or `competency-expiring-records`
+                        export's rows. Null on every other kind.
+                truncated:
+                    type: boolean
+                    description: |
+                        True when a CSV export reached its kind's cap, so its file holds the first rows of what the
+                        query matched rather than all of them. The caps are 100,000 transition records for workflow
+                        insights and 10,000 rows for expiring competency records. Always false on the other kinds.
         ExportMeta:
             type: object
             description: Metadata for an export
@@ -12510,7 +12537,8 @@ components:
                         The subjects the export covers, in the order the document prints them. Read them through
                         `subject_type`, which says what kind of record each identifier stands for. A competency
                         holder is identified by the user who holds the records, which is why these are users.
-                        Empty for a `form-submission-versions` export, whose subjects are in `submission_versions`.
+                        Empty for a `form-submission-versions` export, whose subjects are in `submission_versions`,
+                        and for a CSV export, whose rows are defined by its `query`.
                 submission_versions:
                     type: object
                     required:
@@ -12523,6 +12551,16 @@ components:
                     description: |
                         The form submission versions a `form-submission-versions` export covers, in the order the
                         bundle holds them. Absent on every other kind of export.
+                workflow_definition:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/WorkflowDefinitionRelationship'
+                    description: |
+                        The workflow a `workflow-insight-submissions` export covers. Absent on every other kind of
+                        export.
         ExportSubjectType:
             type: string
             description: |
@@ -12537,19 +12575,33 @@ components:
                 `form-submission-versions` collects the archived PDFs of form submission versions into one PDF or
                 a ZIP. Nothing is rendered: each version's document already exists. It is authorised by the
                 `form-submissions` view grant, because a version is viewed through its submission.
+
+                `workflow-insight-submissions` is a CSV of a workflow's submission journeys over a window, the
+                rows `ListWorkflowInsightSubmissions` pages through. It is defined by a `query` and the
+                `workflow_definition` relationship rather than by subjects, and authorised by the
+                `workflow-transition-records` view grant.
+
+                `competency-expiring-records` is a CSV of an organisation's expiring competency records, the rows
+                `ListCompetencyExpiringRecords` pages through. It is defined by a `query` rather than by
+                subjects, and authorised by the `competency-holders` view grant.
             enum:
                 - competency-holders
                 - form-submission-versions
+                - workflow-insight-submissions
+                - competency-expiring-records
         ExportFormat:
             type: string
             description: |
                 The shape an export's artefact takes.
 
                 `merged` is one PDF covering every subject, with a page break between them, for a pack that reads
-                front to back. `zip` is one PDF per subject, for filing them separately.
+                front to back. `zip` is one PDF per subject, for filing them separately. `csv` is one CSV file of
+                rows, and is the only format of the `workflow-insight-submissions` and
+                `competency-expiring-records` kinds.
             enum:
                 - merged
                 - zip
+                - csv
         ExportStatus:
             type: string
             description: |
@@ -12587,6 +12639,32 @@ components:
                     format: int64
                     minimum: 0
                     description: The artefact's size in bytes.
+        ExportQuery:
+            type: object
+            description: |
+                The list query that defines a CSV export's rows, as the list endpoint takes it. The export holds
+                the rows that list would page through for the requester, from the first, up to the kind's cap.
+
+                For `workflow-insight-submissions` it is `ListWorkflowInsightSubmissions`'s query, and `shape` is
+                required. For `competency-expiring-records` it is `ListCompetencyExpiringRecords`'s query, and the
+                filter must name the export's organisation.
+            properties:
+                filter:
+                    type: string
+                    description: The list endpoint's `filter` parameter.
+                    example: and(ge(created_at,2026-07-01T00:00:00Z),le(created_at,2026-07-31T23:59:59Z))
+                sort:
+                    type: string
+                    description: The list endpoint's `sort` parameter.
+                    example: -started_at
+                shape:
+                    type: string
+                    enum:
+                        - transitions
+                        - summary
+                    description: |
+                        Which workflow insights CSV to write: `transitions`, one row per transition, or `summary`,
+                        one row per submission. Only for `workflow-insight-submissions`.
         F10Notification:
             type: object
             description: An F10 notification sent to HSE for a project, recorded against its Pre-Construction Information pack.
@@ -15748,19 +15826,6 @@ components:
                 updated_at:
                     type: string
                     format: date-time
-                can:
-                    type: object
-                    description: What the caller may do with this record, judged from their grants as the update and delete operations judge them. A manager's rights come from the management relationship that covers the record's subject. It ignores the 24-hour lock, which locks_at gives. The list, get, create and update operations set it on every record they return. It is optional because it is absent when nothing judged the caller's rights, so a client must handle a record without it.
-                    required:
-                        - update
-                        - delete
-                    properties:
-                        update:
-                            type: boolean
-                            description: Whether the caller's grants allow them to correct this record.
-                        delete:
-                            type: boolean
-                            description: Whether the caller's grants allow them to delete this record.
         HavsExposureRelationships:
             type: object
             description: Relationships for a HAVS exposure
@@ -30614,17 +30679,8 @@ components:
                                     $ref: '#/components/schemas/AgentIssueCommentIncludes'
                             - $ref: '#/components/schemas/JSONAPI'
         ListCompetencyExpiringRecords:
-            description: |
-                A page of expiring competency records, or the whole filtered set as CSV when
-                `format=csv` was asked for.
+            description: A page of expiring competency records.
             headers:
-                X-Expiring-Records-Truncated:
-                    description: |
-                        Present and `true` on the CSV export when the filtered set was larger than
-                        the export's 10 000 row limit, so the file holds only the first 10 000
-                        rows in the requested order.
-                    schema:
-                        type: string
                 Content-Type:
                     $ref: '#/components/headers/content-type'
                 Content-Length:
@@ -30648,12 +30704,6 @@ components:
                                     $ref: '#/components/schemas/CompetencyExpiringRecordIncludes'
                             - $ref: '#/components/schemas/DocumentMeta'
                             - $ref: '#/components/schemas/JSONAPI'
-                text/csv:
-                    schema:
-                        type: string
-                        description: |
-                            The records as comma-separated values, one row per record, in the
-                            requested order. Pagination does not apply.
         ListCompetencyHolders:
             description: Get a list of competency holders.
             headers:
@@ -38930,16 +38980,8 @@ components:
                                     $ref: '#/components/schemas/WorkflowInsights'
                             - $ref: '#/components/schemas/JSONAPI'
         ListWorkflowInsightSubmissions:
-            description: |
-                A page of the workflow's submission journeys, or the whole set as CSV when
-                `text/csv` was asked for.
+            description: A page of the workflow's submission journeys.
             headers:
-                X-Insights-Truncated:
-                    description: |
-                        Present and `true` when the server bounded the window before assembling the
-                        journeys, so the page, the total and the export all cover only part of it.
-                    schema:
-                        type: string
                 Content-Type:
                     $ref: '#/components/headers/content-type'
                 Content-Length:
@@ -38977,17 +39019,7 @@ components:
                                                     type: boolean
                                                     description: |
                                                         True when the server bounded the window before assembling the
-                                                        journeys, so the page and the total cover only part of it. The
-                                                        export reports the same thing as an `X-Insights-Truncated`
-                                                        header, since a spreadsheet cannot carry the caveat.
-                text/csv:
-                    schema:
-                        type: string
-                        description: |
-                            The journeys as comma-separated values. `shape=transitions` (the default)
-                            writes one row per transition, `shape=summary` one row per submission.
-                            Pagination does not apply — the export covers the whole window, up to the
-                            server's aggregation bound.
+                                                        journeys, so the page and the total cover only part of it.
         GetWorkflowTransitionRecord:
             description: Get a workflow transition record.
             headers:
@@ -39791,17 +39823,6 @@ components:
                     type: string
                     enum:
                         - user
-        competency_expiring_records_format:
-            name: format
-            in: query
-            description: |
-                Asks for the CSV export rather than a page of records. The export exists as a
-                plain URL so a browser download can use it without setting a header.
-            required: false
-            schema:
-                type: string
-                enum:
-                    - csv
         competency_holders_filter:
             name: filter
             in: query
@@ -43753,6 +43774,7 @@ components:
                 - `organisation_in`: Filter schemes by organisation ID(s)
                 - `eq(contract,xxx)`: Filter schemes that are assigned to the given scheme contract ID.
                 - `eq(status,xxx)`: Filter schemes by lifecycle status. One of `in_planning`, `in_progress`, `on_hold`, `complete`, `cancelled`.
+                - `contains(name,xxx)`: Filter schemes where name contains value, ignoring case. It is answered from a search index that trails writes by a short time, so a scheme created or renamed moments ago may be missing from the list and from `meta.pagination` until the index catches up.
                 - `ge(modified_at,<timestamp>)`: Filter by the date a scheme last changed, which is the `meta.modified_at` of the response. It moves when the scheme is edited and when its work orders, operations or their assignments change. Accepts an RFC 3339 timestamp and supports the range operators `ge`, `le`, `gt`, `lt` (and `eq`). Example (changed since a given time): `ge(modified_at,2026-07-01T00:00:00Z)`. To read what changed, sort by `modified_at` and, for the next read, start again from the last timestamp seen with `ge`, a few seconds earlier than it. The timestamp is set before the change is saved, so a write that started earlier can become visible after a read has already passed its timestamp. Remove the schemes that come back twice by `id`.
 
                 Project-role filters (cross-resource lookups against project role assignments):
@@ -46602,33 +46624,6 @@ components:
                         - -started_at
                         - elapsed_minutes
                         - -elapsed_minutes
-        insights_format:
-            name: format
-            in: query
-            description: |
-                Asks for the CSV export rather than a page of journeys. `format=csv` is
-                equivalent to sending `Accept: text/csv`, and exists so the export is a plain
-                URL — the form a browser download or a scheduled delivery can use without
-                setting a header.
-            required: false
-            schema:
-                type: string
-                enum:
-                    - csv
-        insights_shape:
-            name: shape
-            in: query
-            description: |
-                The shape of the CSV export. `transitions` writes one row per transition — the
-                stage-by-stage trail behind each submission. `summary` writes one row per
-                submission. Ignored unless CSV was asked for.
-            required: false
-            schema:
-                type: string
-                default: transitions
-                enum:
-                    - transitions
-                    - summary
         workflow_instance_id:
             name: workflow_instance_id
             in: path
@@ -52119,12 +52114,19 @@ components:
                                                 $ref: '#/components/schemas/ExportSubjectType'
                                             format:
                                                 $ref: '#/components/schemas/ExportFormat'
+                                            query:
+                                                $ref: '#/components/schemas/ExportQuery'
+                                                description: |
+                                                    The rows of a `workflow-insight-submissions` or `competency-expiring-records`
+                                                    export. Required for those kinds, and ignored for the others.
                                     relationships:
                                         type: object
                                         description: |
                                             Send the subjects in the relationship their `subject_type` uses: `subjects` for
                                             `competency-holders`, `submission_versions` for `form-submission-versions`. The
-                                            other one is ignored.
+                                            other one is ignored. A `workflow-insight-submissions` export sends
+                                            `workflow_definition` instead, and a `competency-expiring-records` export sends
+                                            no subjects: their `query` defines the rows.
                                         required:
                                             - organisation
                                         properties:
@@ -52178,6 +52180,16 @@ components:
                                                                     description: |
                                                                         The identifier of the subject to export. For `competency-holders`
                                                                         this is the user who holds the records.
+                                            workflow_definition:
+                                                type: object
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/WorkflowDefinitionRelationship'
+                                                description: |
+                                                    The workflow a `workflow-insight-submissions` export covers. It must belong to
+                                                    the organisation named on the request.
                                             submission_versions:
                                                 type: object
                                                 required:
@@ -68248,11 +68260,12 @@ paths:
                 organisation sees only the people assigned to the roles shared with them, and
                 only the records those roles require.
 
-                Send `format=csv` for the export instead of a page. The export ignores
-                pagination and covers the whole filtered set, up to 10 000 rows.
+                To download the records as CSV, request an export (`CreateExport`) with the
+                subject type `competency-expiring-records` and this operation's `filter` and
+                `sort` as its query.
 
                 Served by a hand-written handler rather than a generated one, because the
-                resource is computed rather than stored and the operation negotiates CSV.
+                resource is computed rather than stored.
             operationId: ListCompetencyExpiringRecords
             parameters:
                 - $ref: '#/components/parameters/competency_expiring_records_filter'
@@ -68261,7 +68274,6 @@ paths:
                 - $ref: '#/components/parameters/limit'
                 - $ref: '#/components/parameters/offset'
                 - $ref: '#/components/parameters/page'
-                - $ref: '#/components/parameters/competency_expiring_records_format'
             responses:
                 "200":
                     $ref: '#/components/responses/ListCompetencyExpiringRecords'
@@ -72693,6 +72705,13 @@ paths:
 
                 At most fifty subjects, enforced here as well as in the console.
 
+                A `workflow-insight-submissions` or `competency-expiring-records` export is a CSV defined by a
+                `query` rather than by subjects. It is refused unless the caller could read the matching list
+                endpoint with that query. Only a person may request one, and not in an organisation they entered
+                by an elevation, because the file is read under the requester's own stored grants when it is
+                produced. A `competency-expiring-records` export ignores `shape` and `workflow_definition`.
+                `truncated` on the export says whether the file reached the kind's cap.
+
                 Authorised by the same view grants that govern reading the records: there is no separate export
                 permission, so if you can see the records you can export them. Every subject is checked
                 individually, and a subject the caller cannot view fails the whole request rather than being
@@ -72771,6 +72790,13 @@ paths:
                 The check is stricter than reading the record. Every subject the export covered has to be one the
                 caller may view, because the artefact contains all of them and cannot be served in part.
 
+                A CSV export's rows were read under its requester's grants, which may be wider than the caller's.
+                So it is served to a caller whose view grant for the kind covers the whole organisation, or to its
+                requester while their grants for the kind in the organisation are the ones the rows were read
+                under. Any change to those grants stops the requester's download, and they can request the export
+                again. The stored query is then re-authorised for the caller as the list endpoint would
+                authorise it.
+
                 Each fetch is recorded. Retention answers what was issued; the download record answers who took
                 it.
 
@@ -72789,6 +72815,10 @@ paths:
                                 format: binary
                                 type: string
                         application/zip:
+                            schema:
+                                format: binary
+                                type: string
+                        text/csv:
                             schema:
                                 format: binary
                                 type: string
@@ -81377,7 +81407,7 @@ paths:
                     title: Update a scheme template
     /v3/orgs/{org_id}/projects/schemes:
         get:
-            description: List all of the schemes in an organisation.
+            description: 'List all of the schemes in an organisation. A `name` filter is answered from a search index, which trails writes by a short time: a scheme created or renamed moments ago may be missing from the list and from `meta.pagination` until the index catches up.'
             operationId: ListSchemesOrgScoped
             parameters:
                 - $ref: '#/components/parameters/org_id'
@@ -85345,7 +85375,7 @@ paths:
                     title: Get the removal impact of a scheme share
     /v3/schemes:
         get:
-            description: List all of the schemes in an organisation.
+            description: 'List all of the schemes in an organisation. A `name` filter is answered from a search index, which trails writes by a short time: a scheme created or renamed moments ago may be missing from the list and from `meta.pagination` until the index catches up.'
             operationId: ListSchemes
             parameters:
                 - $ref: '#/components/parameters/schemes_include'
@@ -85481,7 +85511,11 @@ paths:
                     title: List a scheme's history
     /v3/search:
         get:
-            description: Search for schemes, work orders, and operations by name.
+            description: |
+                Search for schemes, work orders, and operations by name.
+
+                Schemes are found through a search index that trails writes. A scheme created, or renamed to match,
+                moments ago may be missing from the results until the index catches up.
             operationId: ListSearchResults
             parameters:
                 - $ref: '#/components/parameters/search_results_include'
@@ -85599,6 +85633,9 @@ paths:
                 the supplied organisation(s) via scheme-shares. Mirrors `/v3/search` but only
                 returns resources reachable via a scheme-share — direct organisation-owned
                 resources are excluded.
+
+                Schemes are found through a search index that trails writes. A scheme created, or renamed to match,
+                moments ago may be missing from the results until the index catches up.
 
                 The organisation(s) to look up shares for are supplied via the standard
                 `filter` parameter using the `organisation` key — e.g.
@@ -91356,13 +91393,12 @@ paths:
                 Takes the same required window and the same optional cohort filters as the
                 aggregate, so a page of journeys always reconciles with the figures above it.
 
-                Send `Accept: text/csv` (or `format=csv`) for the export instead of a page:
-                `shape=transitions` for one row per transition, `shape=summary` for one row per
-                submission. The export ignores pagination and covers the whole window.
+                A window the server had to bound is reported as `meta.stats.truncated`.
 
-                A window the server had to bound is reported as `meta.stats.truncated` on the JSON
-                response, and as an `X-Insights-Truncated` header on the export, where a
-                spreadsheet cannot carry the caveat itself.
+                To download the journeys as CSV, request an export (`CreateExport`) with the
+                subject type `workflow-insight-submissions`, this operation's `filter` and
+                `sort` as its query, and the workflow definition in its
+                `relationships.workflow_definition`.
 
                 Served by a hand-written handler rather than a generated one, because the
                 resource is computed rather than stored.
@@ -91374,8 +91410,6 @@ paths:
                 - $ref: '#/components/parameters/limit'
                 - $ref: '#/components/parameters/offset'
                 - $ref: '#/components/parameters/page'
-                - $ref: '#/components/parameters/insights_format'
-                - $ref: '#/components/parameters/insights_shape'
             responses:
                 "200":
                     $ref: '#/components/responses/ListWorkflowInsightSubmissions'
