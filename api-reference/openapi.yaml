@@ -1225,6 +1225,19 @@ components:
                         Returned on My people only. How the caller manages this person: `direct` when the caller
                         is their primary manager, `chain` when the caller is a primary manager higher up their
                         primary chain, and `secondary` when the caller is one of their secondary managers.
+                management_lines:
+                    type: array
+                    description: |
+                        Returned on My people only. The ids of the caller's own live management relationships that
+                        reach this person: their primary or secondary relationship onto the person, and any primary
+                        relationship of theirs higher up the person's primary chain. Relationships held by anyone
+                        else are left out. A manager's grants from `GET /v3/whatcanido` are scoped to these ids as
+                        `a.management_line=<id>`, so a client can tell which of them applies to the person.
+                    items:
+                        type: string
+                        format: uuid
+                    examples:
+                        - ["3e4f5a6b-7c8d-4e9f-9a0b-2c3d4e5f6a7b"]
         UserRelationships:
             type: object
             description: Relationships for a user
@@ -10631,6 +10644,16 @@ components:
                     properties:
                         data:
                             $ref: '#/components/schemas/FolderRelationship'
+                kit:
+                    type: object
+                    description: |
+                        The equipment kit the item belongs to, left out for an item in no kit. It is read-only here: an
+                        item joins and leaves a kit through the kit's `relationships/equipment_items` endpoints.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/EquipmentKitRelationship'
         EquipmentManufacturerRelationship:
             type: object
             description: Represents a relationship to an equipment manufacturer
@@ -10725,6 +10748,20 @@ components:
                         - "null"
                     format: date-time
                     description: When the allocation should take effect.
+        EquipmentKitRelationship:
+            type: object
+            description: Represents a relationship to an equipment kit
+            required:
+                - id
+                - type
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the equipment kit
+                type:
+                    type: string
+                    const: equipment-kits
         EquipmentCertificationAttributes:
             type: object
             description: Attributes for an equipment certification
@@ -10821,6 +10858,7 @@ components:
                         equipment-categories: "#/components/schemas/EquipmentCategory"
                         equipment-certifications: "#/components/schemas/EquipmentCertification"
                         folders: "#/components/schemas/Folder"
+                        equipment-kits: "#/components/schemas/EquipmentKit"
                 oneOf:
                     - $ref: '#/components/schemas/EquipmentManufacturer'
                     - $ref: '#/components/schemas/EquipmentModel'
@@ -10833,6 +10871,7 @@ components:
                     - $ref: '#/components/schemas/EquipmentCategory'
                     - $ref: '#/components/schemas/EquipmentCertification'
                     - $ref: '#/components/schemas/Folder'
+                    - $ref: '#/components/schemas/EquipmentKit'
         EquipmentManufacturer:
             type: object
             description: An equipment manufacturer
@@ -10951,6 +10990,32 @@ components:
                     $ref: '#/components/schemas/LocationMeta'
                 relationships:
                     $ref: '#/components/schemas/LocationRelationships'
+        EquipmentKit:
+            type: object
+            description: |
+                A named set of pieces of equipment that are handed out together, so the whole set can be allocated
+                in one action. A kit holds no allocation and no compliance of its own: each of its pieces keeps its
+                own allocation and certifications.
+            required:
+                - id
+                - type
+                - attributes
+                - meta
+                - relationships
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the equipment kit.
+                type:
+                    type: string
+                    const: equipment-kits
+                attributes:
+                    $ref: '#/components/schemas/EquipmentKitAttributes'
+                meta:
+                    $ref: '#/components/schemas/EquipmentKitMeta'
+                relationships:
+                    $ref: '#/components/schemas/EquipmentKitRelationships'
         EquipmentManufacturerAttributes:
             type: object
             description: Attributes for an equipment manufacturer
@@ -12220,6 +12285,56 @@ components:
                 type:
                     type: string
                     const: location-types
+        EquipmentKitAttributes:
+            type: object
+            description: Attributes for an equipment kit
+            required:
+                - name
+            properties:
+                name:
+                    type: string
+                    description: The kit's name, unique within its organisation without regard to case.
+                    examples:
+                        - Survey kit 1
+        EquipmentKitMeta:
+            type: object
+            description: Metadata for an equipment kit
+            required:
+                - created_at
+                - updated_at
+            properties:
+                created_at:
+                    type: string
+                    format: date-time
+                updated_at:
+                    type: string
+                    format: date-time
+        EquipmentKitRelationships:
+            type: object
+            description: Relationships for an equipment kit
+            required:
+                - organisation
+                - equipment_items
+            properties:
+                organisation:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/OrganisationRelationship'
+                equipment_items:
+                    type: object
+                    description: |
+                        The pieces of equipment in the kit, at most 50, oldest piece first. List them with their
+                        allocations through `GET /v3/equipment-items?filter=eq(kit,<id>)`.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            type: array
+                            items:
+                                $ref: '#/components/schemas/EquipmentItemRelationship'
         EquipmentComplianceResult:
             type: object
             description: The result of evaluating an equipment item against its required certifications.
@@ -12395,6 +12510,7 @@ components:
                 - format
                 - status
                 - omissions
+                - truncated
             properties:
                 subject_type:
                     $ref: '#/components/schemas/ExportSubjectType'
@@ -12452,6 +12568,19 @@ components:
                                     A readable name for the subject, such as the form name, short reference and version.
                                     Null when it could not be named, or when the caller may not view the subject, such as
                                     a submission shared in from another organisation.
+                query:
+                    oneOf:
+                        - $ref: '#/components/schemas/ExportQuery'
+                        - type: "null"
+                    description: |
+                        The list query that defines a `workflow-insight-submissions` or `competency-expiring-records`
+                        export's rows. Null on every other kind.
+                truncated:
+                    type: boolean
+                    description: |
+                        True when a CSV export reached its kind's cap, so its file holds the first rows of what the
+                        query matched rather than all of them. The caps are 100,000 transition records for workflow
+                        insights and 10,000 rows for expiring competency records. Always false on the other kinds.
         ExportMeta:
             type: object
             description: Metadata for an export
@@ -12510,7 +12639,8 @@ components:
                         The subjects the export covers, in the order the document prints them. Read them through
                         `subject_type`, which says what kind of record each identifier stands for. A competency
                         holder is identified by the user who holds the records, which is why these are users.
-                        Empty for a `form-submission-versions` export, whose subjects are in `submission_versions`.
+                        Empty for a `form-submission-versions` export, whose subjects are in `submission_versions`,
+                        and for a CSV export, whose rows are defined by its `query`.
                 submission_versions:
                     type: object
                     required:
@@ -12523,6 +12653,16 @@ components:
                     description: |
                         The form submission versions a `form-submission-versions` export covers, in the order the
                         bundle holds them. Absent on every other kind of export.
+                workflow_definition:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/WorkflowDefinitionRelationship'
+                    description: |
+                        The workflow a `workflow-insight-submissions` export covers. Absent on every other kind of
+                        export.
         ExportSubjectType:
             type: string
             description: |
@@ -12537,19 +12677,33 @@ components:
                 `form-submission-versions` collects the archived PDFs of form submission versions into one PDF or
                 a ZIP. Nothing is rendered: each version's document already exists. It is authorised by the
                 `form-submissions` view grant, because a version is viewed through its submission.
+
+                `workflow-insight-submissions` is a CSV of a workflow's submission journeys over a window, the
+                rows `ListWorkflowInsightSubmissions` pages through. It is defined by a `query` and the
+                `workflow_definition` relationship rather than by subjects, and authorised by the
+                `workflow-transition-records` view grant.
+
+                `competency-expiring-records` is a CSV of an organisation's expiring competency records, the rows
+                `ListCompetencyExpiringRecords` pages through. It is defined by a `query` rather than by
+                subjects, and authorised by the `competency-holders` view grant.
             enum:
                 - competency-holders
                 - form-submission-versions
+                - workflow-insight-submissions
+                - competency-expiring-records
         ExportFormat:
             type: string
             description: |
                 The shape an export's artefact takes.
 
                 `merged` is one PDF covering every subject, with a page break between them, for a pack that reads
-                front to back. `zip` is one PDF per subject, for filing them separately.
+                front to back. `zip` is one PDF per subject, for filing them separately. `csv` is one CSV file of
+                rows, and is the only format of the `workflow-insight-submissions` and
+                `competency-expiring-records` kinds.
             enum:
                 - merged
                 - zip
+                - csv
         ExportStatus:
             type: string
             description: |
@@ -12587,6 +12741,32 @@ components:
                     format: int64
                     minimum: 0
                     description: The artefact's size in bytes.
+        ExportQuery:
+            type: object
+            description: |
+                The list query that defines a CSV export's rows, as the list endpoint takes it. The export holds
+                the rows that list would page through for the requester, from the first, up to the kind's cap.
+
+                For `workflow-insight-submissions` it is `ListWorkflowInsightSubmissions`'s query, and `shape` is
+                required. For `competency-expiring-records` it is `ListCompetencyExpiringRecords`'s query, and the
+                filter must name the export's organisation.
+            properties:
+                filter:
+                    type: string
+                    description: The list endpoint's `filter` parameter.
+                    example: and(ge(created_at,2026-07-01T00:00:00Z),le(created_at,2026-07-31T23:59:59Z))
+                sort:
+                    type: string
+                    description: The list endpoint's `sort` parameter.
+                    example: -started_at
+                shape:
+                    type: string
+                    enum:
+                        - transitions
+                        - summary
+                    description: |
+                        Which workflow insights CSV to write: `transitions`, one row per transition, or `summary`,
+                        one row per submission. Only for `workflow-insight-submissions`.
         F10Notification:
             type: object
             description: An F10 notification sent to HSE for a project, recorded against its Pre-Construction Information pack.
@@ -15748,19 +15928,6 @@ components:
                 updated_at:
                     type: string
                     format: date-time
-                can:
-                    type: object
-                    description: What the caller may do with this record, judged from their grants as the update and delete operations judge them. A manager's rights come from the management relationship that covers the record's subject. It ignores the 24-hour lock, which locks_at gives. The list, get, create and update operations set it on every record they return. It is optional because it is absent when nothing judged the caller's rights, so a client must handle a record without it.
-                    required:
-                        - update
-                        - delete
-                    properties:
-                        update:
-                            type: boolean
-                            description: Whether the caller's grants allow them to correct this record.
-                        delete:
-                            type: boolean
-                            description: Whether the caller's grants allow them to delete this record.
         HavsExposureRelationships:
             type: object
             description: Relationships for a HAVS exposure
@@ -19954,8 +20121,10 @@ components:
         HealthPlan:
             type: object
             description: |
-                A cap on one person's limit for one exposure type over a period, with Occupational Health's health
-                notes. Readable only with the health plan permissions, which only the Occupational Health roles hold.
+                A cap on one person's limit for one exposure type over a period. Occupational Health can read any
+                plan. Otherwise, the person it caps must be an active member of the organisation, and the reader must
+                be that person or a manager whose `health-plans:view` grant reaches them through a live management
+                line. Its health notes are readable only by Occupational Health.
             required:
                 - id
                 - type
@@ -19985,7 +20154,6 @@ components:
                 - amber
                 - starts_at
                 - ends_at
-                - notes
             properties:
                 exposure_type:
                     $ref: '#/components/schemas/ExposureType'
@@ -20014,6 +20182,10 @@ components:
                     description: The plan's last day, inclusive, or null for a plan with no end.
                 notes:
                     type: array
+                    description: |
+                        Occupational Health's health notes on the plan. Present only for a caller holding
+                        `health-plan-notes:view` organisation-wide, which only the Occupational Health roles hold. Absent
+                        for anyone else, including the person and their managers.
                     items:
                         $ref: '#/components/schemas/HealthNote'
         HealthPlanMeta:
@@ -21632,6 +21804,7 @@ components:
                 - description
                 - available_scopes
                 - manager_scopable
+                - manager_role_requires
             properties:
                 domain:
                     type: string
@@ -21663,6 +21836,13 @@ components:
                     description: Whether a manager role may hold this permission. A manager role can only hold manager-scopable permissions, because a manager's grants are scoped to the people they manage.
                     examples:
                         - false
+                manager_role_requires:
+                    type: array
+                    description: The permissions a manager role holding this permission must also hold. Empty for most permissions. A manager role that holds this permission without them is refused with CH.003.196.
+                    items:
+                        type: string
+                    examples:
+                        - - users:view
                 available_scopes:
                     type: object
                     description: Available scopes that can be applied when granting this permission
@@ -30614,17 +30794,8 @@ components:
                                     $ref: '#/components/schemas/AgentIssueCommentIncludes'
                             - $ref: '#/components/schemas/JSONAPI'
         ListCompetencyExpiringRecords:
-            description: |
-                A page of expiring competency records, or the whole filtered set as CSV when
-                `format=csv` was asked for.
+            description: A page of expiring competency records.
             headers:
-                X-Expiring-Records-Truncated:
-                    description: |
-                        Present and `true` on the CSV export when the filtered set was larger than
-                        the export's 10 000 row limit, so the file holds only the first 10 000
-                        rows in the requested order.
-                    schema:
-                        type: string
                 Content-Type:
                     $ref: '#/components/headers/content-type'
                 Content-Length:
@@ -30648,12 +30819,6 @@ components:
                                     $ref: '#/components/schemas/CompetencyExpiringRecordIncludes'
                             - $ref: '#/components/schemas/DocumentMeta'
                             - $ref: '#/components/schemas/JSONAPI'
-                text/csv:
-                    schema:
-                        type: string
-                        description: |
-                            The records as comma-separated values, one row per record, in the
-                            requested order. Pagination does not apply.
         ListCompetencyHolders:
             description: Get a list of competency holders.
             headers:
@@ -31941,6 +32106,50 @@ components:
                               properties:
                                 data:
                                     $ref: '#/components/schemas/EquipmentComplianceResult'
+                            - $ref: '#/components/schemas/JSONAPI'
+        ListEquipmentKits:
+            description: Get a list of equipment kits.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    title: A list of equipment kits
+                                    type: array
+                                    items:
+                                        $ref: '#/components/schemas/EquipmentKit'
+                            - $ref: '#/components/schemas/DocumentMeta'
+                            - $ref: '#/components/schemas/JSONAPI'
+        GetEquipmentKit:
+            description: Get an equipment kit.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    $ref: '#/components/schemas/EquipmentKit'
                             - $ref: '#/components/schemas/JSONAPI'
         ListEquipmentManufacturers:
             description: Get a list of equipment manufacturers.
@@ -38270,6 +38479,8 @@ components:
                               properties:
                                 data:
                                     $ref: '#/components/schemas/Video'
+                                included:
+                                    $ref: '#/components/schemas/VideoIncludes'
                             - $ref: '#/components/schemas/JSONAPI'
         ProxiedVideo:
             description: The full video binary for the playable format. Browsers will normally request ranges instead (see the 206 response).
@@ -38327,6 +38538,19 @@ components:
                     schema:
                         type: string
                         format: binary
+        ProxiedVideoRangeNotSatisfiable:
+            description: The Range header asks for bytes the video doesn't have, such as a range that starts past its end. The response has no body.
+            headers:
+                Content-Range:
+                    description: The video's full size, as `bytes */<size>`, so the client can ask again for a range that exists.
+                    schema:
+                        type: string
+                Accept-Ranges:
+                    description: Always `bytes`.
+                    schema:
+                        type: string
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
         ListWasteBrokers:
             description: A list of waste broker records.
             headers:
@@ -38930,16 +39154,8 @@ components:
                                     $ref: '#/components/schemas/WorkflowInsights'
                             - $ref: '#/components/schemas/JSONAPI'
         ListWorkflowInsightSubmissions:
-            description: |
-                A page of the workflow's submission journeys, or the whole set as CSV when
-                `text/csv` was asked for.
+            description: A page of the workflow's submission journeys.
             headers:
-                X-Insights-Truncated:
-                    description: |
-                        Present and `true` when the server bounded the window before assembling the
-                        journeys, so the page, the total and the export all cover only part of it.
-                    schema:
-                        type: string
                 Content-Type:
                     $ref: '#/components/headers/content-type'
                 Content-Length:
@@ -38977,17 +39193,7 @@ components:
                                                     type: boolean
                                                     description: |
                                                         True when the server bounded the window before assembling the
-                                                        journeys, so the page and the total cover only part of it. The
-                                                        export reports the same thing as an `X-Insights-Truncated`
-                                                        header, since a spreadsheet cannot carry the caveat.
-                text/csv:
-                    schema:
-                        type: string
-                        description: |
-                            The journeys as comma-separated values. `shape=transitions` (the default)
-                            writes one row per transition, `shape=summary` one row per submission.
-                            Pagination does not apply — the export covers the whole window, up to the
-                            server's aggregation bound.
+                                                        journeys, so the page and the total cover only part of it.
         GetWorkflowTransitionRecord:
             description: Get a workflow transition record.
             headers:
@@ -39791,17 +39997,6 @@ components:
                     type: string
                     enum:
                         - user
-        competency_expiring_records_format:
-            name: format
-            in: query
-            description: |
-                Asks for the CSV export rather than a page of records. The export exists as a
-                plain URL so a browser download can use it without setting a header.
-            required: false
-            schema:
-                type: string
-                enum:
-                    - csv
         competency_holders_filter:
             name: filter
             in: query
@@ -40979,6 +41174,14 @@ components:
                 - `contains(search,xxx)`: Text search — matches items where reference OR serial contains the value (case-insensitive).
                 - `eq(status,xxx)`: Filter equipment items by assigned status ID.
                 - `eq(category,xxx)`: Filter equipment items by category ID. Honours inheritance — matches items assigned the category directly or via their model.
+                - `eq(kit,xxx)`: Filter equipment items in the given equipment kit ID.
+                - `not(has(kit))`: Filter equipment items that are in no equipment kit.
+                - `eq(allocated_to,xxx)` or `in(allocated_to,[xxx,yyy])`: Filter equipment items by what they are currently allocated to. An item matches when it is allocated to any one of the values. Each value is one of:
+                  - `person`, `scheme`, `work_order`, `location` or `vehicle`: allocated to any target of that type.
+                  - `person:<id>`, `scheme:<id>`, `work_order:<id>`, `location:<id>` or `vehicle:<id>`: allocated to that target.
+                  - `team:<id>`: allocated directly to a person who is currently a member of that team. A team with no members adds nothing, and if no other value is given the list is empty.
+
+                  The term is ANDed with every other filter, `search` and `category` included, and the total count follows it. It cannot be used inside `or(...)`. There is no value for unallocated equipment or for a kit. A 400 is returned with `CH.015.155` for a term that is an alternative of a top-level `or(...)`, an operator other than `eq` or `in`, an unknown type (`unallocated` and `kit` included), a bare `team`, an empty value, an id that is not a UUID, or a value with more than one `:`. A 400 is returned with `CH.015.156` for a team that does not exist or belongs to an organisation the caller cannot act in.
             required: false
             schema:
                 type: string
@@ -41010,6 +41213,7 @@ components:
                         - allocated_location
                         - allocated_vehicle
                         - folder
+                        - kit
         equipment_item_id:
             name: equipment_item_id
             in: path
@@ -41019,6 +41223,47 @@ components:
                 type: string
                 format: uuid
             example: b000316c-c731-41ba-9f0a-2091611b73f0
+        equipment_kits_filter:
+            name: filter
+            in: query
+            description: |
+                Filters the response data based on the value provided.
+
+                Available filters:
+
+                - `eq(id,xxx)`: Filter equipment kits by ID.
+                - `eq(organisation,xxx)`: Filter equipment kits by organisation ID.
+                - `eq(name,xxx)`: Filter equipment kits by name.
+                - `contains(name,xxx)`: Filter equipment kits whose name contains the value.
+            required: false
+            schema:
+                type: string
+                default: ""
+        equipment_kits_sort:
+            in: query
+            name: sort
+            description: A comma separated list of fields to sort by. A `-` prefix sorts descending. Any other field is refused.
+            required: false
+            style: form
+            explode: false
+            schema:
+                type: array
+                items:
+                    type: string
+                    enum:
+                        - name
+                        - -name
+                        - created_at
+                        - -created_at
+        equipment_kit_id:
+            name: equipment_kit_id
+            in: path
+            required: true
+            description: The unique identifier for the equipment kit.
+            schema:
+                type: string
+                format: uuid
+            example: 3f6b2c1e-8d4a-4b7e-9c2f-1a5d6e7f8a9b
         equipment_manufacturers_filter:
             name: filter
             in: query
@@ -43753,6 +43998,7 @@ components:
                 - `organisation_in`: Filter schemes by organisation ID(s)
                 - `eq(contract,xxx)`: Filter schemes that are assigned to the given scheme contract ID.
                 - `eq(status,xxx)`: Filter schemes by lifecycle status. One of `in_planning`, `in_progress`, `on_hold`, `complete`, `cancelled`.
+                - `contains(name,xxx)`: Filter schemes where name contains value, ignoring case. It is answered from a search index that trails writes by a short time, so a scheme created or renamed moments ago may be missing from the list and from `meta.pagination` until the index catches up.
                 - `ge(modified_at,<timestamp>)`: Filter by the date a scheme last changed, which is the `meta.modified_at` of the response. It moves when the scheme is edited and when its work orders, operations or their assignments change. Accepts an RFC 3339 timestamp and supports the range operators `ge`, `le`, `gt`, `lt` (and `eq`). Example (changed since a given time): `ge(modified_at,2026-07-01T00:00:00Z)`. To read what changed, sort by `modified_at` and, for the next read, start again from the last timestamp seen with `ge`, a few seconds earlier than it. The timestamp is set before the change is saved, so a write that started earlier can become visible after a read has already passed its timestamp. Remove the schemes that come back twice by `id`.
 
                 Project-role filters (cross-resource lookups against project role assignments):
@@ -46602,33 +46848,6 @@ components:
                         - -started_at
                         - elapsed_minutes
                         - -elapsed_minutes
-        insights_format:
-            name: format
-            in: query
-            description: |
-                Asks for the CSV export rather than a page of journeys. `format=csv` is
-                equivalent to sending `Accept: text/csv`, and exists so the export is a plain
-                URL — the form a browser download or a scheduled delivery can use without
-                setting a header.
-            required: false
-            schema:
-                type: string
-                enum:
-                    - csv
-        insights_shape:
-            name: shape
-            in: query
-            description: |
-                The shape of the CSV export. `transitions` writes one row per transition — the
-                stage-by-stage trail behind each submission. `summary` writes one row per
-                submission. Ignored unless CSV was asked for.
-            required: false
-            schema:
-                type: string
-                default: transitions
-                enum:
-                    - transitions
-                    - summary
         workflow_instance_id:
             name: workflow_instance_id
             in: path
@@ -51851,6 +52070,180 @@ components:
                                 type: array
                                 items:
                                     $ref: '#/components/schemas/EquipmentCertificationRelationship'
+        CreateEquipmentKit:
+            required: true
+            description: |
+                The equipment kit to create. `equipment_items` names the pieces of equipment it starts with, and
+                may be left out or empty. Each must be one of the organisation's equipment items and in no other
+                kit, and a kit holds at most 50.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                    - attributes
+                                    - relationships
+                                properties:
+                                    type:
+                                        type: string
+                                        const: equipment-kits
+                                    attributes:
+                                        type: object
+                                        required:
+                                            - name
+                                        properties:
+                                            name:
+                                                type: string
+                                                minLength: 1
+                                                examples:
+                                                    - Survey kit 1
+                                    relationships:
+                                        type: object
+                                        required:
+                                            - organisation
+                                        properties:
+                                            organisation:
+                                                type: object
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/OrganisationRelationship'
+                                            equipment_items:
+                                                type: object
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        type: array
+                                                        maxItems: 50
+                                                        items:
+                                                            $ref: '#/components/schemas/EquipmentItemRelationship'
+        UpdateEquipmentKit:
+            required: true
+            description: The equipment kit's new name. Its pieces of equipment are changed through its `relationships/equipment_items` endpoints.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                    - id
+                                    - attributes
+                                properties:
+                                    id:
+                                        type: string
+                                        format: uuid
+                                    type:
+                                        type: string
+                                        const: equipment-kits
+                                    attributes:
+                                        type: object
+                                        required:
+                                            - name
+                                        properties:
+                                            name:
+                                                type: string
+                                                minLength: 1
+        AllocateEquipmentKit:
+            required: true
+            description: |
+                The target to allocate every piece of equipment in the kit to: exactly one of `allocated_person`,
+                `allocated_scheme`, `allocated_work_order`, `allocated_location` or `allocated_vehicle`, with an
+                optional `meta.starts_at`, as an equipment item's own allocation takes. None, or more than one, is
+                refused with a 400 that names the five relationships.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: object
+                                required:
+                                    - type
+                                    - relationships
+                                properties:
+                                    type:
+                                        type: string
+                                        const: equipment-kits
+                                    relationships:
+                                        type: object
+                                        properties:
+                                            allocated_person:
+                                                type: object
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/UserRelationship'
+                                                    meta:
+                                                        $ref: '#/components/schemas/AllocationMeta'
+                                            allocated_scheme:
+                                                type: object
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/SchemeRelationship'
+                                                    meta:
+                                                        $ref: '#/components/schemas/AllocationMeta'
+                                            allocated_work_order:
+                                                type: object
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/WorkOrderRelationship'
+                                                    meta:
+                                                        $ref: '#/components/schemas/AllocationMeta'
+                                            allocated_location:
+                                                type: object
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/LocationRelationship'
+                                                    meta:
+                                                        $ref: '#/components/schemas/AllocationMeta'
+                                            allocated_vehicle:
+                                                type: object
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/VehicleRelationship'
+                                                    meta:
+                                                        $ref: '#/components/schemas/AllocationMeta'
+        EquipmentKitItems:
+            required: true
+            description: The pieces of equipment to add to the kit or remove from it.
+            content:
+                application/vnd.api+json:
+                    schema:
+                        type: object
+                        required:
+                            - data
+                        properties:
+                            data:
+                                type: array
+                                maxItems: 50
+                                description: |
+                                    The pieces of equipment, at most fifty, which is the most a kit can hold.
+                                items:
+                                    $ref: '#/components/schemas/EquipmentItemRelationship'
         CreateEquipmentManufacturer:
             required: true
             description: The equipment manufacturer to create.
@@ -52119,12 +52512,19 @@ components:
                                                 $ref: '#/components/schemas/ExportSubjectType'
                                             format:
                                                 $ref: '#/components/schemas/ExportFormat'
+                                            query:
+                                                $ref: '#/components/schemas/ExportQuery'
+                                                description: |
+                                                    The rows of a `workflow-insight-submissions` or `competency-expiring-records`
+                                                    export. Required for those kinds, and ignored for the others.
                                     relationships:
                                         type: object
                                         description: |
                                             Send the subjects in the relationship their `subject_type` uses: `subjects` for
                                             `competency-holders`, `submission_versions` for `form-submission-versions`. The
-                                            other one is ignored.
+                                            other one is ignored. A `workflow-insight-submissions` export sends
+                                            `workflow_definition` instead, and a `competency-expiring-records` export sends
+                                            no subjects: their `query` defines the rows.
                                         required:
                                             - organisation
                                         properties:
@@ -52178,6 +52578,16 @@ components:
                                                                     description: |
                                                                         The identifier of the subject to export. For `competency-holders`
                                                                         this is the user who holds the records.
+                                            workflow_definition:
+                                                type: object
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        $ref: '#/components/schemas/WorkflowDefinitionRelationship'
+                                                description: |
+                                                    The workflow a `workflow-insight-submissions` export covers. It must belong to
+                                                    the organisation named on the request.
                                             submission_versions:
                                                 type: object
                                                 required:
@@ -68248,11 +68658,12 @@ paths:
                 organisation sees only the people assigned to the roles shared with them, and
                 only the records those roles require.
 
-                Send `format=csv` for the export instead of a page. The export ignores
-                pagination and covers the whole filtered set, up to 10 000 rows.
+                To download the records as CSV, request an export (`CreateExport`) with the
+                subject type `competency-expiring-records` and this operation's `filter` and
+                `sort` as its query.
 
                 Served by a hand-written handler rather than a generated one, because the
-                resource is computed rather than stored and the operation negotiates CSV.
+                resource is computed rather than stored.
             operationId: ListCompetencyExpiringRecords
             parameters:
                 - $ref: '#/components/parameters/competency_expiring_records_filter'
@@ -68261,7 +68672,6 @@ paths:
                 - $ref: '#/components/parameters/limit'
                 - $ref: '#/components/parameters/offset'
                 - $ref: '#/components/parameters/page'
-                - $ref: '#/components/parameters/competency_expiring_records_format'
             responses:
                 "200":
                     $ref: '#/components/responses/ListCompetencyExpiringRecords'
@@ -72200,6 +72610,302 @@ paths:
             summary: Add certifications to an equipment item
             tags:
                 - Equipment
+    /v3/equipment-kits:
+        get:
+            description: |
+                List the equipment kits the caller may view. Filter by organisation with `?filter=eq(organisation,xxx)`.
+                Each kit's `equipment_items` relationship names its pieces of equipment.
+
+                Requires `equipment-kits:view`.
+
+                This operation does not support `include`, so the response has no `included` member.
+            operationId: ListEquipmentKits
+            parameters:
+                - $ref: '#/components/parameters/equipment_kits_filter'
+                - $ref: '#/components/parameters/equipment_kits_sort'
+                - $ref: '#/components/parameters/limit'
+                - $ref: '#/components/parameters/offset'
+                - $ref: '#/components/parameters/page'
+            responses:
+                "200":
+                    $ref: '#/components/responses/ListEquipmentKits'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: List equipment kits
+            tags:
+                - Equipment Kits
+            x-mint:
+                metadata:
+                    title: List equipment kits
+        post:
+            description: |
+                Create an equipment kit in an organisation, holding the pieces of equipment named in
+                `equipment_items`, which may be none. A name already used by another of the organisation's kits,
+                without regard to case, is refused with a 409. So is a piece of equipment already in another kit,
+                which is never moved. A kit holds at most 50 pieces of equipment, and more is refused with a 409
+                that says so; naming more than 50 in `equipment_items` is refused with a 400 before anything is
+                checked. Only each piece's kit changes: its allocation and certifications stay as they are.
+                The kit's creation, and each piece joining it, is recorded in the audit history.
+
+                Requires `equipment-kits:create`, and `equipment-items:update` on every piece of equipment named
+                in `equipment_items`.
+            operationId: CreateEquipmentKit
+            requestBody:
+                $ref: '#/components/requestBodies/CreateEquipmentKit'
+            responses:
+                "201":
+                    $ref: '#/components/responses/GetEquipmentKit'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Create an equipment kit
+            tags:
+                - Equipment Kits
+            x-mint:
+                metadata:
+                    title: Create an equipment kit
+    /v3/equipment-kits/{equipment_kit_id}:
+        delete:
+            description: |
+                Delete an equipment kit. Its pieces of equipment stay in the register, each with its allocation and
+                certifications as they were, and are no longer in a kit. The deletion, and each piece leaving the
+                kit, is recorded in the audit history. When a piece of equipment joins or leaves the kit while it is
+                being deleted, nothing is deleted and the 409 says so, and the deletion can be tried again.
+
+                Requires `equipment-kits:delete`.
+            operationId: DeleteEquipmentKit
+            parameters:
+                - $ref: '#/components/parameters/equipment_kit_id'
+            responses:
+                "204":
+                    $ref: '#/components/responses/NoContent'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Delete an equipment kit
+            tags:
+                - Equipment Kits
+            x-mint:
+                metadata:
+                    title: Delete an equipment kit
+        get:
+            description: |
+                Get an equipment kit. Its `equipment_items` relationship names its pieces of equipment. A kit has no
+                allocation or compliance of its own: list its pieces, each with its own allocation, through
+                `GET /v3/equipment-items?filter=eq(kit,<id>)`.
+
+                Requires `equipment-kits:view`.
+            operationId: GetEquipmentKit
+            parameters:
+                - $ref: '#/components/parameters/equipment_kit_id'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetEquipmentKit'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Get an equipment kit
+            tags:
+                - Equipment Kits
+            x-mint:
+                metadata:
+                    title: Get an equipment kit
+        put:
+            description: |
+                Rename an equipment kit. A name already used by another of the organisation's kits, without regard
+                to case, is refused with a 409. So is a rename made while another rename of the same kit was being
+                saved: nothing is saved, and the rename can be tried again against the kit's current name. The
+                kit's pieces of equipment are changed through its `relationships/equipment_items` endpoints, not
+                here. The change is recorded in the audit history.
+
+                Requires `equipment-kits:update`.
+            operationId: UpdateEquipmentKit
+            parameters:
+                - $ref: '#/components/parameters/equipment_kit_id'
+            requestBody:
+                $ref: '#/components/requestBodies/UpdateEquipmentKit'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetEquipmentKit'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Rename an equipment kit
+            tags:
+                - Equipment Kits
+            x-mint:
+                metadata:
+                    title: Rename an equipment kit
+    /v3/equipment-kits/{equipment_kit_id}/allocate:
+        post:
+            description: |
+                Allocate every piece of equipment in a kit to one person, scheme, work order, location or vehicle,
+                in one action. A kit holds no allocation of its own: each piece is allocated as if on its own, and
+                stays in the kit. A piece already allocated to the target is left as it is. Each piece that moves is
+                recorded in its own audit history and the history of its old and new targets.
+
+                It is all or nothing. When any piece cannot be allocated, none is, and the 409 holds one error with
+                code `CH.015.145` for each piece that stopped it, naming the piece in `meta.equipment_item_id`,
+                and also in `meta.reference` and `meta.asset_number` when the caller may view that piece, with
+                the reason in `detail`. An empty kit is refused with a 400.
+
+                Requires `equipment-kits:allocate` on the kit, and `equipment-items:allocate` on every piece of
+                equipment in it.
+            operationId: AllocateEquipmentKit
+            parameters:
+                - $ref: '#/components/parameters/equipment_kit_id'
+            requestBody:
+                $ref: '#/components/requestBodies/AllocateEquipmentKit'
+            responses:
+                "204":
+                    $ref: '#/components/responses/NoContent'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Allocate an equipment kit
+            tags:
+                - Equipment Kits
+            x-mint:
+                metadata:
+                    title: Allocate an equipment kit
+    /v3/equipment-kits/{equipment_kit_id}/relationships/equipment_items:
+        delete:
+            description: |
+                Remove pieces of equipment from an equipment kit, answering with the kit. A piece not in the kit is
+                ignored, and removing the last piece leaves the kit empty. A request naming more than 50 pieces is
+                refused with a 400. Only each piece's kit changes: its
+                allocation and certifications stay as they are. Each piece leaving the kit is recorded in its audit
+                history.
+
+                Requires `equipment-kits:update` on the kit, and `equipment-items:update` on every piece of
+                equipment removed.
+            operationId: RemoveEquipmentKitItems
+            parameters:
+                - $ref: '#/components/parameters/equipment_kit_id'
+            requestBody:
+                $ref: '#/components/requestBodies/EquipmentKitItems'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetEquipmentKit'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Remove equipment from a kit
+            tags:
+                - Equipment Kits
+            x-mint:
+                metadata:
+                    title: Remove equipment from a kit
+        post:
+            description: |
+                Add pieces of equipment to an equipment kit, answering with the kit. A piece already in the kit is
+                left as it is. Each other piece must be one of the kit's organisation's equipment items, or the
+                request is refused with a 400. A piece already in another kit is refused with a 409 and never
+                moved. A request naming more than 50 pieces is refused with a 400. A kit holds at most 50 pieces of
+                equipment, and an addition that would take it past that is refused with a 409 that says so. Only
+                each piece's kit changes: its allocation and certifications stay as they are. Each piece
+                joining the kit is recorded in its audit history. Nothing is added when any piece is refused.
+
+                Requires `equipment-kits:update` on the kit, and `equipment-items:update` on every piece of
+                equipment added.
+            operationId: AddEquipmentKitItems
+            parameters:
+                - $ref: '#/components/parameters/equipment_kit_id'
+            requestBody:
+                $ref: '#/components/requestBodies/EquipmentKitItems'
+            responses:
+                "200":
+                    $ref: '#/components/responses/GetEquipmentKit'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "409":
+                    $ref: '#/components/responses/Conflict'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: Add equipment to a kit
+            tags:
+                - Equipment Kits
+            x-mint:
+                metadata:
+                    title: Add equipment to a kit
     /v3/equipment-manufacturers:
         get:
             description: Retrieve a list of equipment manufacturers.
@@ -72693,6 +73399,13 @@ paths:
 
                 At most fifty subjects, enforced here as well as in the console.
 
+                A `workflow-insight-submissions` or `competency-expiring-records` export is a CSV defined by a
+                `query` rather than by subjects. It is refused unless the caller could read the matching list
+                endpoint with that query. Only a person may request one, and not in an organisation they entered
+                by an elevation, because the file is read under the requester's own stored grants when it is
+                produced. A `competency-expiring-records` export ignores `shape` and `workflow_definition`.
+                `truncated` on the export says whether the file reached the kind's cap.
+
                 Authorised by the same view grants that govern reading the records: there is no separate export
                 permission, so if you can see the records you can export them. Every subject is checked
                 individually, and a subject the caller cannot view fails the whole request rather than being
@@ -72771,6 +73484,13 @@ paths:
                 The check is stricter than reading the record. Every subject the export covered has to be one the
                 caller may view, because the artefact contains all of them and cannot be served in part.
 
+                A CSV export's rows were read under its requester's grants, which may be wider than the caller's.
+                So it is served to a caller whose view grant for the kind covers the whole organisation, or to its
+                requester while their grants for the kind in the organisation are the ones the rows were read
+                under. Any change to those grants stops the requester's download, and they can request the export
+                again. The stored query is then re-authorised for the caller as the list endpoint would
+                authorise it.
+
                 Each fetch is recorded. Retention answers what was issued; the download record answers who took
                 it.
 
@@ -72789,6 +73509,10 @@ paths:
                                 format: binary
                                 type: string
                         application/zip:
+                            schema:
+                                format: binary
+                                type: string
+                        text/csv:
                             schema:
                                 format: binary
                                 type: string
@@ -79801,9 +80525,16 @@ paths:
     /v3/orgs/{org_id}/health-plans:
         get:
             description: |
-                List the organisation's health plans with their health notes, latest start first unless sorted
-                otherwise. The resource has no includes, so `included` is absent. Requires the
-                `health-plans:view` permission, held organisation-wide. Health notes are special category health data. Only a holder of the health plan permissions, which only the Occupational Health roles hold, can read or write them.
+                List the organisation's health plans, latest start first unless sorted otherwise. The resource has
+                no includes, so `included` is absent.
+
+                A caller holding the `health-plans:view` permission organisation-wide, as the Occupational Health
+                roles do, gets every plan. Anyone else gets their own plans, current, upcoming and ended, and the
+                plans of the people they manage and hold `health-plans:view` over through a manager role. A caller
+                with neither gets an empty list.
+
+                Health notes are special category health data. Each plan carries its `notes` only for a caller
+                holding `health-plan-notes:view` organisation-wide, which only the Occupational Health roles hold.
             operationId: ListHealthPlans
             parameters:
                 - $ref: '#/components/parameters/org_id'
@@ -79904,8 +80635,13 @@ paths:
                     title: Delete a health plan
         get:
             description: |
-                Get a health plan with its health notes. Requires the `health-plans:view` permission, held
-                organisation-wide. Health notes are special category health data. Only a holder of the health plan permissions, which only the Occupational Health roles hold, can read or write them.
+                Get a health plan. A caller holding the `health-plans:view` permission organisation-wide, as the
+                Occupational Health roles do, may read any plan. Anyone else may read their own plans, and the
+                plans of the people they manage and hold `health-plans:view` over through a manager role. Every
+                other caller is refused with 401, whether or not the plan exists.
+
+                Health notes are special category health data. The plan carries its `notes` only for a caller
+                holding `health-plan-notes:view` organisation-wide, which only the Occupational Health roles hold.
             operationId: GetHealthPlan
             parameters:
                 - $ref: '#/components/parameters/org_id'
@@ -79971,8 +80707,10 @@ paths:
             description: |
                 Add a health note to a health plan, written by the caller now, and answer with the plan. A plan
                 keeps at most 200 notes: one more is refused with a conflict. The audit
-                log records the note's id, never its text. Requires the `health-plans:update` permission, held
-                organisation-wide. Health notes are special category health data. Only a holder of the health plan permissions, which only the Occupational Health roles hold, can read or write them.
+                log records the note's id, never its text. Requires the `health-plans:update` and
+                `health-plan-notes:view` permissions, held organisation-wide, which only the Occupational Health
+                roles hold. Health notes are special category health data. The plan in the response carries its
+                `notes`.
             operationId: CreateHealthPlanNote
             parameters:
                 - $ref: '#/components/parameters/org_id'
@@ -80006,7 +80744,7 @@ paths:
         delete:
             description: |
                 Delete a health note from a health plan. The audit log records the note's id. Requires the
-                `health-plans:update` permission, held organisation-wide.
+                `health-plans:update` and `health-plan-notes:view` permissions, held organisation-wide.
             operationId: DeleteHealthPlanNote
             parameters:
                 - $ref: '#/components/parameters/org_id'
@@ -80036,8 +80774,10 @@ paths:
         patch:
             description: |
                 Replace a health note's text, and answer with the plan. The note keeps its author. The audit log
-                records the note's id, never its text. Requires the `health-plans:update` permission, held
-                organisation-wide. Health notes are special category health data. Only a holder of the health plan permissions, which only the Occupational Health roles hold, can read or write them.
+                records the note's id, never its text. Requires the `health-plans:update` and
+                `health-plan-notes:view` permissions, held organisation-wide, which only the Occupational Health
+                roles hold. Health notes are special category health data. The plan in the response carries its
+                `notes`.
             operationId: UpdateHealthPlanNote
             parameters:
                 - $ref: '#/components/parameters/org_id'
@@ -81377,7 +82117,7 @@ paths:
                     title: Update a scheme template
     /v3/orgs/{org_id}/projects/schemes:
         get:
-            description: List all of the schemes in an organisation.
+            description: 'List all of the schemes in an organisation. A `name` filter is answered from a search index, which trails writes by a short time: a scheme created or renamed moments ago may be missing from the list and from `meta.pagination` until the index catches up.'
             operationId: ListSchemesOrgScoped
             parameters:
                 - $ref: '#/components/parameters/org_id'
@@ -85345,7 +86085,7 @@ paths:
                     title: Get the removal impact of a scheme share
     /v3/schemes:
         get:
-            description: List all of the schemes in an organisation.
+            description: 'List all of the schemes in an organisation. A `name` filter is answered from a search index, which trails writes by a short time: a scheme created or renamed moments ago may be missing from the list and from `meta.pagination` until the index catches up.'
             operationId: ListSchemes
             parameters:
                 - $ref: '#/components/parameters/schemes_include'
@@ -85481,7 +86221,11 @@ paths:
                     title: List a scheme's history
     /v3/search:
         get:
-            description: Search for schemes, work orders, and operations by name.
+            description: |
+                Search for schemes, work orders, and operations by name.
+
+                Schemes are found through a search index that trails writes. A scheme created, or renamed to match,
+                moments ago may be missing from the results until the index catches up.
             operationId: ListSearchResults
             parameters:
                 - $ref: '#/components/parameters/search_results_include'
@@ -85599,6 +86343,9 @@ paths:
                 the supplied organisation(s) via scheme-shares. Mirrors `/v3/search` but only
                 returns resources reachable via a scheme-share — direct organisation-owned
                 resources are excluded.
+
+                Schemes are found through a search index that trails writes. A scheme created, or renamed to match,
+                moments ago may be missing from the results until the index catches up.
 
                 The organisation(s) to look up shares for are supplied via the standard
                 `filter` parameter using the `organisation` key — e.g.
@@ -89671,8 +90418,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Videos
-            x-ctrl-hub:
-                domain: videos
             x-mint:
                 metadata:
                     title: List videos
@@ -89699,8 +90444,6 @@ paths:
             summary: Create a video
             tags:
                 - Videos
-            x-ctrl-hub:
-                domain: videos
             x-mint:
                 metadata:
                     title: Create a video
@@ -89728,8 +90471,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Videos
-            x-ctrl-hub:
-                domain: videos
             x-mint:
                 metadata:
                     title: Get a video
@@ -89742,6 +90483,8 @@ paths:
             responses:
                 "200":
                     $ref: '#/components/responses/ProxiedImage'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
                 "401":
                     $ref: '#/components/responses/Unauthorised'
                 "404":
@@ -89763,7 +90506,7 @@ paths:
             operationId: StreamVideo
             parameters:
                 - $ref: '#/components/parameters/video_id'
-                - description: Standard HTTP range header, e.g. `bytes=0-`. When present the server responds with `206 Partial Content`.
+                - description: Standard HTTP range header, e.g. `bytes=0-`. A satisfiable range returns `206 Partial Content`. A range the video cannot satisfy returns `416 Range Not Satisfiable`.
                   in: header
                   name: Range
                   required: false
@@ -89780,6 +90523,8 @@ paths:
                     $ref: '#/components/responses/Unauthorised'
                 "404":
                     $ref: '#/components/responses/NotFound'
+                "416":
+                    $ref: '#/components/responses/ProxiedVideoRangeNotSatisfiable'
                 "500":
                     $ref: '#/components/responses/InternalServerError'
             security:
@@ -91356,13 +92101,12 @@ paths:
                 Takes the same required window and the same optional cohort filters as the
                 aggregate, so a page of journeys always reconciles with the figures above it.
 
-                Send `Accept: text/csv` (or `format=csv`) for the export instead of a page:
-                `shape=transitions` for one row per transition, `shape=summary` for one row per
-                submission. The export ignores pagination and covers the whole window.
+                A window the server had to bound is reported as `meta.stats.truncated`.
 
-                A window the server had to bound is reported as `meta.stats.truncated` on the JSON
-                response, and as an `X-Insights-Truncated` header on the export, where a
-                spreadsheet cannot carry the caveat itself.
+                To download the journeys as CSV, request an export (`CreateExport`) with the
+                subject type `workflow-insight-submissions`, this operation's `filter` and
+                `sort` as its query, and the workflow definition in its
+                `relationships.workflow_definition`.
 
                 Served by a hand-written handler rather than a generated one, because the
                 resource is computed rather than stored.
@@ -91374,8 +92118,6 @@ paths:
                 - $ref: '#/components/parameters/limit'
                 - $ref: '#/components/parameters/offset'
                 - $ref: '#/components/parameters/page'
-                - $ref: '#/components/parameters/insights_format'
-                - $ref: '#/components/parameters/insights_shape'
             responses:
                 "200":
                     $ref: '#/components/responses/ListWorkflowInsightSubmissions'
@@ -91607,6 +92349,10 @@ tags:
     - description: |
         Equipment are the physical assets that an organisation manages.
       name: Equipment
+    - description: |
+        Named sets of equipment that are handed out together, so a whole set can be allocated in one
+        action. A kit holds no allocation or compliance of its own.
+      name: Equipment Kits
     - description: |
         Exposure limits: an organisation's thresholds for each exposure type, stricter than the HSE
         values, and the limit in force for a person on a date.
