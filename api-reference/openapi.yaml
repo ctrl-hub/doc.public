@@ -2637,6 +2637,20 @@ components:
                     $ref: '#/components/schemas/AssessmentRecordAttributes'
                 relationships:
                     $ref: '#/components/schemas/AssessmentRecordRelationships'
+        AssessmentIncludes:
+            type: array
+            description: Related resources that can be included when an assessment is returned
+            items:
+                discriminator:
+                    propertyName: type
+                    mapping:
+                        organisations: "#/components/schemas/Organisation"
+                        users: "#/components/schemas/User"
+                        assessment-definitions: "#/components/schemas/AssessmentDefinition"
+                oneOf:
+                    - $ref: '#/components/schemas/Organisation'
+                    - $ref: '#/components/schemas/User'
+                    - $ref: '#/components/schemas/AssessmentDefinition'
         AssessmentRecordAttributes:
             type: object
             description: Attributes for an assessment record
@@ -2774,104 +2788,6 @@ components:
                 type:
                     type: string
                     const: folders
-        Assessment:
-            type: object
-            description: An assessment record
-            required:
-                - id
-                - type
-                - attributes
-                - relationships
-            properties:
-                id:
-                    type: string
-                    format: uuid
-                    description: The unique identifier of the assessment.
-                type:
-                    type: string
-                    const: assessments
-                attributes:
-                    $ref: '#/components/schemas/AssessmentAttributes'
-                relationships:
-                    $ref: '#/components/schemas/AssessmentRelationships'
-        AssessmentIncludes:
-            type: array
-            description: Related resources that can be included when an assessment is returned
-            items:
-                discriminator:
-                    propertyName: type
-                    mapping:
-                        organisations: "#/components/schemas/Organisation"
-                        users: "#/components/schemas/User"
-                        assessment-definitions: "#/components/schemas/AssessmentDefinition"
-                oneOf:
-                    - $ref: '#/components/schemas/Organisation'
-                    - $ref: '#/components/schemas/User'
-                    - $ref: '#/components/schemas/AssessmentDefinition'
-        AssessmentAttributes:
-            type: object
-            description: Attributes for an assessment
-            required:
-                - status
-            properties:
-                status:
-                    type: string
-                    description: The result of the assessment.
-                    enum:
-                        - passed
-                        - failed
-                    examples:
-                        - passed
-                assessed_at:
-                    type:
-                        - 'string'
-                        - 'null'
-                    format: date-time
-                    description: The date the assessment was conducted.
-                expires_at:
-                    type:
-                        - 'string'
-                        - 'null'
-                    format: date-time
-                    description: The date the assessment expires.
-        AssessmentRelationships:
-            type: object
-            description: Relationships for an assessment
-            required:
-                - organisation
-                - user
-                - assessment_definition
-            properties:
-                organisation:
-                    type: object
-                    required:
-                        - data
-                    properties:
-                        data:
-                            $ref: '#/components/schemas/OrganisationRelationship'
-                user:
-                    type: object
-                    required:
-                        - data
-                    properties:
-                        data:
-                            $ref: '#/components/schemas/UserRelationship'
-                assessment_definition:
-                    type: object
-                    required:
-                        - data
-                    properties:
-                        data:
-                            $ref: '#/components/schemas/AssessmentDefinitionRelationship'
-                assessor:
-                    type: object
-                    required:
-                        - data
-                    properties:
-                        data:
-                            oneOf:
-                                - $ref: '#/components/schemas/UserRelationship'
-                                - type: 'null'
         Organisation:
             type: object
             description: An organisation
@@ -3131,6 +3047,90 @@ components:
                 type:
                     type: string
                     const: nomenclature
+        Assessment:
+            type: object
+            description: An assessment record
+            required:
+                - id
+                - type
+                - attributes
+                - relationships
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the assessment.
+                type:
+                    type: string
+                    const: assessments
+                attributes:
+                    $ref: '#/components/schemas/AssessmentAttributes'
+                relationships:
+                    $ref: '#/components/schemas/AssessmentRelationships'
+        AssessmentAttributes:
+            type: object
+            description: Attributes for an assessment
+            required:
+                - status
+            properties:
+                status:
+                    type: string
+                    description: The result of the assessment.
+                    enum:
+                        - passed
+                        - failed
+                    examples:
+                        - passed
+                assessed_at:
+                    type:
+                        - 'string'
+                        - 'null'
+                    format: date-time
+                    description: The date the assessment was conducted.
+                expires_at:
+                    type:
+                        - 'string'
+                        - 'null'
+                    format: date-time
+                    description: The date the assessment expires.
+        AssessmentRelationships:
+            type: object
+            description: Relationships for an assessment
+            required:
+                - organisation
+                - user
+                - assessment_definition
+            properties:
+                organisation:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/OrganisationRelationship'
+                user:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/UserRelationship'
+                assessment_definition:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/AssessmentDefinitionRelationship'
+                assessor:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            oneOf:
+                                - $ref: '#/components/schemas/UserRelationship'
+                                - type: 'null'
         AuditEvent:
             type: object
             description: An audit event
@@ -24412,13 +24412,14 @@ components:
             properties:
                 fields:
                     type: array
-                    description: The fields that matched the search query
+                    description: The fields that matched the search query. `id` is given when the term is the resource's id.
                     items:
                         type: string
                         enum:
                             - name
                             - code
                             - description
+                            - id
                     examples:
                         - ["name", "description"]
         SearchResultRelationships:
@@ -25887,6 +25888,18 @@ components:
                 town:
                     type: string
                     description: The town the street is in, in upper case.
+        TrainingCompletionIncludes:
+            type: array
+            description: Related resources that can be included when a training completion is returned
+            items:
+                discriminator:
+                    propertyName: type
+                    mapping:
+                        organisations: "#/components/schemas/Organisation"
+                        users: "#/components/schemas/User"
+                oneOf:
+                    - $ref: '#/components/schemas/Organisation'
+                    - $ref: '#/components/schemas/User'
         Upload:
             type: object
             description: A transient binary upload
@@ -30401,6 +30414,8 @@ components:
                                     type: array
                                     items:
                                         $ref: '#/components/schemas/AssessmentRecord'
+                                included:
+                                    $ref: '#/components/schemas/AssessmentIncludes'
                             - $ref: '#/components/schemas/DocumentMeta'
                             - $ref: '#/components/schemas/JSONAPI'
         GetAssessmentRecord:
@@ -37600,6 +37615,8 @@ components:
                                     type: array
                                     items:
                                         $ref: '#/components/schemas/TrainingCompletion'
+                                included:
+                                    $ref: '#/components/schemas/TrainingCompletionIncludes'
                             - $ref: '#/components/schemas/DocumentMeta'
                             - $ref: '#/components/schemas/JSONAPI'
         GetTrainingCompletion:
@@ -39602,6 +39619,7 @@ components:
                 items:
                     type: string
                     enum:
+                        - organisation
                         - user
                         - assessment_definition
                         - assessor
@@ -45240,7 +45258,7 @@ components:
 
                 Available filters:
 
-                - `term`: Required, with `contains`. Finds resources whose name contains the value, such as `contains(term,cabling)`. Without it, the search returns nothing.
+                - `term`: Required, with `contains`. Finds resources whose name contains the value, such as `contains(term,cabling)`. A value that is a whole UUID, in any letter case, also finds the resource with that id. Without it, the search returns nothing.
                 - `resource`: The kinds of resource to search, `schemes`, `work-orders` or `operations`, with `eq` or `in`. All three are searched when it is left out.
                 - `id`: Passed on to each kind's search, such as `not(in(id,<id>))` to leave out the resource being viewed.
                 - `organisation`: With `eq` or `in`. On `/v3/search`, limits the results to those organisations. On `/v3/shared-search`, names the organisations the work is shared with, and is required.
@@ -45682,6 +45700,7 @@ components:
                 items:
                     type: string
                     enum:
+                        - organisation
                         - user
         training_completion_id:
             name: training_completion_id
@@ -46603,6 +46622,7 @@ components:
                 - `in(id,[xxx])`: Filter by work order ID(s)
                 - `in(organisation,[xxx])`: Filter by organisation ID(s)
                 - `in_schemes`: Filter for work orders in scheme(s) by their ID(s)
+                - `contains(name,xxx)`: Filter work orders where name contains value, ignoring case. It is answered from a search index that trails writes by a short time, so a work order created or renamed moments ago may be missing from the list and from `meta.pagination` until the index catches up.
                 - `eq(status,xxx)`: Filter for work orders by lifecycle status. One of `in_planning`, `in_progress`, `on_hold`, `complete`, `cancelled`.
 
                 - `modified_at`: Filter by the date a work order last changed, which includes a change to its operations, assignees, teams, permits or status counts, not only an edit to the work order itself (the `updated_at` attribute does not move for those). Accepts an RFC 3339 timestamp and supports the range operators `ge`, `le`, `gt`, `lt` (and `eq`). Example (changed since a given time): `ge(modified_at,2026-07-01T00:00:00Z)`. Combine with `sort=modified_at` to read the changes oldest first. A work order edited while a client pages through the changes moves to the end of that order and shifts every later row back one place, so offset paging can skip a work order that was not yet read. Start the next sync a margin of a few minutes earlier than the time this one began, not from the newest `modified_at` received, and expect to read the same work order more than once. The margin is needed because a change is stamped before its write commits, so one stamped just before a sync starts can commit after that sync has read. Take the sync's start time from the server's clock, such as the `Date` header of its first response, because the clock of a device adds its own drift. A work order that has been deleted is never returned, so a client that needs to learn of deletions reads the full list.
@@ -74421,6 +74441,10 @@ paths:
                 The options are the ones hydration would write into the schema for the same caller, with the same scoping
                 and labels: the owner organisation's, narrowed to the shared schemes for a contractor, or the bridged
                 organisations the field names. Only `operations` fields are supported.
+
+                A search term is matched against operations, and against the schemes and work orders they belong to,
+                through search indexes that trail writes by a short time. A work order created or renamed moments ago
+                may not match its operations until the index catches up.
             operationId: ListXSourceOptions
             parameters:
                 - $ref: '#/components/parameters/schema_id'
@@ -86363,10 +86387,11 @@ paths:
     /v3/search:
         get:
             description: |
-                Search for schemes, work orders, and operations by name.
+                Search for schemes, work orders, and operations by name. A term that is a whole UUID also finds the
+                scheme, work order or operation with that id.
 
-                Schemes are found through a search index that trails writes. A scheme created, or renamed to match,
-                moments ago may be missing from the results until the index catches up.
+                Schemes and work orders are found through search indexes that trail writes. A scheme or work order
+                created, or renamed to match, moments ago may be missing from the results until the index catches up.
             operationId: ListSearchResults
             parameters:
                 - $ref: '#/components/parameters/search_results_include'
@@ -86483,10 +86508,11 @@ paths:
                 Search across schemes, work orders, and operations that have been shared with
                 the supplied organisation(s) via scheme-shares. Mirrors `/v3/search` but only
                 returns resources reachable via a scheme-share — direct organisation-owned
-                resources are excluded.
+                resources are excluded. A term that is a whole UUID also finds the shared scheme, work order or
+                operation with that id.
 
-                Schemes are found through a search index that trails writes. A scheme created, or renamed to match,
-                moments ago may be missing from the results until the index catches up.
+                Schemes and work orders are found through search indexes that trail writes. A scheme or work order
+                created, or renamed to match, moments ago may be missing from the results until the index catches up.
 
                 The organisation(s) to look up shares for are supplied via the standard
                 `filter` parameter using the `organisation` key — e.g.
@@ -91440,7 +91466,12 @@ paths:
                     title: Get information about the currently authenticated principal
     /v3/work-orders:
         get:
-            description: List all of the users work orders.
+            description: |
+                List all of the users work orders.
+
+                A `contains(name,xxx)` filter is answered from a search index that trails writes by a short time: a
+                work order created or renamed moments ago may be missing from the list and from `meta.pagination`
+                until the index catches up.
             operationId: ListWorkOrders
             parameters:
                 - $ref: '#/components/parameters/work_orders_include'
