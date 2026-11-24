@@ -2637,6 +2637,20 @@ components:
                     $ref: '#/components/schemas/AssessmentRecordAttributes'
                 relationships:
                     $ref: '#/components/schemas/AssessmentRecordRelationships'
+        AssessmentIncludes:
+            type: array
+            description: Related resources that can be included when an assessment is returned
+            items:
+                discriminator:
+                    propertyName: type
+                    mapping:
+                        organisations: "#/components/schemas/Organisation"
+                        users: "#/components/schemas/User"
+                        assessment-definitions: "#/components/schemas/AssessmentDefinition"
+                oneOf:
+                    - $ref: '#/components/schemas/Organisation'
+                    - $ref: '#/components/schemas/User'
+                    - $ref: '#/components/schemas/AssessmentDefinition'
         AssessmentRecordAttributes:
             type: object
             description: Attributes for an assessment record
@@ -2774,104 +2788,6 @@ components:
                 type:
                     type: string
                     const: folders
-        Assessment:
-            type: object
-            description: An assessment record
-            required:
-                - id
-                - type
-                - attributes
-                - relationships
-            properties:
-                id:
-                    type: string
-                    format: uuid
-                    description: The unique identifier of the assessment.
-                type:
-                    type: string
-                    const: assessments
-                attributes:
-                    $ref: '#/components/schemas/AssessmentAttributes'
-                relationships:
-                    $ref: '#/components/schemas/AssessmentRelationships'
-        AssessmentIncludes:
-            type: array
-            description: Related resources that can be included when an assessment is returned
-            items:
-                discriminator:
-                    propertyName: type
-                    mapping:
-                        organisations: "#/components/schemas/Organisation"
-                        users: "#/components/schemas/User"
-                        assessment-definitions: "#/components/schemas/AssessmentDefinition"
-                oneOf:
-                    - $ref: '#/components/schemas/Organisation'
-                    - $ref: '#/components/schemas/User'
-                    - $ref: '#/components/schemas/AssessmentDefinition'
-        AssessmentAttributes:
-            type: object
-            description: Attributes for an assessment
-            required:
-                - status
-            properties:
-                status:
-                    type: string
-                    description: The result of the assessment.
-                    enum:
-                        - passed
-                        - failed
-                    examples:
-                        - passed
-                assessed_at:
-                    type:
-                        - 'string'
-                        - 'null'
-                    format: date-time
-                    description: The date the assessment was conducted.
-                expires_at:
-                    type:
-                        - 'string'
-                        - 'null'
-                    format: date-time
-                    description: The date the assessment expires.
-        AssessmentRelationships:
-            type: object
-            description: Relationships for an assessment
-            required:
-                - organisation
-                - user
-                - assessment_definition
-            properties:
-                organisation:
-                    type: object
-                    required:
-                        - data
-                    properties:
-                        data:
-                            $ref: '#/components/schemas/OrganisationRelationship'
-                user:
-                    type: object
-                    required:
-                        - data
-                    properties:
-                        data:
-                            $ref: '#/components/schemas/UserRelationship'
-                assessment_definition:
-                    type: object
-                    required:
-                        - data
-                    properties:
-                        data:
-                            $ref: '#/components/schemas/AssessmentDefinitionRelationship'
-                assessor:
-                    type: object
-                    required:
-                        - data
-                    properties:
-                        data:
-                            oneOf:
-                                - $ref: '#/components/schemas/UserRelationship'
-                                - type: 'null'
         Organisation:
             type: object
             description: An organisation
@@ -3131,6 +3047,90 @@ components:
                 type:
                     type: string
                     const: nomenclature
+        Assessment:
+            type: object
+            description: An assessment record
+            required:
+                - id
+                - type
+                - attributes
+                - relationships
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the assessment.
+                type:
+                    type: string
+                    const: assessments
+                attributes:
+                    $ref: '#/components/schemas/AssessmentAttributes'
+                relationships:
+                    $ref: '#/components/schemas/AssessmentRelationships'
+        AssessmentAttributes:
+            type: object
+            description: Attributes for an assessment
+            required:
+                - status
+            properties:
+                status:
+                    type: string
+                    description: The result of the assessment.
+                    enum:
+                        - passed
+                        - failed
+                    examples:
+                        - passed
+                assessed_at:
+                    type:
+                        - 'string'
+                        - 'null'
+                    format: date-time
+                    description: The date the assessment was conducted.
+                expires_at:
+                    type:
+                        - 'string'
+                        - 'null'
+                    format: date-time
+                    description: The date the assessment expires.
+        AssessmentRelationships:
+            type: object
+            description: Relationships for an assessment
+            required:
+                - organisation
+                - user
+                - assessment_definition
+            properties:
+                organisation:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/OrganisationRelationship'
+                user:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/UserRelationship'
+                assessment_definition:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/AssessmentDefinitionRelationship'
+                assessor:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            oneOf:
+                                - $ref: '#/components/schemas/UserRelationship'
+                                - type: 'null'
         AuditEvent:
             type: object
             description: An audit event
@@ -25887,6 +25887,18 @@ components:
                 town:
                     type: string
                     description: The town the street is in, in upper case.
+        TrainingCompletionIncludes:
+            type: array
+            description: Related resources that can be included when a training completion is returned
+            items:
+                discriminator:
+                    propertyName: type
+                    mapping:
+                        organisations: "#/components/schemas/Organisation"
+                        users: "#/components/schemas/User"
+                oneOf:
+                    - $ref: '#/components/schemas/Organisation'
+                    - $ref: '#/components/schemas/User'
         Upload:
             type: object
             description: A transient binary upload
@@ -30401,6 +30413,8 @@ components:
                                     type: array
                                     items:
                                         $ref: '#/components/schemas/AssessmentRecord'
+                                included:
+                                    $ref: '#/components/schemas/AssessmentIncludes'
                             - $ref: '#/components/schemas/DocumentMeta'
                             - $ref: '#/components/schemas/JSONAPI'
         GetAssessmentRecord:
@@ -37600,6 +37614,8 @@ components:
                                     type: array
                                     items:
                                         $ref: '#/components/schemas/TrainingCompletion'
+                                included:
+                                    $ref: '#/components/schemas/TrainingCompletionIncludes'
                             - $ref: '#/components/schemas/DocumentMeta'
                             - $ref: '#/components/schemas/JSONAPI'
         GetTrainingCompletion:
@@ -39602,6 +39618,7 @@ components:
                 items:
                     type: string
                     enum:
+                        - organisation
                         - user
                         - assessment_definition
                         - assessor
@@ -45682,6 +45699,7 @@ components:
                 items:
                     type: string
                     enum:
+                        - organisation
                         - user
         training_completion_id:
             name: training_completion_id
