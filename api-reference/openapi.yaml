@@ -6089,6 +6089,7 @@ components:
                     propertyName: type
                     mapping:
                         document-contents: "#/components/schemas/DocumentContent"
+                        document-review-requests: "#/components/schemas/DocumentReviewRequest"
                         folders: "#/components/schemas/Folder"
                         organisations: "#/components/schemas/Organisation"
                         users: "#/components/schemas/User"
@@ -6097,6 +6098,7 @@ components:
                     - $ref: '#/components/schemas/User'
                     - $ref: '#/components/schemas/Folder'
                     - $ref: '#/components/schemas/Organisation'
+                    - $ref: '#/components/schemas/DocumentReviewRequest'
         DocumentAttributes:
             type: object
             description: Attributes of a document
@@ -6242,7 +6244,6 @@ components:
             required:
                 - id
                 - type
-                - attributes
                 - meta
                 - relationships
             properties:
@@ -6253,8 +6254,6 @@ components:
                 type:
                     type: string
                     const: document-contents
-                attributes:
-                    $ref: '#/components/schemas/DocumentContentAttributes'
                 meta:
                     $ref: '#/components/schemas/DocumentContentMeta'
                 relationships:
@@ -6282,9 +6281,29 @@ components:
                     $ref: '#/components/schemas/FolderMeta'
                 relationships:
                     $ref: '#/components/schemas/FolderRelationships'
-        DocumentContentAttributes:
+        DocumentReviewRequest:
             type: object
-            description: Attributes of document content
+            description: A document review request
+            required:
+                - id
+                - type
+                - attributes
+                - meta
+                - relationships
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the document review request.
+                type:
+                    type: string
+                    const: document-review-requests
+                attributes:
+                    $ref: '#/components/schemas/DocumentReviewRequestAttributes'
+                meta:
+                    $ref: '#/components/schemas/DocumentReviewRequestMeta'
+                relationships:
+                    $ref: '#/components/schemas/DocumentReviewRequestRelationships'
         DocumentContentMeta:
             type: object
             description: Metadata for document content
@@ -6335,9 +6354,7 @@ components:
                         - data
                     properties:
                         data:
-                            type: array
-                            items:
-                                $ref: '#/components/schemas/DocumentRelationship'
+                            $ref: '#/components/schemas/DocumentRelationship'
                 organisation:
                     type: object
                     required:
@@ -6609,6 +6626,146 @@ components:
                 type:
                     type: string
                     const: equipment-items
+        DocumentReviewRequestAttributes:
+            type: object
+            description: Attributes of a document review request
+            required:
+                - message
+                - comments_due_at
+                - approvals_due_at
+            properties:
+                message:
+                    type: string
+                    description: Message from the requester describing what needs review
+                comments_due_at:
+                    type:
+                        - string
+                        - "null"
+                    format: date-time
+                    description: Optional due date for comments
+                approvals_due_at:
+                    type:
+                        - string
+                        - "null"
+                    format: date-time
+                    description: Optional due date for approval
+        DocumentReviewRequestMeta:
+            type: object
+            description: Metadata for a document review request
+            required:
+                - created_at
+                - updated_at
+            properties:
+                status:
+                    type: string
+                    enum:
+                        - pending
+                        - approved
+                        - rejected
+                    description: Current status of the review.
+                requested_at:
+                    type: string
+                    format: date-time
+                    description: The date and time the review was requested
+                submitted_at:
+                    type:
+                        - string
+                        - "null"
+                    format: date-time
+                    description: The date and time the review was submitted (null if not yet submitted)
+                is_overdue:
+                    type: boolean
+                    description: Whether the review is overdue based on the due_at date
+                created_at:
+                    type: string
+                    format: date-time
+                    description: The date and time the review was created
+                updated_at:
+                    type: string
+                    format: date-time
+                    description: The date and time the review was last updated
+        DocumentReviewRequestRelationships:
+            type: object
+            description: Relationships for a document review request
+            required:
+                - organisation
+                - document
+                - requester
+                - approvers
+                - decisions
+            properties:
+                organisation:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/OrganisationRelationship'
+                document:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/DocumentRelationship'
+                requester:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/UserRelationship'
+                approvers:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            type: array
+                            items:
+                                $ref: '#/components/schemas/UserRelationship'
+                notify:
+                    type: object
+                    description: >-
+                        Job roles nominated to be told once every approver has approved. Not required: a review request may nominate nobody.
+
+
+                        Roles rather than named people, because named people go stale the moment somebody changes job. The holders are resolved when the document is approved, not when the request is raised, so a role that gains a holder in the meantime notifies that new holder and a role with no holders notifies nobody.
+
+
+                        Nominatable roles are those owned by the organisation owning the document's scheme, narrowed to shared roles for a caller outside it — list them with the `document_id` filter on `/v3/job-roles`. The people notified are holders of those roles in that organisation or in any organisation on an active share of the scheme, so a partner-organisation holder of a shared role is told.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            type: array
+                            items:
+                                $ref: '#/components/schemas/JobRoleRelationship'
+                decisions:
+                    type: object
+                    description: >-
+                        The approvers' decisions on the request. Include `decisions` to side-load them as `document-review-decisions`.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            type: array
+                            items:
+                                $ref: '#/components/schemas/DocumentReviewDecisionRelationship'
+        DocumentReviewDecisionRelationship:
+            type: object
+            description: Represents a relationship to a document review decision
+            required:
+                - id
+                - type
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the document review decision
+                type:
+                    type: string
+                    const: document-review-decisions
         ConstructionPhasePlan:
             type: object
             description: The Principal Contractor's Construction Phase Plan for a scheme, written from its Pre-Construction Information. A scheme has at most one.
@@ -9706,7 +9863,6 @@ components:
             required:
                 - id
                 - type
-                - attributes
                 - meta
                 - relationships
             properties:
@@ -9717,8 +9873,6 @@ components:
                 type:
                     type: string
                     const: document-downloads
-                attributes:
-                    $ref: '#/components/schemas/DocumentDownloadAttributes'
                 meta:
                     $ref: '#/components/schemas/DocumentDownloadMeta'
                 relationships:
@@ -9739,9 +9893,6 @@ components:
                     - $ref: '#/components/schemas/DocumentContent'
                     - $ref: '#/components/schemas/User'
                     - $ref: '#/components/schemas/Organisation'
-        DocumentDownloadAttributes:
-            type: object
-            description: Attributes of a document download
         DocumentDownloadMeta:
             type: object
             description: Metadata for document download
@@ -9771,18 +9922,14 @@ components:
                         - data
                     properties:
                         data:
-                            type: array
-                            items:
-                                $ref: '#/components/schemas/DocumentContentRelationship'
+                            $ref: '#/components/schemas/DocumentContentRelationship'
                 document:
                     type: object
                     required:
                         - data
                     properties:
                         data:
-                            type: array
-                            items:
-                                $ref: '#/components/schemas/DocumentRelationship'
+                            $ref: '#/components/schemas/DocumentRelationship'
                 organisation:
                     type: object
                     required:
@@ -9797,7 +9944,6 @@ components:
                 - id
                 - type
                 - attributes
-                - meta
                 - relationships
             properties:
                 id:
@@ -9809,10 +9955,67 @@ components:
                     const: document-review-decisions
                 attributes:
                     $ref: '#/components/schemas/DocumentReviewDecisionAttributes'
-                meta:
-                    $ref: '#/components/schemas/DocumentReviewDecisionMeta'
                 relationships:
                     $ref: '#/components/schemas/DocumentReviewDecisionRelationships'
+        DocumentReviewDecisionIncludes:
+            type: array
+            description: Related resources that can be included when a document review decision is returned
+            items:
+                discriminator:
+                    propertyName: type
+                    mapping:
+                        document-review-requests: "#/components/schemas/DocumentReviewRequest"
+                        users: "#/components/schemas/User"
+                oneOf:
+                    - $ref: '#/components/schemas/DocumentReviewRequest'
+                    - $ref: '#/components/schemas/User'
+        DocumentReviewDecisionAttributes:
+            type: object
+            description: Attributes of a document review decision
+            required:
+                - status
+                - created_at
+            properties:
+                status:
+                    type: string
+                    description: Status of the document review decision
+                    enum:
+                        - pending
+                        - approved
+                        - rejected
+                created_at:
+                    type: string
+                    format: date-time
+                    description: The date and time the decision was created
+        DocumentReviewDecisionRelationships:
+            type: object
+            description: Relationships for a document review decision
+            required:
+                - organisation
+                - user
+                - review
+            properties:
+                organisation:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/OrganisationRelationship'
+                user:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/UserRelationship'
+                review:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/DocumentReviewRequestRelationship'
         DocumentReviewRequestIncludes:
             type: array
             description: Related resources that can be included when a document review request is returned
@@ -9831,217 +10034,6 @@ components:
                     - $ref: '#/components/schemas/JobRole'
                     - $ref: '#/components/schemas/Organisation'
                     - $ref: '#/components/schemas/User'
-        DocumentReviewDecisionAttributes:
-            type: object
-            description: Attributes of a document review decision
-            required:
-                - status
-            properties:
-                status:
-                    type: string
-                    description: Status of the document review decision
-                    enum:
-                        - pending
-                        - approved
-                        - rejected
-        DocumentReviewDecisionMeta:
-            type: object
-            description: Metadata for a document review decision
-            required:
-                - created_at
-            properties:
-                created_at:
-                    type: string
-                    format: date-time
-                    description: The date and time the review was created
-        DocumentReviewDecisionRelationships:
-            type: object
-            description: Relationships for a document review request
-            required:
-                - user
-                - review
-            properties:
-                user:
-                    type: object
-                    required:
-                        - data
-                    properties:
-                        data:
-                            $ref: '#/components/schemas/UserRelationship'
-                review:
-                    type: object
-                    required:
-                        - data
-                    properties:
-                        data:
-                            type: array
-                            items:
-                                $ref: '#/components/schemas/DocumentReviewRequestRelationship'
-        DocumentReviewRequest:
-            type: object
-            description: A document review request
-            required:
-                - id
-                - type
-                - attributes
-                - meta
-                - relationships
-            properties:
-                id:
-                    type: string
-                    format: uuid
-                    description: The unique identifier of the document review request.
-                type:
-                    type: string
-                    const: document-review-requests
-                attributes:
-                    $ref: '#/components/schemas/DocumentReviewRequestAttributes'
-                meta:
-                    $ref: '#/components/schemas/DocumentReviewRequestMeta'
-                relationships:
-                    $ref: '#/components/schemas/DocumentReviewRequestRelationships'
-        DocumentReviewRequestAttributes:
-            type: object
-            description: Attributes of a document review request
-            required:
-                - message
-                - comments_due_at
-                - approvals_due_at
-            properties:
-                message:
-                    type: string
-                    description: Message from the requester describing what needs review
-                comments_due_at:
-                    type:
-                        - string
-                        - "null"
-                    format: date-time
-                    description: Optional due date for comments
-                approvals_due_at:
-                    type:
-                        - string
-                        - "null"
-                    format: date-time
-                    description: Optional due date for approval
-        DocumentReviewRequestMeta:
-            type: object
-            description: Metadata for a document review request
-            required:
-                - requested_at
-                - created_at
-                - updated_at
-                - is_overdue
-            properties:
-                status:
-                    type: string
-                    enum:
-                        - pending
-                        - approved
-                        - rejected
-                    description: Current status of the review.
-                requested_at:
-                    type: string
-                    format: date-time
-                    description: The date and time the review was requested
-                submitted_at:
-                    type:
-                        - string
-                        - "null"
-                    format: date-time
-                    description: The date and time the review was submitted (null if not yet submitted)
-                is_overdue:
-                    type: boolean
-                    description: Whether the review is overdue based on the due_at date
-                created_at:
-                    type: string
-                    format: date-time
-                    description: The date and time the review was created
-                updated_at:
-                    type: string
-                    format: date-time
-                    description: The date and time the review was last updated
-        DocumentReviewRequestRelationships:
-            type: object
-            description: Relationships for a document review request
-            required:
-                - organisation
-                - document
-                - requester
-                - approvers
-                - decisions
-            properties:
-                organisation:
-                    type: object
-                    required:
-                        - data
-                    properties:
-                        data:
-                            $ref: '#/components/schemas/OrganisationRelationship'
-                document:
-                    type: object
-                    required:
-                        - data
-                    properties:
-                        data:
-                            $ref: '#/components/schemas/DocumentRelationship'
-                requester:
-                    type: object
-                    required:
-                        - data
-                    properties:
-                        data:
-                            $ref: '#/components/schemas/UserRelationship'
-                approvers:
-                    type: object
-                    required:
-                        - data
-                    properties:
-                        data:
-                            type: array
-                            items:
-                                $ref: '#/components/schemas/UserRelationship'
-                notify:
-                    type: object
-                    description: >-
-                        Job roles nominated to be told once every approver has approved. Not required: a review request may nominate nobody.
-
-
-                        Roles rather than named people, because named people go stale the moment somebody changes job. The holders are resolved when the document is approved, not when the request is raised, so a role that gains a holder in the meantime notifies that new holder and a role with no holders notifies nobody.
-
-
-                        Nominatable roles are those owned by the organisation owning the document's scheme, narrowed to shared roles for a caller outside it — list them with the `document_id` filter on `/v3/job-roles`. The people notified are holders of those roles in that organisation or in any organisation on an active share of the scheme, so a partner-organisation holder of a shared role is told.
-                    required:
-                        - data
-                    properties:
-                        data:
-                            type: array
-                            items:
-                                $ref: '#/components/schemas/JobRoleRelationship'
-                decisions:
-                    type: object
-                    description: >-
-                        The approvers' decisions on the request. Include `decisions` to side-load them as `document-review-decisions`.
-                    required:
-                        - data
-                    properties:
-                        data:
-                            type: array
-                            items:
-                                $ref: '#/components/schemas/DocumentReviewDecisionRelationship'
-        DocumentReviewDecisionRelationship:
-            type: object
-            description: Represents a relationship to a document review decision
-            required:
-                - id
-                - type
-            properties:
-                id:
-                    type: string
-                    format: uuid
-                    description: The unique identifier of the document review decision
-                type:
-                    type: string
-                    const: document-review-decisions
         Reviewer:
             type: object
             description: |
@@ -12988,11 +12980,15 @@ components:
                     mapping:
                         folders: "#/components/schemas/Folder"
                         organisations: "#/components/schemas/Organisation"
+                        schemes: "#/components/schemas/Scheme"
                         users: "#/components/schemas/User"
+                        work-orders: "#/components/schemas/WorkOrder"
                 oneOf:
                     - $ref: '#/components/schemas/Folder'
                     - $ref: '#/components/schemas/Organisation'
                     - $ref: '#/components/schemas/User'
+                    - $ref: '#/components/schemas/Scheme'
+                    - $ref: '#/components/schemas/WorkOrder'
         FormCategory:
             type: object
             description: A form category
@@ -31629,7 +31625,7 @@ components:
                                 data:
                                     $ref: '#/components/schemas/DocumentReviewDecision'
                                 included:
-                                    $ref: '#/components/schemas/DocumentReviewRequestIncludes'
+                                    $ref: '#/components/schemas/DocumentReviewDecisionIncludes'
                             - $ref: '#/components/schemas/JSONAPI'
         ListDocumentReviewRequests:
             description: Get a list of document review requests.
@@ -31820,7 +31816,7 @@ components:
                                     $ref: '#/components/schemas/DocumentContentIncludes'
                             - $ref: '#/components/schemas/JSONAPI'
         DownloadDocumentContent:
-            description: Download the content of a document.
+            description: Download the content of a document, as the type it was uploaded with.
             headers:
                 Content-Type:
                     description: The MIME type of the document content
@@ -31843,21 +31839,6 @@ components:
                 X-Request-ID:
                     $ref: '#/components/headers/x-request-id'
             content:
-                application/octet-stream:
-                    schema:
-                        type: string
-                        format: binary
-                application/pdf:
-                    schema:
-                        type: string
-                        format: binary
-                image/*:
-                    schema:
-                        type: string
-                        format: binary
-                text/plain:
-                    schema:
-                        type: string
                 "*/*":
                     schema:
                         type: string
@@ -40860,7 +40841,7 @@ components:
                 Available filters:
 
                 - `organisation`: Filter documents where the organisation ID is in the provided list.
-                - `document`: Filter documents where the parent folder ID is in the provided list.
+                - `document`: Filter review requests by the ID of the document under review.
 
                 For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
             required: false
@@ -68640,7 +68621,12 @@ paths:
                 record: a renewal with no expiry, or a later exemption, hides an older
                 expiring record. Deactivated members are left out.
 
-                Records are listed whether or not a role requires them.
+                A member's own organisation's records are listed whether or not a role
+                requires them. A record stamped to the organisation that owns one of the
+                member's roles, such as a role shared in by a network, is listed when that
+                role requires it. The latest record is chosen across all of these
+                organisations, so a renewal stamped to either one hides an expired record
+                stamped to the other.
 
                 The `organisation` filter is **required**. A caller reading a bridged
                 organisation sees only the people assigned to the roles shared with them, and
@@ -71262,8 +71248,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Documents
-            x-ctrl-hub:
-                domain: documents
             x-mint:
                 metadata:
                     title: List documents
