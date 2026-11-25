@@ -2637,6 +2637,20 @@ components:
                     $ref: '#/components/schemas/AssessmentRecordAttributes'
                 relationships:
                     $ref: '#/components/schemas/AssessmentRecordRelationships'
+        AssessmentIncludes:
+            type: array
+            description: Related resources that can be included when an assessment is returned
+            items:
+                discriminator:
+                    propertyName: type
+                    mapping:
+                        organisations: "#/components/schemas/Organisation"
+                        users: "#/components/schemas/User"
+                        assessment-definitions: "#/components/schemas/AssessmentDefinition"
+                oneOf:
+                    - $ref: '#/components/schemas/Organisation'
+                    - $ref: '#/components/schemas/User'
+                    - $ref: '#/components/schemas/AssessmentDefinition'
         AssessmentRecordAttributes:
             type: object
             description: Attributes for an assessment record
@@ -2774,104 +2788,6 @@ components:
                 type:
                     type: string
                     const: folders
-        Assessment:
-            type: object
-            description: An assessment record
-            required:
-                - id
-                - type
-                - attributes
-                - relationships
-            properties:
-                id:
-                    type: string
-                    format: uuid
-                    description: The unique identifier of the assessment.
-                type:
-                    type: string
-                    const: assessments
-                attributes:
-                    $ref: '#/components/schemas/AssessmentAttributes'
-                relationships:
-                    $ref: '#/components/schemas/AssessmentRelationships'
-        AssessmentIncludes:
-            type: array
-            description: Related resources that can be included when an assessment is returned
-            items:
-                discriminator:
-                    propertyName: type
-                    mapping:
-                        organisations: "#/components/schemas/Organisation"
-                        users: "#/components/schemas/User"
-                        assessment-definitions: "#/components/schemas/AssessmentDefinition"
-                oneOf:
-                    - $ref: '#/components/schemas/Organisation'
-                    - $ref: '#/components/schemas/User'
-                    - $ref: '#/components/schemas/AssessmentDefinition'
-        AssessmentAttributes:
-            type: object
-            description: Attributes for an assessment
-            required:
-                - status
-            properties:
-                status:
-                    type: string
-                    description: The result of the assessment.
-                    enum:
-                        - passed
-                        - failed
-                    examples:
-                        - passed
-                assessed_at:
-                    type:
-                        - 'string'
-                        - 'null'
-                    format: date-time
-                    description: The date the assessment was conducted.
-                expires_at:
-                    type:
-                        - 'string'
-                        - 'null'
-                    format: date-time
-                    description: The date the assessment expires.
-        AssessmentRelationships:
-            type: object
-            description: Relationships for an assessment
-            required:
-                - organisation
-                - user
-                - assessment_definition
-            properties:
-                organisation:
-                    type: object
-                    required:
-                        - data
-                    properties:
-                        data:
-                            $ref: '#/components/schemas/OrganisationRelationship'
-                user:
-                    type: object
-                    required:
-                        - data
-                    properties:
-                        data:
-                            $ref: '#/components/schemas/UserRelationship'
-                assessment_definition:
-                    type: object
-                    required:
-                        - data
-                    properties:
-                        data:
-                            $ref: '#/components/schemas/AssessmentDefinitionRelationship'
-                assessor:
-                    type: object
-                    required:
-                        - data
-                    properties:
-                        data:
-                            oneOf:
-                                - $ref: '#/components/schemas/UserRelationship'
-                                - type: 'null'
         Organisation:
             type: object
             description: An organisation
@@ -3131,6 +3047,90 @@ components:
                 type:
                     type: string
                     const: nomenclature
+        Assessment:
+            type: object
+            description: An assessment record
+            required:
+                - id
+                - type
+                - attributes
+                - relationships
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: The unique identifier of the assessment.
+                type:
+                    type: string
+                    const: assessments
+                attributes:
+                    $ref: '#/components/schemas/AssessmentAttributes'
+                relationships:
+                    $ref: '#/components/schemas/AssessmentRelationships'
+        AssessmentAttributes:
+            type: object
+            description: Attributes for an assessment
+            required:
+                - status
+            properties:
+                status:
+                    type: string
+                    description: The result of the assessment.
+                    enum:
+                        - passed
+                        - failed
+                    examples:
+                        - passed
+                assessed_at:
+                    type:
+                        - 'string'
+                        - 'null'
+                    format: date-time
+                    description: The date the assessment was conducted.
+                expires_at:
+                    type:
+                        - 'string'
+                        - 'null'
+                    format: date-time
+                    description: The date the assessment expires.
+        AssessmentRelationships:
+            type: object
+            description: Relationships for an assessment
+            required:
+                - organisation
+                - user
+                - assessment_definition
+            properties:
+                organisation:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/OrganisationRelationship'
+                user:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/UserRelationship'
+                assessment_definition:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/AssessmentDefinitionRelationship'
+                assessor:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            oneOf:
+                                - $ref: '#/components/schemas/UserRelationship'
+                                - type: 'null'
         AuditEvent:
             type: object
             description: An audit event
@@ -14257,7 +14257,6 @@ components:
                 - id
                 - type
                 - attributes
-                - meta
                 - relationships
             properties:
                 id:
@@ -14838,7 +14837,8 @@ components:
                         country:
                             type: string
                 uprn:
-                    type: number
+                    type: integer
+                    format: int64
                 psr:
                     description: Deprecated. Use the psrs relationship instead.
                     type: object
@@ -15267,8 +15267,6 @@ components:
                 - id
                 - type
                 - attributes
-                - meta
-                - relationships
             properties:
                 id:
                     type: string
@@ -15297,7 +15295,8 @@ components:
                     examples:
                         - "Main Street"
                 usrn:
-                    type: number
+                    type: integer
+                    format: int64
                     examples:
                         - 14930043
                 location:
@@ -15317,10 +15316,12 @@ components:
                                     properties:
                                         northing:
                                             type: number
+                                            format: double
                                             examples:
                                                 - 557794
                                         easting:
                                             type: number
+                                            format: double
                                             examples:
                                                 - 426415
                 highway_authority:
@@ -15328,9 +15329,9 @@ components:
                     examples:
                         - "National Highways"
                 highway_authority_code:
-                    type: number
+                    type: string
                     examples:
-                        - 1350
+                        - "1350"
                 town:
                     type: string
                     examples:
@@ -18419,7 +18420,8 @@ components:
                     type: boolean
                     description: Whether the permit is activated or not
                 usrn:
-                    type: number
+                    type: integer
+                    format: int64
                     description: Unique Street Reference Number
                 permit_reference_number:
                     type: string
@@ -23208,7 +23210,6 @@ components:
                 - id
                 - type
                 - attributes
-                - meta
             properties:
                 id:
                     type: string
@@ -23218,16 +23219,16 @@ components:
                     const: property-search-results
                 attributes:
                     $ref: '#/components/schemas/PropertySearchResultAttributes'
-                meta:
-                    $ref: '#/components/schemas/PropertySearchResultMeta'
         PropertySearchResultAttributes:
             type: object
             description: Attributes for a property
             required:
                 - address
+                - meta
             properties:
                 uprn:
-                    type: number
+                    type: integer
+                    format: int64
                 address:
                     type: object
                     properties:
@@ -23253,19 +23254,34 @@ components:
                             type: string
                         country:
                             type: string
-        PropertySearchResultMeta:
-            type: object
-            description: Metadata for a property
-            required:
-                - created_at
-                - updated_at
-            properties:
-                relevenance:
-                    type: number
-                    description: The relevance score of the property
-                score:
-                    type: number
-                    description: The score of the property
+                coordinates:
+                    type: object
+                    description: Where the property is, when the gazetteer gave its position.
+                    required:
+                        - latitude
+                        - longitude
+                    properties:
+                        latitude:
+                            type: number
+                            format: double
+                        longitude:
+                            type: number
+                            format: double
+                meta:
+                    type: object
+                    description: How well the property matched the search.
+                    required:
+                        - relevance
+                        - score
+                    properties:
+                        relevance:
+                            type: number
+                            format: double
+                            description: The relevance of the property to the search term.
+                        score:
+                            type: number
+                            format: double
+                            description: The gazetteer's score for the match.
         PSRIncludes:
             type: array
             description: Related resources that can be included when a PSR record is returned
@@ -24412,13 +24428,14 @@ components:
             properties:
                 fields:
                     type: array
-                    description: The fields that matched the search query
+                    description: The fields that matched the search query. `id` is given when the term is the resource's id.
                     items:
                         type: string
                         enum:
                             - name
                             - code
                             - description
+                            - id
                     examples:
                         - ["name", "description"]
         SearchResultRelationships:
@@ -25532,6 +25549,16 @@ components:
                     description: The platform's rates for the standard's payments, each set from the date it takes effect, in date order. An organisation's own rates (`standard-rates`) take precedence on any date one of their sets is in effect, and these apply on any other date. Empty for a standard the platform prices nothing for.
                     items:
                         $ref: '#/components/schemas/StandardRateSet'
+        StreetManagerPermitIncludes:
+            type: array
+            description: Related resources that can be included when a Street Manager permit is returned
+            items:
+                discriminator:
+                    propertyName: type
+                    mapping:
+                        street-manager-permit-versions: "#/components/schemas/StreetManagerPermitVersion"
+                oneOf:
+                    - $ref: '#/components/schemas/StreetManagerPermitVersion'
         StreetManagerPermitVersion:
             type: object
             description: A street manager permit version
@@ -25693,7 +25720,8 @@ components:
                         - non_notifiable
                         - section_81
                 usrn:
-                    type: number
+                    type: integer
+                    format: int64
                     description: Unique Street Reference Number
                 highway_authority_swa_code:
                     type: string
@@ -25731,8 +25759,8 @@ components:
                     type: string
                     description: Whether a TTRO (Temporary Traffic Regulation Order) is required
                     enum:
-                        - yes
-                        - no
+                        - "yes"
+                        - "no"
                         - not_provided
                 is_covid_19_response:
                     type: boolean
@@ -25754,7 +25782,7 @@ components:
                     items:
                         type: string
                 road_category:
-                    type: number
+                    type: integer
                     description: The category of the road
                     minimum: 0
                     maximum: 10
@@ -25799,7 +25827,7 @@ components:
                     enum:
                         - yes_provide_pedestrian_walkway
                         - yes_provide_alternative_route
-                        - no
+                        - "no"
                 close_footway_ref:
                     type: string
                     description: The reference code for close footway status
@@ -25831,7 +25859,6 @@ components:
             description: Metadata for a street manager permit version
             required:
                 - created_at
-                - updated_at
             properties:
                 created_at:
                     type: string
@@ -25879,7 +25906,8 @@ components:
                 - usrn
             properties:
                 usrn:
-                    type: number
+                    type: integer
+                    format: int64
                     description: The Unique Street Reference Number, the gazetteer's identifier for the street.
                 name:
                     type: string
@@ -25887,6 +25915,18 @@ components:
                 town:
                     type: string
                     description: The town the street is in, in upper case.
+        TrainingCompletionIncludes:
+            type: array
+            description: Related resources that can be included when a training completion is returned
+            items:
+                discriminator:
+                    propertyName: type
+                    mapping:
+                        organisations: "#/components/schemas/Organisation"
+                        users: "#/components/schemas/User"
+                oneOf:
+                    - $ref: '#/components/schemas/Organisation'
+                    - $ref: '#/components/schemas/User'
         Upload:
             type: object
             description: A transient binary upload
@@ -30401,6 +30441,8 @@ components:
                                     type: array
                                     items:
                                         $ref: '#/components/schemas/AssessmentRecord'
+                                included:
+                                    $ref: '#/components/schemas/AssessmentIncludes'
                             - $ref: '#/components/schemas/DocumentMeta'
                             - $ref: '#/components/schemas/JSONAPI'
         GetAssessmentRecord:
@@ -37466,9 +37508,7 @@ components:
                                     items:
                                         $ref: '#/components/schemas/StreetManagerPermit'
                                 included:
-                                    type: array
-                                    items:
-                                        $ref: '#/components/schemas/StreetManagerPermitVersion'
+                                    $ref: '#/components/schemas/StreetManagerPermitIncludes'
                             - $ref: '#/components/schemas/DocumentMeta'
                             - $ref: '#/components/schemas/JSONAPI'
         GetStreetManagerPermit:
@@ -37491,9 +37531,7 @@ components:
                                 data:
                                     $ref: '#/components/schemas/StreetManagerPermit'
                                 included:
-                                    type: array
-                                    items:
-                                        $ref: '#/components/schemas/StreetManagerPermitVersion'
+                                    $ref: '#/components/schemas/StreetManagerPermitIncludes'
                             - $ref: '#/components/schemas/JSONAPI'
         ListStreetManagerPermitVersions:
             description: List all permit versions for a permit in the system.
@@ -37561,13 +37599,20 @@ components:
                                     type: array
                                     items:
                                         $ref: '#/components/schemas/StreetSearchResult'
-                            - $ref: '#/components/schemas/DocumentMeta'
                             - $ref: '#/components/schemas/JSONAPI'
                             - type: object
+                              required:
+                                - meta
                               properties:
                                 meta:
                                     type: object
+                                    required:
+                                        - pagination
                                     properties:
+                                        features:
+                                            $ref: '#/components/schemas/Features'
+                                        pagination:
+                                            $ref: '#/components/schemas/Pagination'
                                         stats:
                                             type: object
                                             properties:
@@ -37600,6 +37645,8 @@ components:
                                     type: array
                                     items:
                                         $ref: '#/components/schemas/TrainingCompletion'
+                                included:
+                                    $ref: '#/components/schemas/TrainingCompletionIncludes'
                             - $ref: '#/components/schemas/DocumentMeta'
                             - $ref: '#/components/schemas/JSONAPI'
         GetTrainingCompletion:
@@ -39346,6 +39393,19 @@ components:
                 type: string
                 format: uuid
             example: ac0a0a0a-1111-4abc-8def-0a0a0a0a0001
+        lookup_organisation_id:
+            name: organisation_id
+            in: query
+            description: |
+                The organisation the lookup is made for. Address lookups count against that organisation's
+                billing allowance when you are a member of it. A lookup without one, or naming an organisation
+                you are not a member of, is still answered, and is recorded against you rather than an
+                organisation.
+            required: false
+            schema:
+                type: string
+                format: uuid
+            example: 6f6c2b0e-7d1a-4a59-9a43-8f1c0d2e5b71
         agent_issues_sort:
             in: query
             name: sort
@@ -39602,6 +39662,7 @@ components:
                 items:
                     type: string
                     enum:
+                        - organisation
                         - user
                         - assessment_definition
                         - assessor
@@ -41207,6 +41268,37 @@ components:
                 type: string
                 format: uuid
             example: b000316c-c731-41ba-9f0a-2091611b73f0
+        equipment_history_section:
+            name: section
+            in: query
+            description: |
+                Narrows the history to one tab of the item's page.
+
+                - `overview`: the item's creation and the changes to its details, including joining and leaving a kit
+                - `compliance`: changes to the certifications the item requires, and the events of its certificates
+                - `allocations`: each change to the item's allocation
+
+                Without it, the history holds all three.
+            required: false
+            schema:
+                type: string
+                enum:
+                    - overview
+                    - compliance
+                    - allocations
+        history_include:
+            name: include
+            in: query
+            description: A comma separated list of related resources to include. `user` includes the user who made each change.
+            required: false
+            style: form
+            explode: false
+            schema:
+                type: array
+                items:
+                    type: string
+                    enum:
+                        - user
         equipment_kits_filter:
             name: filter
             in: query
@@ -43105,19 +43197,6 @@ components:
                 type: string
                 format: uuid
             example: a8a41819-be0c-48b9-9883-1378fc63a637
-        history_include:
-            name: include
-            in: query
-            description: A comma separated list of related resources to include. `user` includes the user who made each change.
-            required: false
-            style: form
-            explode: false
-            schema:
-                type: array
-                items:
-                    type: string
-                    enum:
-                        - user
         organisations_sort:
             in: query
             name: sort
@@ -45240,7 +45319,7 @@ components:
 
                 Available filters:
 
-                - `term`: Required, with `contains`. Finds resources whose name contains the value, such as `contains(term,cabling)`. Without it, the search returns nothing.
+                - `term`: Required, with `contains`. Finds resources whose name contains the value, such as `contains(term,cabling)`. A value that is a whole UUID, in any letter case, also finds the resource with that id. Without it, the search returns nothing.
                 - `resource`: The kinds of resource to search, `schemes`, `work-orders` or `operations`, with `eq` or `in`. All three are searched when it is left out.
                 - `id`: Passed on to each kind's search, such as `not(in(id,<id>))` to leave out the resource being viewed.
                 - `organisation`: With `eq` or `in`. On `/v3/search`, limits the results to those organisations. On `/v3/shared-search`, names the organisations the work is shared with, and is required.
@@ -45682,6 +45761,7 @@ components:
                 items:
                     type: string
                     enum:
+                        - organisation
                         - user
         training_completion_id:
             name: training_completion_id
@@ -46603,6 +46683,7 @@ components:
                 - `in(id,[xxx])`: Filter by work order ID(s)
                 - `in(organisation,[xxx])`: Filter by organisation ID(s)
                 - `in_schemes`: Filter for work orders in scheme(s) by their ID(s)
+                - `contains(name,xxx)`: Filter work orders where name contains value, ignoring case. It is answered from a search index that trails writes by a short time, so a work order created or renamed moments ago may be missing from the list and from `meta.pagination` until the index catches up.
                 - `eq(status,xxx)`: Filter for work orders by lifecycle status. One of `in_planning`, `in_progress`, `on_hold`, `complete`, `cancelled`.
 
                 - `modified_at`: Filter by the date a work order last changed, which includes a change to its operations, assignees, teams, permits or status counts, not only an edit to the work order itself (the `updated_at` attribute does not move for those). Accepts an RFC 3339 timestamp and supports the range operators `ge`, `le`, `gt`, `lt` (and `eq`). Example (changed since a given time): `ge(modified_at,2026-07-01T00:00:00Z)`. Combine with `sort=modified_at` to read the changes oldest first. A work order edited while a client pages through the changes moves to the end of that order and shifts every later row back one place, so offset paging can skip a work order that was not yet read. Start the next sync a margin of a few minutes earlier than the time this one began, not from the newest `modified_at` received, and expect to read the same work order more than once. The margin is needed because a change is stamped before its write commits, so one stamped just before a sync starts can commit after that sync has read. Take the sync's start time from the server's clock, such as the `Date` header of its first response, because the clock of a device adds its own drift. A work order that has been deleted is never returned, so a client that needs to learn of deletions reads the full list.
@@ -66801,6 +66882,8 @@ paths:
         post:
             description: Resolve one or more free-text address strings to canonical UPRNs.
             operationId: ResolveAddresses
+            parameters:
+                - $ref: '#/components/parameters/lookup_organisation_id'
             requestBody:
                 $ref: '#/components/requestBodies/ResolveAddresses'
             responses:
@@ -66819,8 +66902,6 @@ paths:
             summary: Resolve addresses
             tags:
                 - Properties
-            x-ctrl-hub:
-                domain: geo
             x-mint:
                 metadata:
                     title: Resolve addresses
@@ -72157,6 +72238,60 @@ paths:
             x-mint:
                 metadata:
                     title: Get an equipment item's compliance
+    /v3/equipment-items/{equipment_item_id}/history:
+        get:
+            description: |
+                Lists the changes made to an equipment item and its certificates, newest first. `section` narrows it to the
+                overview, compliance or allocations changes.
+
+                Anyone who can view the item can read its history. It needs no audit role. An item the caller cannot view is
+                refused, just as reading the item would be.
+
+                Viewing the item is the only check, by design. Its history therefore shows the caller the details its
+                certificates' events record, such as certificate numbers and providers, without `equipment-certificates:view`.
+                It also shows the id of any item a certificate moved to or from, and the targets the item was allocated to,
+                whether or not the caller can view those records.
+
+                A certificate's events are included, deleted certificates included. Each event appears in the history of the item
+                it names. When a certificate moves to another item, the move names both items, so it appears in both histories. An
+                event before the move names the old item only, and an event after it the new item only. Certificate events
+                recorded before events named their item name none, so they appear in the history of the item the certificate is
+                on now.
+
+                Each event says who made the change and when, and an update lists each changed field with its value before and
+                after. `include=user` includes the user who made each change. Items created before 17 Nov 2026 have no create
+                event. Changes to an item's details, and to the certifications it requires, are recorded only since this history
+                was released, so an older item's history may start later than the item. The client IP, user agent and any
+                impersonating staff member are left empty, because a history needs no audit role.
+            operationId: ListEquipmentItemHistory
+            parameters:
+                - $ref: '#/components/parameters/equipment_item_id'
+                - $ref: '#/components/parameters/equipment_history_section'
+                - $ref: '#/components/parameters/limit'
+                - $ref: '#/components/parameters/offset'
+                - $ref: '#/components/parameters/page'
+                - $ref: '#/components/parameters/history_include'
+            responses:
+                "200":
+                    $ref: '#/components/responses/ListAuditEvents'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: List an equipment item's history
+            tags:
+                - Audit Events
+            x-mint:
+                metadata:
+                    title: List an equipment item's history
     /v3/equipment-items/{equipment_item_id}/relationships/allocated_location:
         patch:
             description: |
@@ -73800,7 +73935,9 @@ paths:
                     title: Attach a file to an F10 notification
     /v3/feature-configurations:
         get:
-            description: List all feature configurations.
+            description: |
+                List the feature configurations of the organisations you can view them in. Each is an enabled configuration of a
+                feature that Ctrl Hub has switched on for the organisation. A feature switched off has none.
             operationId: ListFeatureConfigurations
             parameters:
                 - $ref: '#/components/parameters/limit'
@@ -74421,6 +74558,10 @@ paths:
                 The options are the ones hydration would write into the schema for the same caller, with the same scoping
                 and labels: the owner organisation's, narrowed to the shared schemes for a contractor, or the bridged
                 organisations the field names. Only `operations` fields are supported.
+
+                A search term is matched against operations, and against the schemes and work orders they belong to,
+                through search indexes that trail writes by a short time. A work order created or renamed moments ago
+                may not match its operations until the index catches up.
             operationId: ListXSourceOptions
             parameters:
                 - $ref: '#/components/parameters/schema_id'
@@ -75599,8 +75740,6 @@ paths:
                 - Cookie: []
             tags:
                 - Import Templates
-            x-ctrl-hub:
-                domain: geo
             x-mint:
                 metadata:
                     title: List import templates
@@ -75625,8 +75764,6 @@ paths:
             summary: Create an import template
             tags:
                 - Import Templates
-            x-ctrl-hub:
-                domain: geo
             x-mint:
                 metadata:
                     title: Create an import template
@@ -75653,8 +75790,6 @@ paths:
                 - Cookie: []
             tags:
                 - Import Templates
-            x-ctrl-hub:
-                domain: geo
             x-mint:
                 metadata:
                     title: Delete import template
@@ -75680,8 +75815,6 @@ paths:
                 - Cookie: []
             tags:
                 - Import Templates
-            x-ctrl-hub:
-                domain: geo
             x-mint:
                 metadata:
                     title: Get import template
@@ -75710,8 +75843,6 @@ paths:
             summary: Update an import template
             tags:
                 - Import Templates
-            x-ctrl-hub:
-                domain: geo
             x-mint:
                 metadata:
                     title: Update an import template
@@ -76598,8 +76729,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Location Imports
-            x-ctrl-hub:
-                domain: geo
             x-mint:
                 metadata:
                     title: List location imports
@@ -76656,8 +76785,6 @@ paths:
             summary: Load a file of locations
             tags:
                 - Location Imports
-            x-ctrl-hub:
-                domain: geo
             x-mint:
                 metadata:
                     title: Load a file of locations
@@ -76696,8 +76823,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Location Imports
-            x-ctrl-hub:
-                domain: geo
             x-mint:
                 metadata:
                     title: Get a location import
@@ -76725,8 +76850,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Locations
-            x-ctrl-hub:
-                domain: geo
             x-mint:
                 metadata:
                     title: List location types
@@ -76753,8 +76876,6 @@ paths:
             summary: Create a new location type
             tags:
                 - Locations
-            x-ctrl-hub:
-                domain: geo
             x-mint:
                 metadata:
                     title: Create a location type
@@ -76784,8 +76905,6 @@ paths:
             summary: Delete a location type
             tags:
                 - Locations
-            x-ctrl-hub:
-                domain: geo
             x-mint:
                 metadata:
                     title: Delete a location type
@@ -76811,8 +76930,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Locations
-            x-ctrl-hub:
-                domain: geo
             x-mint:
                 metadata:
                     title: Get a location type
@@ -76843,8 +76960,6 @@ paths:
             summary: Update a location type
             tags:
                 - Locations
-            x-ctrl-hub:
-                domain: geo
             x-mint:
                 metadata:
                     title: Update a location type
@@ -76874,8 +76989,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Locations
-            x-ctrl-hub:
-                domain: geo
             x-mint:
                 metadata:
                     title: List locations
@@ -76908,8 +77021,6 @@ paths:
             summary: Create a new location
             tags:
                 - Locations
-            x-ctrl-hub:
-                domain: geo
             x-mint:
                 metadata:
                     title: Create a location
@@ -76939,8 +77050,6 @@ paths:
             summary: Delete a location
             tags:
                 - Locations
-            x-ctrl-hub:
-                domain: geo
             x-mint:
                 metadata:
                     title: Delete a location
@@ -76967,8 +77076,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Locations
-            x-ctrl-hub:
-                domain: geo
             x-mint:
                 metadata:
                     title: Get a location
@@ -76999,8 +77106,6 @@ paths:
             summary: Update a location
             tags:
                 - Locations
-            x-ctrl-hub:
-                domain: geo
             x-mint:
                 metadata:
                     title: Update a location
@@ -77484,8 +77589,6 @@ paths:
                 - Cookie: []
             tags:
                 - Properties
-            x-ctrl-hub:
-                domain: geo
             x-mint:
                 metadata:
                     title: List meters
@@ -77512,8 +77615,6 @@ paths:
             summary: Create a meter
             tags:
                 - Properties
-            x-ctrl-hub:
-                domain: geo
             x-mint:
                 metadata:
                     title: Create a meter
@@ -77541,8 +77642,6 @@ paths:
             summary: Delete a meter
             tags:
                 - Properties
-            x-ctrl-hub:
-                domain: geo
             x-mint:
                 metadata:
                     title: Delete a meter
@@ -77567,8 +77666,6 @@ paths:
                 - Cookie: []
             tags:
                 - Properties
-            x-ctrl-hub:
-                domain: geo
             x-mint:
                 metadata:
                     title: Get a meter
@@ -77595,8 +77692,6 @@ paths:
             summary: Update an existing meter
             tags:
                 - Properties
-            x-ctrl-hub:
-                domain: geo
             x-mint:
                 metadata:
                     title: Update a meter
@@ -84048,6 +84143,7 @@ paths:
             operationId: SearchByPostcode
             parameters:
                 - $ref: '#/components/parameters/postcode'
+                - $ref: '#/components/parameters/lookup_organisation_id'
             responses:
                 "200":
                     $ref: '#/components/responses/SearchByPostcode'
@@ -84065,8 +84161,6 @@ paths:
                 - Cookie: []
             tags:
                 - Properties
-            x-ctrl-hub:
-                domain: geo
             x-mint:
                 metadata:
                     title: Search by postcode
@@ -84748,8 +84842,6 @@ paths:
                 - Cookie: []
             tags:
                 - Properties
-            x-ctrl-hub:
-                domain: geo
             x-mint:
                 metadata:
                     title: List properties
@@ -84775,8 +84867,6 @@ paths:
                 - Cookie: []
             tags:
                 - Properties
-            x-ctrl-hub:
-                domain: geo
             x-mint:
                 metadata:
                     title: Get a property
@@ -84789,6 +84879,7 @@ paths:
                 - $ref: '#/components/parameters/limit'
                 - $ref: '#/components/parameters/offset'
                 - $ref: '#/components/parameters/page'
+                - $ref: '#/components/parameters/lookup_organisation_id'
             responses:
                 "200":
                     $ref: '#/components/responses/ListPropertySearchResults'
@@ -84804,8 +84895,6 @@ paths:
                 - Cookie: []
             tags:
                 - Properties
-            x-ctrl-hub:
-                domain: geo
             x-mint:
                 metadata:
                     title: Search for properties
@@ -84834,8 +84923,6 @@ paths:
                 - Cookie: []
             tags:
                 - Properties
-            x-ctrl-hub:
-                domain: geo
             x-mint:
                 metadata:
                     title: List PSR records
@@ -84862,8 +84949,6 @@ paths:
             summary: Create a PSR record
             tags:
                 - Properties
-            x-ctrl-hub:
-                domain: geo
             x-mint:
                 metadata:
                     title: Create a PSR record
@@ -84891,8 +84976,6 @@ paths:
             summary: Delete a PSR record
             tags:
                 - Properties
-            x-ctrl-hub:
-                domain: geo
             x-mint:
                 metadata:
                     title: Delete a PSR record
@@ -84917,8 +85000,6 @@ paths:
                 - Cookie: []
             tags:
                 - Properties
-            x-ctrl-hub:
-                domain: geo
             x-mint:
                 metadata:
                     title: Get a PSR record
@@ -84945,8 +85026,6 @@ paths:
             summary: Update an existing PSR record
             tags:
                 - Properties
-            x-ctrl-hub:
-                domain: geo
             x-mint:
                 metadata:
                     title: Update a PSR record
@@ -86363,10 +86442,11 @@ paths:
     /v3/search:
         get:
             description: |
-                Search for schemes, work orders, and operations by name.
+                Search for schemes, work orders, and operations by name. A term that is a whole UUID also finds the
+                scheme, work order or operation with that id.
 
-                Schemes are found through a search index that trails writes. A scheme created, or renamed to match,
-                moments ago may be missing from the results until the index catches up.
+                Schemes and work orders are found through search indexes that trail writes. A scheme or work order
+                created, or renamed to match, moments ago may be missing from the results until the index catches up.
             operationId: ListSearchResults
             parameters:
                 - $ref: '#/components/parameters/search_results_include'
@@ -86483,10 +86563,11 @@ paths:
                 Search across schemes, work orders, and operations that have been shared with
                 the supplied organisation(s) via scheme-shares. Mirrors `/v3/search` but only
                 returns resources reachable via a scheme-share — direct organisation-owned
-                resources are excluded.
+                resources are excluded. A term that is a whole UUID also finds the shared scheme, work order or
+                operation with that id.
 
-                Schemes are found through a search index that trails writes. A scheme created, or renamed to match,
-                moments ago may be missing from the results until the index catches up.
+                Schemes and work orders are found through search indexes that trail writes. A scheme or work order
+                created, or renamed to match, moments ago may be missing from the results until the index catches up.
 
                 The organisation(s) to look up shares for are supplied via the standard
                 `filter` parameter using the `organisation` key — e.g.
@@ -87525,6 +87606,8 @@ paths:
                     $ref: '#/components/responses/BadRequest'
                 "401":
                     $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
                 "500":
                     $ref: '#/components/responses/InternalServerError'
             security:
@@ -87577,6 +87660,8 @@ paths:
                     $ref: '#/components/responses/BadRequest'
                 "401":
                     $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
                 "500":
                     $ref: '#/components/responses/InternalServerError'
             security:
@@ -87639,9 +87724,6 @@ paths:
                 - Cookie: []
             tags:
                 - Geo
-            x-ctrl-hub:
-                domain: geo
-                manual: true
             x-mint:
                 metadata:
                     title: Search for streets
@@ -91440,7 +91522,12 @@ paths:
                     title: Get information about the currently authenticated principal
     /v3/work-orders:
         get:
-            description: List all of the users work orders.
+            description: |
+                List all of the users work orders.
+
+                A `contains(name,xxx)` filter is answered from a search index that trails writes by a short time: a
+                work order created or renamed moments ago may be missing from the list and from `meta.pagination`
+                until the index catches up.
             operationId: ListWorkOrders
             parameters:
                 - $ref: '#/components/parameters/work_orders_include'
