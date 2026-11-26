@@ -71828,7 +71828,7 @@ paths:
                     title: Create an equipment certificate
     /v3/equipment-certificates/{equipment_certificate_id}:
         delete:
-            description: Soft delete an equipment certificate.
+            description: 'Soft delete an equipment certificate. A 409 is returned, and nothing is saved, when the certificate has changed since it was read: with `CH.015.162` when it was moved to another item, and with `CH.015.163` when anything else on it changed. Read it again and retry.'
             operationId: DeleteEquipmentCertificate
             parameters:
                 - $ref: '#/components/parameters/equipment_certificate_id'
@@ -71841,6 +71841,8 @@ paths:
                     $ref: '#/components/responses/Unauthorised'
                 "404":
                     $ref: '#/components/responses/NotFound'
+                "409":
+                    $ref: '#/components/responses/Conflict'
                 "500":
                     $ref: '#/components/responses/InternalServerError'
             security:
@@ -71884,7 +71886,7 @@ paths:
                 metadata:
                     title: Get an equipment certificate
         put:
-            description: Replace an equipment certificate. The expiry is re-derived from the performed date plus the certification's renewal period.
+            description: 'Replace an equipment certificate. The expiry is re-derived from the performed date plus the certification''s renewal period. A 409 is returned, and nothing is saved, when the certificate has changed since it was read: with `CH.015.162` when it was moved to another item, and with `CH.015.163` when anything else on it changed. Read it again and retry.'
             operationId: UpdateEquipmentCertificate
             parameters:
                 - $ref: '#/components/parameters/equipment_certificate_id'
@@ -72178,7 +72180,7 @@ paths:
                 metadata:
                     title: Get an equipment item
         put:
-            description: 'Replace an equipment item. The full resource representation must be supplied; any optional relationship omitted from the body (such as vehicle) is cleared. business_area is required and must always be supplied; send `data: null` to clear it.'
+            description: 'Replace an equipment item. The full resource representation must be supplied; any optional relationship omitted from the body (such as vehicle) is cleared. business_area is required and must always be supplied; send `data: null` to clear it. A 409 is returned, and nothing is saved, when the item has changed since it was read: with `CH.015.157` when its allocation changed, and with `CH.015.161` when anything else did. Read it again and retry.'
             operationId: UpdateEquipmentItem
             parameters:
                 - $ref: '#/components/parameters/equipment_item_id'
@@ -72655,7 +72657,7 @@ paths:
                 - Equipment
     /v3/equipment-items/{equipment_item_id}/relationships/certificates:
         delete:
-            description: Detach one or more certificates from an equipment item. Because an equipment certificate cannot exist without an item, detaching a certificate deletes it.
+            description: Detach one or more certificates from an equipment item. Because an equipment certificate cannot exist without an item, detaching a certificate deletes it. Certificates are deleted one at a time, in the order given, so an error part way through leaves those before it deleted. A 409 is returned when a certificate has changed since it was read, with `CH.015.162` when it was moved to another item and `CH.015.163` when anything else on it changed, and that certificate is not deleted; read the item's certificates again and retry with those still on it.
             operationId: DetachEquipmentItemCertificates
             parameters:
                 - $ref: '#/components/parameters/equipment_item_id'
@@ -72670,6 +72672,8 @@ paths:
                     $ref: '#/components/responses/Unauthorised'
                 "404":
                     $ref: '#/components/responses/NotFound'
+                "409":
+                    $ref: '#/components/responses/Conflict'
                 "500":
                     $ref: '#/components/responses/InternalServerError'
             security:
@@ -72680,7 +72684,7 @@ paths:
             tags:
                 - Equipment
         post:
-            description: Attach one or more existing equipment certificates to an equipment item, re-pointing each certificate to this item. Certificates must belong to the same organisation.
+            description: Attach one or more existing equipment certificates to an equipment item, re-pointing each certificate to this item. Certificates must belong to the same organisation. Certificates are attached one at a time, in the order given, so an error part way through leaves those before it attached. A 409 is returned when a certificate has changed since it was read, with `CH.015.162` when it was moved to another item and `CH.015.163` when anything else on it changed, and that certificate is left where it is; read the certificates again and retry.
             operationId: AttachEquipmentItemCertificates
             parameters:
                 - $ref: '#/components/parameters/equipment_item_id'
@@ -72695,6 +72699,8 @@ paths:
                     $ref: '#/components/responses/Unauthorised'
                 "404":
                     $ref: '#/components/responses/NotFound'
+                "409":
+                    $ref: '#/components/responses/Conflict'
                 "500":
                     $ref: '#/components/responses/InternalServerError'
             security:
@@ -86135,9 +86141,12 @@ paths:
                 - $ref: '#/components/parameters/page'
                 - $ref: '#/components/parameters/scheme_shares_include'
                 - $ref: '#/components/parameters/scheme_shares_filter'
+                - $ref: '#/components/parameters/if_none_match'
             responses:
                 "200":
                     $ref: '#/components/responses/ListSchemeShares'
+                "304":
+                    $ref: '#/components/responses/NotModified'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -88411,7 +88420,8 @@ paths:
                 the user there. With it, the caller needs permission to update users across
                 the named organisation, and the user must be a member of it; a user who is not
                 returns 404 Not Found. A permission limited to some users, such as every
-                member's permission on their own record, is refused with 401.
+                member's permission on their own record, is not enough. Either way, a caller
+                without the permission is refused with 401 Unauthorized.
 
                 The server chooses which email to send. A user managed by the acting
                 organisation who has never set a password (`password_set_at` is null) is sent
@@ -88436,8 +88446,6 @@ paths:
                     $ref: '#/components/responses/BadRequest'
                 "401":
                     $ref: '#/components/responses/Unauthorised'
-                "403":
-                    $ref: '#/components/responses/Forbidden'
                 "404":
                     $ref: '#/components/responses/NotFound'
                 "409":
