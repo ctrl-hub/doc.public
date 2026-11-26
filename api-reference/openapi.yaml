@@ -24414,11 +24414,13 @@ components:
                         schemes: "#/components/schemas/Scheme"
                         work-orders: "#/components/schemas/WorkOrder"
                         operations: "#/components/schemas/Operation"
+                        meters: "#/components/schemas/Meter"
                         organisations: "#/components/schemas/Organisation"
                 oneOf:
                     - $ref: '#/components/schemas/Scheme'
                     - $ref: '#/components/schemas/WorkOrder'
                     - $ref: '#/components/schemas/Operation'
+                    - $ref: '#/components/schemas/Meter'
                     - $ref: '#/components/schemas/Organisation'
         SearchResultAttributes:
             type: object
@@ -24428,7 +24430,10 @@ components:
             properties:
                 fields:
                     type: array
-                    description: The fields that matched the search query. `id` is given when the term is the resource's id.
+                    description: |
+                        The fields that matched the search query. `id` is given when the term is the resource's id.
+                        A meter has no name: `supply_identifier` and `serial_number` say which of them contains the term.
+                        A meter can match on `id` and on either of them at once.
                     items:
                         type: string
                         enum:
@@ -24436,19 +24441,23 @@ components:
                             - code
                             - description
                             - id
+                            - supply_identifier
+                            - serial_number
                     examples:
                         - ["name", "description"]
+                        - ["supply_identifier"]
         SearchResultRelationships:
             type: object
             description: |
                 Relationships for a search result. `organisation` always links the organisation that owns the
-                resource. Of `scheme`, `work_order` and `operation`, exactly one links the resource found, and the
-                other two are written with `data: null`.
+                resource. Of `scheme`, `work_order`, `operation` and `meter`, exactly one links the resource found, and
+                the other three are written with `data: null`.
             required:
                 - organisation
                 - scheme
                 - work_order
                 - operation
+                - meter
             properties:
                 organisation:
                     type: object
@@ -24483,6 +24492,15 @@ components:
                         data:
                             oneOf:
                                 - $ref: '#/components/schemas/OperationRelationship'
+                                - type: "null"
+                meter:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            oneOf:
+                                - $ref: '#/components/schemas/MeterRelationship'
                                 - type: "null"
         SecuritySettingsImpact:
             type: object
@@ -36910,6 +36928,10 @@ components:
                     $ref: '#/components/headers/content-length'
                 X-Request-ID:
                     $ref: '#/components/headers/x-request-id'
+                ETag:
+                    $ref: '#/components/headers/etag'
+                Cache-Control:
+                    $ref: '#/components/headers/cache-control'
             content:
                 application/vnd.api+json:
                     schema:
@@ -42965,9 +42987,10 @@ components:
                 - `uprn`: Filter by UPRN
                 - `location`: Filter by location ID
                 - `psrs`: Filter by PSR ID
-                - `supply_identifier`: Filter by meter supply identifier. `contains(supply_identifier,xxx)` may be answered from a search index, when it is available, the request has no `sort`, the `contains` is not inside an `or(...)` group, and the filter holds a word of at least 3 characters that does not match a very large number of meters. A meter created, or edited to match, moments ago may then be missing from the list and its total until the index catches up. The two ways of answering can return rows in a different order
+                - `scheme`: Filter by the ID of a scheme the meter is on, such as `in(scheme,[<id1>,<id2>])`. A meter is on the schemes of its own organisation whose properties or locations include its property or location. The caller's own grants still apply
+                - `supply_identifier`: Filter by meter supply identifier. `contains(supply_identifier,xxx)` may be answered from a search index, when it is available, the request has no `sort`, and the filter holds a word of at least 3 characters that does not match a very large number of meters. The `contains` may be inside an `or(...)` group, but only when every term of the group is a `contains` on `supply_identifier` or `serial_number` with such a word, as in `or(contains(supply_identifier,xxx),contains(serial_number,xxx))`. A meter created, or edited to match, moments ago may then be missing from the list and its total until the index catches up. The two ways of answering can return rows in a different order
                 - `supply_type`: Filter by supply type
-                - `serial_number`: Filter by meter serial number. `contains(serial_number,xxx)` may be answered from the same search index, under the same conditions (no `sort`, no `or(...)` group, a word of at least 3 characters), and has the same lag and ordering
+                - `serial_number`: Filter by meter serial number. `contains(serial_number,xxx)` may be answered from the same search index, under the same conditions (no `sort`, a word of at least 3 characters, and an `or(...)` group only as described above), and has the same lag and ordering
                 - `extra_info.display_name`: Filter by display name
                 - `extra_info.field`: Filter by extra info field
                 - `extra_info.value`: Filter by extra info value
@@ -45310,6 +45333,7 @@ components:
                         - scheme
                         - work_order
                         - operation
+                        - meter
                         - organisation
         search_filter:
             name: filter
@@ -45319,8 +45343,8 @@ components:
 
                 Available filters:
 
-                - `term`: Required, with `contains`. Finds resources whose name contains the value, such as `contains(term,cabling)`. A value that is a whole UUID, in any letter case, also finds the resource with that id. Without it, the search returns nothing.
-                - `resource`: The kinds of resource to search, `schemes`, `work-orders` or `operations`, with `eq` or `in`. All three are searched when it is left out.
+                - `term`: Required, with `contains`. Finds resources whose name contains the value, such as `contains(term,cabling)`, and meters whose supply identifier or serial number contains it. A value that is a whole UUID, in any letter case, also finds the scheme, work order, operation or meter with that id. Without it, the search returns nothing.
+                - `resource`: The kinds of resource to search, `schemes`, `work-orders`, `operations` or `meters`, with `eq` or `in`. All four are searched when it is left out.
                 - `id`: Passed on to each kind's search, such as `not(in(id,<id>))` to leave out the resource being viewed.
                 - `organisation`: With `eq` or `in`. On `/v3/search`, limits the results to those organisations. On `/v3/shared-search`, names the organisations the work is shared with, and is required.
 
@@ -71828,7 +71852,7 @@ paths:
                     title: Create an equipment certificate
     /v3/equipment-certificates/{equipment_certificate_id}:
         delete:
-            description: Soft delete an equipment certificate.
+            description: 'Soft delete an equipment certificate. A 409 is returned, and nothing is saved, when the certificate has changed since it was read: with `CH.015.162` when it was moved to another item, and with `CH.015.163` when anything else on it changed. Read it again and retry.'
             operationId: DeleteEquipmentCertificate
             parameters:
                 - $ref: '#/components/parameters/equipment_certificate_id'
@@ -71841,6 +71865,8 @@ paths:
                     $ref: '#/components/responses/Unauthorised'
                 "404":
                     $ref: '#/components/responses/NotFound'
+                "409":
+                    $ref: '#/components/responses/Conflict'
                 "500":
                     $ref: '#/components/responses/InternalServerError'
             security:
@@ -71884,7 +71910,7 @@ paths:
                 metadata:
                     title: Get an equipment certificate
         put:
-            description: Replace an equipment certificate. The expiry is re-derived from the performed date plus the certification's renewal period.
+            description: 'Replace an equipment certificate. The expiry is re-derived from the performed date plus the certification''s renewal period. A 409 is returned, and nothing is saved, when the certificate has changed since it was read: with `CH.015.162` when it was moved to another item, and with `CH.015.163` when anything else on it changed. Read it again and retry.'
             operationId: UpdateEquipmentCertificate
             parameters:
                 - $ref: '#/components/parameters/equipment_certificate_id'
@@ -72178,7 +72204,7 @@ paths:
                 metadata:
                     title: Get an equipment item
         put:
-            description: 'Replace an equipment item. The full resource representation must be supplied; any optional relationship omitted from the body (such as vehicle) is cleared. business_area is required and must always be supplied; send `data: null` to clear it.'
+            description: 'Replace an equipment item. The full resource representation must be supplied; any optional relationship omitted from the body (such as vehicle) is cleared. business_area is required and must always be supplied; send `data: null` to clear it. A 409 is returned, and nothing is saved, when the item has changed since it was read: with `CH.015.157` when its allocation changed, and with `CH.015.161` when anything else did. Read it again and retry.'
             operationId: UpdateEquipmentItem
             parameters:
                 - $ref: '#/components/parameters/equipment_item_id'
@@ -72655,7 +72681,7 @@ paths:
                 - Equipment
     /v3/equipment-items/{equipment_item_id}/relationships/certificates:
         delete:
-            description: Detach one or more certificates from an equipment item. Because an equipment certificate cannot exist without an item, detaching a certificate deletes it.
+            description: Detach one or more certificates from an equipment item. Because an equipment certificate cannot exist without an item, detaching a certificate deletes it. Certificates are deleted one at a time, in the order given, so an error part way through leaves those before it deleted. A 409 is returned when a certificate has changed since it was read, with `CH.015.162` when it was moved to another item and `CH.015.163` when anything else on it changed, and that certificate is not deleted; read the item's certificates again and retry with those still on it.
             operationId: DetachEquipmentItemCertificates
             parameters:
                 - $ref: '#/components/parameters/equipment_item_id'
@@ -72670,6 +72696,8 @@ paths:
                     $ref: '#/components/responses/Unauthorised'
                 "404":
                     $ref: '#/components/responses/NotFound'
+                "409":
+                    $ref: '#/components/responses/Conflict'
                 "500":
                     $ref: '#/components/responses/InternalServerError'
             security:
@@ -72680,7 +72708,7 @@ paths:
             tags:
                 - Equipment
         post:
-            description: Attach one or more existing equipment certificates to an equipment item, re-pointing each certificate to this item. Certificates must belong to the same organisation.
+            description: Attach one or more existing equipment certificates to an equipment item, re-pointing each certificate to this item. Certificates must belong to the same organisation. Certificates are attached one at a time, in the order given, so an error part way through leaves those before it attached. A 409 is returned when a certificate has changed since it was read, with `CH.015.162` when it was moved to another item and `CH.015.163` when anything else on it changed, and that certificate is left where it is; read the certificates again and retry.
             operationId: AttachEquipmentItemCertificates
             parameters:
                 - $ref: '#/components/parameters/equipment_item_id'
@@ -72695,6 +72723,8 @@ paths:
                     $ref: '#/components/responses/Unauthorised'
                 "404":
                     $ref: '#/components/responses/NotFound'
+                "409":
+                    $ref: '#/components/responses/Conflict'
                 "500":
                     $ref: '#/components/responses/InternalServerError'
             security:
@@ -86135,9 +86165,12 @@ paths:
                 - $ref: '#/components/parameters/page'
                 - $ref: '#/components/parameters/scheme_shares_include'
                 - $ref: '#/components/parameters/scheme_shares_filter'
+                - $ref: '#/components/parameters/if_none_match'
             responses:
                 "200":
                     $ref: '#/components/responses/ListSchemeShares'
+                "304":
+                    $ref: '#/components/responses/NotModified'
                 "400":
                     $ref: '#/components/responses/BadRequest'
                 "401":
@@ -86455,11 +86488,13 @@ paths:
     /v3/search:
         get:
             description: |
-                Search for schemes, work orders, and operations by name. A term that is a whole UUID also finds the
-                scheme, work order or operation with that id.
+                Search for schemes, work orders, and operations by name, and for meters by supply identifier (an
+                MPRN, MPAN or SPID) or serial number. A term that is a whole UUID also finds the scheme, work order,
+                operation or meter with that id. Up to 10 results of each kind are returned.
 
-                Schemes and work orders are found through search indexes that trail writes. A scheme or work order
-                created, or renamed to match, moments ago may be missing from the results until the index catches up.
+                Schemes, work orders and meters are found through search indexes that trail writes. A scheme, work
+                order or meter created, or renamed to match, moments ago may be missing from the results until the
+                index catches up. Only the meters the caller may view are returned.
             operationId: ListSearchResults
             parameters:
                 - $ref: '#/components/parameters/search_results_include'
@@ -86573,14 +86608,15 @@ paths:
     /v3/shared-search:
         get:
             description: |
-                Search across schemes, work orders, and operations that have been shared with
+                Search across schemes, work orders, operations and meters that have been shared with
                 the supplied organisation(s) via scheme-shares. Mirrors `/v3/search` but only
                 returns resources reachable via a scheme-share — direct organisation-owned
-                resources are excluded. A term that is a whole UUID also finds the shared scheme, work order or
-                operation with that id.
+                resources are excluded. A term that is a whole UUID also finds the shared scheme, work order,
+                operation or meter with that id.
 
-                Schemes and work orders are found through search indexes that trail writes. A scheme or work order
-                created, or renamed to match, moments ago may be missing from the results until the index catches up.
+                Schemes, work orders and meters are found through search indexes that trail writes. A scheme, work
+                order or meter created, or renamed to match, moments ago may be missing from the results until the
+                index catches up.
 
                 The organisation(s) to look up shares for are supplied via the standard
                 `filter` parameter using the `organisation` key — e.g.
@@ -88411,7 +88447,8 @@ paths:
                 the user there. With it, the caller needs permission to update users across
                 the named organisation, and the user must be a member of it; a user who is not
                 returns 404 Not Found. A permission limited to some users, such as every
-                member's permission on their own record, is refused with 401.
+                member's permission on their own record, is not enough. Either way, a caller
+                without the permission is refused with 401 Unauthorized.
 
                 The server chooses which email to send. A user managed by the acting
                 organisation who has never set a password (`password_set_at` is null) is sent
@@ -88436,8 +88473,6 @@ paths:
                     $ref: '#/components/responses/BadRequest'
                 "401":
                     $ref: '#/components/responses/Unauthorised'
-                "403":
-                    $ref: '#/components/responses/Forbidden'
                 "404":
                     $ref: '#/components/responses/NotFound'
                 "409":
