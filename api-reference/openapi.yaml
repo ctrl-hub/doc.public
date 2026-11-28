@@ -2929,6 +2929,7 @@ components:
             required:
                 - v3
                 - status
+                - kind
             properties:
                 created_at:
                     type: string
@@ -2956,6 +2957,16 @@ components:
                     description: The current status of the organisation.
                     examples:
                         - active
+                kind:
+                    type: string
+                    enum:
+                        - standard
+                        - demo
+                    description: |
+                        Whether the organisation is a customer's (`standard`) or part of a demo world (`demo`). A demo organisation holds
+                        only fictional data. Only Ctrl Hub staff can create one, and an organisation's kind never changes.
+                    examples:
+                        - standard
         OrganisationRelationships:
             type: object
             description: Relationships for an organisation
@@ -11598,6 +11609,10 @@ components:
             description: Attributes for a vehicle
             required:
                 - registration
+                - vin
+                - description
+                - colour
+                - status
             properties:
                 vin:
                     type:
@@ -11633,6 +11648,8 @@ components:
             required:
                 - created_at
                 - updated_at
+                - last_odometer_reading
+                - dvla
             properties:
                 created_at:
                     type: string
@@ -11657,9 +11674,16 @@ components:
                         equipment:
                             type: integer
                             description: Number of equipment items currently assigned.
+                        pre_allocations:
+                            type: integer
+                            description: Number of pre-allocations planned for the vehicle.
                 mot:
                     type: object
                     description: Rolled-up MOT status.
+                    required:
+                        - is_valid
+                        - expires_at
+                        - due_at
                     properties:
                         is_valid:
                             type:
@@ -11694,6 +11718,9 @@ components:
                             description: Number of MOT records on file.
                         last:
                             type: object
+                            required:
+                                - at
+                                - id
                             properties:
                                 at:
                                     type:
@@ -11708,6 +11735,10 @@ components:
                 tax:
                     type: object
                     description: Rolled-up tax status.
+                    required:
+                        - is_valid
+                        - expires_at
+                        - due
                     properties:
                         is_valid:
                             type:
@@ -11745,6 +11776,9 @@ components:
                                     type: integer
                                 last:
                                     type: object
+                                    required:
+                                        - at
+                                        - id
                                     properties:
                                         at:
                                             type:
@@ -11763,6 +11797,9 @@ components:
                                     type: integer
                                 last:
                                     type: object
+                                    required:
+                                        - at
+                                        - id
                                     properties:
                                         at:
                                             type:
@@ -11779,11 +11816,18 @@ components:
                         - "object"
                         - "null"
                     description: The full DVLA VES + MOT payload as last seen.
+                    required:
+                        - mot
+                        - ves
                     properties:
                         mot:
                             type:
                                 - "object"
                                 - "null"
+                            required:
+                                - exists
+                                - last_sync
+                                - data
                             properties:
                                 exists:
                                     type: boolean
@@ -11798,6 +11842,10 @@ components:
                             type:
                                 - "object"
                                 - "null"
+                            required:
+                                - exists
+                                - last_sync
+                                - data
                             properties:
                                 exists:
                                     type: boolean
@@ -11813,6 +11861,7 @@ components:
             description: Relationships for a vehicle
             required:
                 - organisation
+                - specification
             properties:
                 organisation:
                     type: object
@@ -11827,7 +11876,9 @@ components:
                         - data
                     properties:
                         data:
-                            $ref: '#/components/schemas/VehicleSpecificationRelationship'
+                            oneOf:
+                                - $ref: '#/components/schemas/VehicleSpecificationRelationship'
+                                - type: "null"
                 equipment:
                     type: object
                     required:
@@ -11917,6 +11968,17 @@ components:
                 - "object"
                 - "null"
             description: DVLA MOT history summary.
+            required:
+                - make
+                - model
+                - first_used
+                - fuel_type
+                - colour
+                - registration_date
+                - manufacture_date
+                - engine_size
+                - has_outstanding_recall
+                - mot_test_due_date
             properties:
                 make:
                     type:
@@ -11969,6 +12031,26 @@ components:
                 - "object"
                 - "null"
             description: DVLA Vehicle Enquiry Service (VES) data.
+            required:
+                - art_end_date
+                - co2_emissions
+                - colour
+                - date_of_last_v5c_issued
+                - engine_capacity
+                - euro_status
+                - fuel_type
+                - make
+                - marked_for_export
+                - month_of_first_registration
+                - mot_status
+                - real_driving_emissions
+                - registration_number
+                - revenue_weight
+                - tax_due_date
+                - tax_status
+                - type_approval
+                - wheelplan
+                - year_of_manufacture
             properties:
                 art_end_date:
                     type:
@@ -15936,6 +16018,8 @@ components:
                 - subject
                 - recorded_by
                 - havs_equipment
+                - operation
+                - work_order
             properties:
                 organisation:
                     type: object
@@ -15969,6 +16053,26 @@ components:
                     properties:
                         data:
                             $ref: '#/components/schemas/HavsEquipmentRelationship'
+                operation:
+                    type: object
+                    description: The operation the exposure was done on, or null. An exposure is linked to an operation or a work order, never both.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            oneOf:
+                                - $ref: '#/components/schemas/OperationRelationship'
+                                - type: "null"
+                work_order:
+                    type: object
+                    description: The work order the exposure was done on, or null. An exposure is linked to an operation or a work order, never both.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            oneOf:
+                                - $ref: '#/components/schemas/WorkOrderRelationship'
+                                - type: "null"
         HavsExposurePPE:
             type: object
             description: The safety equipment worn during the exposure. mask and ear_defenders are required. anti_vibration_gloves and eye_protection are optional. A create stores one left out as false, and an update keeps the stored answer. Every read returns all four. A record stored before anti_vibration_gloves and eye_protection were added also reads false for both, because those questions were never asked.
@@ -17479,6 +17583,7 @@ components:
                         - expires_at
                         - staff
                         - person
+                        - demo
                     properties:
                         reason:
                             type: string
@@ -17517,6 +17622,11 @@ components:
                         ended_by:
                             $ref: '#/components/schemas/ImpersonationParty'
                             description: The user who ended the session. Absent while it is open, and when a job ended it.
+                        demo:
+                            type: boolean
+                            description: |
+                                Whether the session presents a persona in a demo world, started with
+                                `POST /v3/users/{user_id}/demo-sessions`. Its person belongs only to demo organisations.
                         changes_allowed:
                             type: boolean
                             description: |
@@ -19008,6 +19118,9 @@ components:
                 - medical_dependency
                 - on_ecr
                 - animals
+                - cancelled_at
+                - cancelled_by
+                - cancellation_reason
             properties:
                 start_time:
                     type: string
@@ -19049,6 +19162,7 @@ components:
                     type:
                         - string
                         - "null"
+                    x-omitempty: false
                     format: date-time
                     description: Time the appointment was cancelled. Null for non-cancelled appointments.
                     readOnly: true
@@ -19056,6 +19170,7 @@ components:
                     type:
                         - string
                         - "null"
+                    x-omitempty: false
                     format: uuid
                     description: ID of the user who cancelled the appointment. Null for non-cancelled appointments.
                     readOnly: true
@@ -19063,7 +19178,8 @@ components:
                     type:
                         - string
                         - "null"
-                    description: Optional reason captured when the appointment was cancelled.
+                    x-omitempty: false
+                    description: Optional reason captured when the appointment was cancelled. Null when none was given, or the appointment is not cancelled.
                     readOnly: true
         CustomerAppointmentMeta:
             type: object
@@ -19399,6 +19515,204 @@ components:
                     properties:
                         data:
                             $ref: '#/components/schemas/UserRelationship'
+        ExposureRollup:
+            type: object
+            description: |
+                The exposure recorded on one scheme, work order or operation, and everything beneath it, over a window of
+                Europe/London days, computed when asked for. An exposure counts towards the job it is linked to and every node
+                above it. A work order or operation that has been deleted is left out.
+            required:
+                - id
+                - type
+                - attributes
+                - relationships
+            properties:
+                id:
+                    type: string
+                    description: |
+                        The node's type and id, the exposure type and the window's first and last days, joined by colons. Clients
+                        should read the attributes and `node` rather than parse the id.
+                    example: schemes:3d4e5f6a-7b8c-4d9e-8f0a-1b2c3d4e5f6a:havs:2026-11-01:2026-11-30
+                type:
+                    type: string
+                    const: exposure-rollups
+                attributes:
+                    $ref: '#/components/schemas/ExposureRollupAttributes'
+                relationships:
+                    $ref: '#/components/schemas/ExposureRollupRelationships'
+        ExposureRollupAttributes:
+            type: object
+            description: Attributes of an exposure rollup
+            required:
+                - exposure_type
+                - unit
+                - first
+                - last
+                - total
+                - people
+                - breaches
+                - near_limits
+                - weekly_breaches
+                - weekly_near_limits
+                - days
+            properties:
+                exposure_type:
+                    $ref: '#/components/schemas/ExposureType'
+                unit:
+                    type: string
+                    description: The unit the totals and limits are in, such as `points` for HAVS.
+                    examples:
+                        - points
+                first:
+                    type: string
+                    format: date
+                    description: The window's first Europe/London day.
+                last:
+                    type: string
+                    format: date
+                    description: The window's last Europe/London day.
+                total:
+                    type: number
+                    format: double
+                    description: The total recorded on the node in the window, from everyone's records.
+                    examples:
+                        - 1830
+                people:
+                    type: integer
+                    description: The number of people with records on the node in the window, everyone included.
+                    examples:
+                        - 12
+                breaches:
+                    type: integer
+                    description: |
+                        The number of person-days with records on the node whose day reached the person's daily red, everyone
+                        included. A person-day counts only when the person recorded exposure on the node that day, so a person over
+                        their limit on three days adds three.
+                    examples:
+                        - 1
+                near_limits:
+                    type: integer
+                    description: The number of person-days with records on the node whose day reached the person's daily amber but not red, everyone included.
+                    examples:
+                        - 3
+                weekly_breaches:
+                    type: integer
+                    description: |
+                        The number of person-days with records on the node whose rolling 7 days reached the person's weekly red,
+                        everyone included. A week that stays red adds a breach only on a day the person records more exposure on the
+                        node, not on the days between.
+                    examples:
+                        - 0
+                weekly_near_limits:
+                    type: integer
+                    description: The number of person-days with records on the node whose rolling 7 days reached the person's weekly amber but not red, everyone included.
+                    examples:
+                        - 2
+                days:
+                    type: array
+                    description: |
+                        Each day with records on the node of each person the caller holds `exposure-limits:view` on, newest first,
+                        then by person. A person the caller's grants do not reach counts in the totals above but has no row here.
+                        A day's band counts the person's records in every organisation and job, and `job_total` is the node's share.
+                    items:
+                        $ref: '#/components/schemas/ExposureRollupDay'
+        ExposureRollupRelationships:
+            type: object
+            description: Relationships for an exposure rollup
+            required:
+                - node
+            properties:
+                node:
+                    type: object
+                    description: The scheme, work order or operation the rollup is for.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            type: object
+                            required:
+                                - type
+                                - id
+                            properties:
+                                type:
+                                    type: string
+                                    enum:
+                                        - schemes
+                                        - work-orders
+                                        - operations
+                                id:
+                                    type: string
+                                    format: uuid
+        ExposureRollupDay:
+            description: One person's day on an exposure rollup's node.
+            type: object
+            required:
+                - subject
+                - date
+                - total
+                - job_total
+                - band
+                - weekly_total
+                - weekly_band
+                - amber
+                - red
+                - weekly_amber
+                - weekly_red
+            properties:
+                subject:
+                    type: string
+                    format: uuid
+                    description: The person's user id.
+                date:
+                    type: string
+                    format: date
+                    description: The Europe/London calendar day. A record counts towards the day it starts on.
+                total:
+                    type: number
+                    format: double
+                    description: The person's total that day, from their records in every organisation.
+                    examples:
+                        - 450
+                job_total:
+                    type: number
+                    format: double
+                    description: The part of `total` recorded on the node or beneath it.
+                    examples:
+                        - 300
+                band:
+                    $ref: '#/components/schemas/ExposureBand'
+                weekly_total:
+                    type: number
+                    format: double
+                    description: The person's total over the rolling 7 days ending on `date`, from their records in every organisation.
+                    examples:
+                        - 1240
+                weekly_band:
+                    $ref: '#/components/schemas/ExposureBand'
+                amber:
+                    type: number
+                    format: double
+                    description: The daily action value in force that day.
+                    examples:
+                        - 100
+                red:
+                    type: number
+                    format: double
+                    description: The daily limit value in force that day.
+                    examples:
+                        - 400
+                weekly_amber:
+                    type: number
+                    format: double
+                    description: The action value over the rolling 7 days ending on `date`.
+                    examples:
+                        - 500
+                weekly_red:
+                    type: number
+                    format: double
+                    description: The limit value over the rolling 7 days ending on `date`.
+                    examples:
+                        - 2000
         ExposureSummary:
             type: object
             description: |
@@ -26199,6 +26513,12 @@ components:
             description: Attributes for a vehicle certification
             required:
                 - name
+                - code
+                - description
+                - renewal_period
+                - high_risk_duration
+                - medium_risk_duration
+                - low_risk_duration
             properties:
                 name:
                     type: string
@@ -26310,6 +26630,11 @@ components:
         VehicleCertificateAttributes:
             type: object
             description: Attributes for a vehicle certificate
+            required:
+                - certificate_number
+                - issuing_body
+                - issued_at
+                - expires_at
             properties:
                 certificate_number:
                     type:
@@ -26372,6 +26697,9 @@ components:
                 - organisation
                 - vehicle
                 - vehicle_certification
+                - renews
+                - renewed_by
+                - folder
             properties:
                 organisation:
                     type: object
@@ -26400,21 +26728,65 @@ components:
                         - data
                     properties:
                         data:
-                            $ref: '#/components/schemas/VehicleCertificateRelationship'
+                            oneOf:
+                                - $ref: '#/components/schemas/VehicleCertificateRelationship'
+                                - type: "null"
                 renewed_by:
                     type: object
                     required:
                         - data
                     properties:
                         data:
-                            $ref: '#/components/schemas/VehicleCertificateRelationship'
+                            oneOf:
+                                - $ref: '#/components/schemas/VehicleCertificateRelationship'
+                                - type: "null"
                 folder:
                     type: object
                     required:
                         - data
                     properties:
                         data:
-                            $ref: '#/components/schemas/FolderRelationship'
+                            oneOf:
+                                - $ref: '#/components/schemas/FolderRelationship'
+                                - type: "null"
+        VehicleCertificateInputAttributes:
+            type: object
+            description: >-
+                The attributes a client sends to create or update a vehicle certificate. A request may leave out any attribute this schema does not require. VehicleCertificateAttributes, the attributes the API answers with, requires every attribute the API always writes.
+            properties:
+                certificate_number:
+                    type:
+                        - "string"
+                        - "null"
+                    description: The reference number printed on the certificate.
+                issuing_body:
+                    type:
+                        - "string"
+                        - "null"
+                    description: The authority that issued the certificate.
+                issued_at:
+                    type:
+                        - "string"
+                        - "null"
+                    format: date-time
+                    description: When the certificate was issued.
+                expires_at:
+                    type:
+                        - "string"
+                        - "null"
+                    format: date-time
+                    description: When the certificate expires. Null means it does not expire.
+                is_latest:
+                    type: boolean
+                    readOnly: true
+                    description: Whether this is the current certificate in its renewal chain.
+                upload_id:
+                    type:
+                        - "string"
+                        - "null"
+                    format: uuid
+                    writeOnly: true
+                    description: The ID of a previously uploaded file to attach as evidence.
         VehicleCertificationIncludes:
             type: array
             description: Related resources that can be included when a vehicle certification is returned.
@@ -26425,6 +26797,56 @@ components:
                         organisations: "#/components/schemas/Organisation"
                 oneOf:
                     - $ref: '#/components/schemas/Organisation'
+        VehicleCertificationInputAttributes:
+            type: object
+            description: >-
+                The attributes a client sends to create or update a vehicle certification. A request may leave out any attribute this schema does not require. VehicleCertificationAttributes, the attributes the API answers with, requires every attribute the API always writes.
+            required:
+                - name
+            properties:
+                name:
+                    type: string
+                    description: The name of the vehicle certification.
+                    examples:
+                        - LOLER Thorough Examination
+                code:
+                    type:
+                        - "string"
+                        - "null"
+                    description: An optional short code for the vehicle certification.
+                    examples:
+                        - LOLER
+                description:
+                    type:
+                        - "string"
+                        - "null"
+                    description: An optional description of the vehicle certification.
+                renewal_period:
+                    type:
+                        - "integer"
+                        - "null"
+                    minimum: 1
+                    description: The number of months between renewals. Null if no renewal is required.
+                    examples:
+                        - 12
+                high_risk_duration:
+                    type:
+                        - "integer"
+                        - "null"
+                    minimum: 1
+                    description: Days before a certificate's expiry at which high risk begins. Null if not configured.
+                medium_risk_duration:
+                    type:
+                        - "integer"
+                        - "null"
+                    minimum: 1
+                    description: Days before a certificate's expiry at which medium risk begins. Requires high_risk_duration to be set and must be greater than or equal to high_risk_duration.
+                low_risk_duration:
+                    type:
+                        - "integer"
+                        - "null"
+                    minimum: 1
+                    description: Days before a certificate's expiry at which low risk begins. Requires medium_risk_duration to be set and must be greater than or equal to medium_risk_duration.
         VehicleEnquiry:
             type: object
             description: A DVLA enquiry result for a vehicle registration
@@ -26432,6 +26854,8 @@ components:
                 - id
                 - type
                 - attributes
+                - meta
+                - relationships
             properties:
                 id:
                     type: string
@@ -26442,6 +26866,10 @@ components:
                     const: vehicle-enquiries
                 attributes:
                     $ref: '#/components/schemas/VehicleEnquiryAttributes'
+                meta:
+                    $ref: '#/components/schemas/VehicleEnquiryMeta'
+                relationships:
+                    $ref: '#/components/schemas/VehicleEnquiryRelationships'
         VehicleEnquiryIncludes:
             type: array
             description: Related resources that can be included when a vehicle enquiry is returned.
@@ -26455,7 +26883,16 @@ components:
         VehicleEnquiryAttributes:
             type: object
             description: Attributes for a DVLA enquiry. Carries the full VES + MOT response payload returned by the gov.uk DVLA APIs.
+            required:
+                - registration
+                - ves
+                - mot
             properties:
+                registration:
+                    type: string
+                    description: The registration number (VRM) the enquiry was made for.
+                    examples:
+                        - BX10GKJ
                 ves:
                     $ref: '#/components/schemas/VehicleDVLAVESData'
                 mot:
@@ -26465,6 +26902,32 @@ components:
                     description: Individual MOT test records returned alongside the enquiry.
                     items:
                         $ref: '#/components/schemas/VehicleMOTRecord'
+        VehicleEnquiryMeta:
+            type: object
+            description: Metadata for a DVLA enquiry.
+            required:
+                - created_at
+                - updated_at
+            properties:
+                created_at:
+                    type: string
+                    format: date-time
+                updated_at:
+                    type: string
+                    format: date-time
+        VehicleEnquiryRelationships:
+            type: object
+            description: Relationships for a DVLA enquiry
+            required:
+                - organisation
+            properties:
+                organisation:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/OrganisationRelationship'
         VehicleMOTRecord:
             type: object
             description: A DVLA MOT record for a vehicle
@@ -26491,6 +26954,12 @@ components:
         VehicleMOTRecordAttributes:
             type: object
             description: Attributes for a DVLA MOT record
+            required:
+                - completed_date
+                - expiry_date
+                - data_source
+                - result
+                - odometer
             properties:
                 completed_date:
                     type:
@@ -26519,6 +26988,10 @@ components:
                         - "object"
                         - "null"
                     description: Odometer reading at MOT time.
+                    required:
+                        - type
+                        - unit
+                        - value
                     properties:
                         type:
                             type:
@@ -26538,6 +27011,10 @@ components:
                     description: Defects identified at MOT time.
                     items:
                         type: object
+                        required:
+                            - dangerous
+                            - text
+                            - type
                         properties:
                             dangerous:
                                 type:
@@ -26565,8 +27042,16 @@ components:
             type: object
             description: Relationships for a vehicle MOT record
             required:
+                - organisation
                 - vehicle
             properties:
+                organisation:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/OrganisationRelationship'
                 vehicle:
                     type: object
                     required:
@@ -26614,6 +27099,278 @@ components:
         VehicleInspectionAttributes:
             type: object
             description: Attributes for a vehicle inspection
+            required:
+                - inspected_at
+                - checks
+                - comments
+            properties:
+                inspected_at:
+                    type: string
+                    format: date-time
+                    description: When the inspection was carried out.
+                checks:
+                    type:
+                        - "object"
+                        - "null"
+                    description: |
+                        Pass/fail/null results for each inspection check.
+                        `true` = passed, `false` = failed, `null` = not applicable.
+                    required:
+                        - visible_damage
+                        - tyres
+                        - washers_and_wipers
+                        - windscreen
+                        - number_plate
+                        - security
+                        - accessories
+                        - spare_number_plate
+                        - safe_access
+                        - reversing_alarm
+                        - beacons
+                        - chemicals_and_fuel
+                        - storage
+                        - lights_and_indicators
+                        - engine_warning_lights
+                        - servicing
+                        - levels
+                        - cleanliness
+                        - driver_checks
+                    properties:
+                        visible_damage:
+                            type:
+                                - "boolean"
+                                - "null"
+                        tyres:
+                            type:
+                                - "boolean"
+                                - "null"
+                        washers_and_wipers:
+                            type:
+                                - "boolean"
+                                - "null"
+                        windscreen:
+                            type:
+                                - "boolean"
+                                - "null"
+                        number_plate:
+                            type:
+                                - "boolean"
+                                - "null"
+                        security:
+                            type:
+                                - "boolean"
+                                - "null"
+                        accessories:
+                            type:
+                                - "boolean"
+                                - "null"
+                        spare_number_plate:
+                            type:
+                                - "boolean"
+                                - "null"
+                        safe_access:
+                            type:
+                                - "boolean"
+                                - "null"
+                        reversing_alarm:
+                            type:
+                                - "boolean"
+                                - "null"
+                        beacons:
+                            type:
+                                - "boolean"
+                                - "null"
+                        chemicals_and_fuel:
+                            type:
+                                - "boolean"
+                                - "null"
+                        storage:
+                            type:
+                                - "boolean"
+                                - "null"
+                        lights_and_indicators:
+                            type:
+                                - "boolean"
+                                - "null"
+                        engine_warning_lights:
+                            type:
+                                - "boolean"
+                                - "null"
+                        servicing:
+                            type:
+                                - "boolean"
+                                - "null"
+                        levels:
+                            type:
+                                - "boolean"
+                                - "null"
+                        cleanliness:
+                            type:
+                                - "boolean"
+                                - "null"
+                        driver_checks:
+                            type:
+                                - "boolean"
+                                - "null"
+                comments:
+                    type:
+                        - "object"
+                        - "null"
+                    description: Optional free-text comments per inspection check.
+                    required:
+                        - visible_damage
+                        - tyres
+                        - washers_and_wipers
+                        - windscreen
+                        - number_plate
+                        - security
+                        - accessories
+                        - spare_number_plate
+                        - safe_access
+                        - reversing_alarm
+                        - beacons
+                        - chemicals_and_fuel
+                        - storage
+                        - lights_and_indicators
+                        - engine_warning_lights
+                        - servicing
+                        - levels
+                        - cleanliness
+                        - driver_checks
+                    properties:
+                        visible_damage:
+                            type:
+                                - "string"
+                                - "null"
+                        tyres:
+                            type:
+                                - "string"
+                                - "null"
+                        washers_and_wipers:
+                            type:
+                                - "string"
+                                - "null"
+                        windscreen:
+                            type:
+                                - "string"
+                                - "null"
+                        number_plate:
+                            type:
+                                - "string"
+                                - "null"
+                        security:
+                            type:
+                                - "string"
+                                - "null"
+                        accessories:
+                            type:
+                                - "string"
+                                - "null"
+                        spare_number_plate:
+                            type:
+                                - "string"
+                                - "null"
+                        safe_access:
+                            type:
+                                - "string"
+                                - "null"
+                        reversing_alarm:
+                            type:
+                                - "string"
+                                - "null"
+                        beacons:
+                            type:
+                                - "string"
+                                - "null"
+                        chemicals_and_fuel:
+                            type:
+                                - "string"
+                                - "null"
+                        storage:
+                            type:
+                                - "string"
+                                - "null"
+                        lights_and_indicators:
+                            type:
+                                - "string"
+                                - "null"
+                        engine_warning_lights:
+                            type:
+                                - "string"
+                                - "null"
+                        servicing:
+                            type:
+                                - "string"
+                                - "null"
+                        levels:
+                            type:
+                                - "string"
+                                - "null"
+                        cleanliness:
+                            type:
+                                - "string"
+                                - "null"
+                        driver_checks:
+                            type:
+                                - "string"
+                                - "null"
+        VehicleInspectionMeta:
+            type: object
+            description: Metadata for a vehicle inspection. Includes counts derived from the checks payload.
+            required:
+                - created_at
+                - updated_at
+            properties:
+                created_at:
+                    type: string
+                    format: date-time
+                updated_at:
+                    type: string
+                    format: date-time
+                passed:
+                    type: integer
+                    description: Number of checks marked passed.
+                failed:
+                    type: integer
+                    description: Number of checks marked failed.
+                not_applicable:
+                    type: integer
+                    description: Number of checks left null/not applicable.
+        VehicleInspectionRelationships:
+            type: object
+            description: Relationships for a vehicle inspection
+            required:
+                - organisation
+                - vehicle
+                - author
+            properties:
+                organisation:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/OrganisationRelationship'
+                vehicle:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/VehicleRelationship'
+                author:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            oneOf:
+                                - $ref: '#/components/schemas/UserRelationship'
+                                - type: "null"
+        VehicleInspectionInputAttributes:
+            type: object
+            description: >-
+                The attributes a client sends to create or update a vehicle inspection. A request may leave out any attribute this schema does not require. VehicleInspectionAttributes, the attributes the API answers with, requires every attribute the API always writes.
             required:
                 - inspected_at
             properties:
@@ -26787,52 +27544,6 @@ components:
                             type:
                                 - "string"
                                 - "null"
-        VehicleInspectionMeta:
-            type: object
-            description: Metadata for a vehicle inspection. Includes counts derived from the checks payload.
-            required:
-                - created_at
-            properties:
-                created_at:
-                    type: string
-                    format: date-time
-                passed:
-                    type: integer
-                    description: Number of checks marked passed.
-                failed:
-                    type: integer
-                    description: Number of checks marked failed.
-                not_applicable:
-                    type: integer
-                    description: Number of checks left null/not applicable.
-        VehicleInspectionRelationships:
-            type: object
-            description: Relationships for a vehicle inspection
-            required:
-                - organisation
-                - vehicle
-            properties:
-                organisation:
-                    type: object
-                    required:
-                        - data
-                    properties:
-                        data:
-                            $ref: '#/components/schemas/OrganisationRelationship'
-                vehicle:
-                    type: object
-                    required:
-                        - data
-                    properties:
-                        data:
-                            $ref: '#/components/schemas/VehicleRelationship'
-                author:
-                    type: object
-                    required:
-                        - data
-                    properties:
-                        data:
-                            $ref: '#/components/schemas/UserRelationship'
         VehicleInventoryCheck:
             type: object
             description: A vehicle inventory check
@@ -26889,6 +27600,9 @@ components:
                         type: object
                         required:
                             - equipment_id
+                            - present
+                            - working
+                            - certified
                         properties:
                             equipment_id:
                                 type: string
@@ -26914,8 +27628,12 @@ components:
             description: Metadata for a vehicle inventory check, including a summary of present/working/certified counts.
             required:
                 - created_at
+                - updated_at
             properties:
                 created_at:
+                    type: string
+                    format: date-time
+                updated_at:
                     type: string
                     format: date-time
                 summary:
@@ -26961,6 +27679,7 @@ components:
             required:
                 - organisation
                 - vehicle
+                - author
             properties:
                 organisation:
                     type: object
@@ -26982,7 +27701,9 @@ components:
                         - data
                     properties:
                         data:
-                            $ref: '#/components/schemas/UserRelationship'
+                            oneOf:
+                                - $ref: '#/components/schemas/UserRelationship'
+                                - type: "null"
                 equipment:
                     type: object
                     required:
@@ -26992,6 +27713,44 @@ components:
                             type: array
                             items:
                                 $ref: '#/components/schemas/EquipmentItemRelationship'
+        VehicleInventoryCheckInputAttributes:
+            type: object
+            description: >-
+                The attributes a client sends to create or update a vehicle inventory check. A request may leave out any attribute this schema does not require. VehicleInventoryCheckAttributes, the attributes the API answers with, requires every attribute the API always writes.
+            required:
+                - inspected_at
+            properties:
+                inspected_at:
+                    type: string
+                    format: date-time
+                    description: When the inventory check was carried out.
+                items:
+                    type: array
+                    description: Per-equipment-item inventory results for this check.
+                    items:
+                        type: object
+                        required:
+                            - equipment_id
+                        properties:
+                            equipment_id:
+                                type: string
+                                format: uuid
+                                description: The equipment item ID.
+                            present:
+                                type:
+                                    - "boolean"
+                                    - "null"
+                                description: Whether the item was present.
+                            working:
+                                type:
+                                    - "boolean"
+                                    - "null"
+                                description: Whether the item was working.
+                            certified:
+                                type:
+                                    - "boolean"
+                                    - "null"
+                                description: Whether the item was certified.
         VehicleManufacturer:
             type: object
             description: A vehicle manufacturer
@@ -27000,7 +27759,6 @@ components:
                 - type
                 - attributes
                 - meta
-                - relationships
             properties:
                 id:
                     type: string
@@ -27013,8 +27771,6 @@ components:
                     $ref: '#/components/schemas/VehicleManufacturerAttributes'
                 meta:
                     $ref: '#/components/schemas/VehicleManufacturerMeta'
-                relationships:
-                    $ref: '#/components/schemas/VehicleManufacturerRelationships'
         VehicleManufacturerAttributes:
             type: object
             description: Attributes for a vehicle manufacturer
@@ -27039,9 +27795,6 @@ components:
                 updated_at:
                     type: string
                     format: date-time
-        VehicleManufacturerRelationships:
-            type: object
-            description: Relationships for a vehicle manufacturer (none currently exposed; models are queried via `?filter=eq(manufacturer,xxx)` on the vehicle-models endpoint).
         VehicleModel:
             type: object
             description: A vehicle model
@@ -27174,6 +27927,12 @@ components:
         VehicleSpecificationAttributes:
             type: object
             description: Attributes for a vehicle specification
+            required:
+                - year
+                - fuel_type
+                - wheelplan
+                - engine_capacity
+                - emissions
             properties:
                 year:
                     type:
@@ -27207,6 +27966,7 @@ components:
                     type:
                         - "number"
                         - "null"
+                    format: double
                     description: CO2 emissions in g/km.
                     examples:
                         - 168.0
@@ -27364,6 +28124,7 @@ components:
                 - id
                 - type
                 - attributes
+                - meta
             properties:
                 id:
                     type: string
@@ -27374,6 +28135,8 @@ components:
                     const: vehicle-pre-allocations
                 attributes:
                     $ref: '#/components/schemas/VehiclePreAllocationAttributes'
+                meta:
+                    $ref: '#/components/schemas/VehiclePreAllocationMeta'
                 relationships:
                     $ref: '#/components/schemas/VehiclePreAllocationRelationships'
         VehiclePreAllocationIncludes:
@@ -27389,6 +28152,59 @@ components:
         VehiclePreAllocationAttributes:
             type: object
             description: Attributes for a vehicle pre-allocation (a planned, deletable reservation).
+            required:
+                - target_type
+                - target_id
+                - starts_at
+            properties:
+                target_type:
+                    type: string
+                    description: The kind of target the vehicle is pre-allocated to.
+                    enum:
+                        - person
+                        - scheme
+                        - work-order
+                        - location
+                target_id:
+                    type: string
+                    format: uuid
+                    description: The identifier of the pre-allocation target.
+                starts_at:
+                    type:
+                        - "string"
+                        - "null"
+                    format: date-time
+                    description: When the pre-allocation is expected to take effect.
+        VehiclePreAllocationMeta:
+            type: object
+            description: Metadata for a vehicle pre-allocation.
+            required:
+                - created_at
+                - updated_at
+            properties:
+                created_at:
+                    type: string
+                    format: date-time
+                updated_at:
+                    type: string
+                    format: date-time
+        VehiclePreAllocationRelationships:
+            type: object
+            description: Relationships for a vehicle pre-allocation
+            required:
+                - vehicle
+            properties:
+                vehicle:
+                    type: object
+                    required:
+                        - data
+                    properties:
+                        data:
+                            $ref: '#/components/schemas/VehicleRelationship'
+        VehiclePreAllocationInputAttributes:
+            type: object
+            description: >-
+                The attributes a client sends to create or update a vehicle pre-allocation. A request may leave out any attribute this schema does not require. VehiclePreAllocationAttributes, the attributes the API answers with, requires every attribute the API always writes.
             required:
                 - target_type
                 - target_id
@@ -27411,19 +28227,6 @@ components:
                         - "null"
                     format: date-time
                     description: When the pre-allocation is expected to take effect.
-        VehiclePreAllocationRelationships:
-            type: object
-            description: Relationships for a vehicle pre-allocation
-            required:
-                - vehicle
-            properties:
-                vehicle:
-                    type: object
-                    required:
-                        - data
-                    properties:
-                        data:
-                            $ref: '#/components/schemas/VehicleRelationship'
         Verification:
             type: object
             description: |
@@ -34760,6 +35563,30 @@ components:
                               properties:
                                 data:
                                     $ref: '#/components/schemas/ExposureLimit'
+                            - $ref: '#/components/schemas/JSONAPI'
+        ListExposureRollups:
+            description: List the exposure rollup of one job node. The list always holds one rollup.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    title: The exposure rollup of the node
+                                    type: array
+                                    items:
+                                        $ref: '#/components/schemas/ExposureRollup'
+                            - $ref: '#/components/schemas/DocumentMeta'
                             - $ref: '#/components/schemas/JSONAPI'
         GetExposureSummary:
             description: Get an exposure summary, one entry per day.
@@ -42313,6 +43140,7 @@ components:
                 - `eq(subject,xxx)`: Filter HAVS exposures by the person exposed.
                 - `eq(recorded_by,xxx)`: Filter HAVS exposures by the person who recorded them.
                 - `eq(havs_equipment,xxx)`: Filter HAVS exposures by HSE Table 1 category.
+                - `eq(scheme,xxx)`, `eq(work-order,xxx)` or `eq(operation,xxx)`: Filter HAVS exposures by the job they were done on. A scheme matches exposures linked to any of its work orders or operations, and a work order those linked to it or any of its operations. Deleted work orders and operations are left out. Name one of the three, with `eq`, outside `or(...)`, or the request is refused with a 400 (CH.015.159). A scheme, work order or operation that does not exist, or is in an organisation you cannot act in, is refused with a 400 (CH.015.160).
                 - `start_time`: `ge(start_time,…)` and `le(start_time,…)` bound when exposures started.
                 - `end_time`: `ge(end_time,…)` and `le(end_time,…)` bound when exposures ended.
 
@@ -43537,6 +44365,25 @@ components:
                 type: string
                 format: date-time
             example: "2026-11-10T09:00:00Z"
+        exposure_rollups_filter:
+            name: filter
+            in: query
+            description: |
+                Names the node and the window. Required.
+
+                - `eq(scheme,xxx)`, `eq(work-order,xxx)` or `eq(operation,xxx)`: **Required.** The node, one of the three.
+                - `ge(date,YYYY-MM-DD)`: **Required.** The window's first Europe/London day.
+                - `le(date,YYYY-MM-DD)`: **Required.** The window's last day. A window spans at most 93 days.
+
+                Terms are comma separated, or wrapped in `and(...)`. An `or(...)`, a second node, text after a term, any other
+                term and a term that does not parse are refused with a 400 rather than ignored.
+
+                For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
+            required: true
+            schema:
+                type: string
+                minLength: 1
+                example: eq(scheme,3d4e5f6a-7b8c-4d9e-8f0a-1b2c3d4e5f6a),ge(date,2026-11-01),le(date,2026-11-30)
         exposure_summary_filter:
             name: filter
             in: query
@@ -45345,7 +46192,8 @@ components:
 
                 - `term`: Required, with `contains`. Finds resources whose name contains the value, such as `contains(term,cabling)`, and meters whose supply identifier or serial number contains it. A value that is a whole UUID, in any letter case, also finds the scheme, work order, operation or meter with that id. Without it, the search returns nothing.
                 - `resource`: The kinds of resource to search, `schemes`, `work-orders`, `operations` or `meters`, with `eq` or `in`. All four are searched when it is left out.
-                - `id`: Passed on to each kind's search, such as `not(in(id,<id>))` to leave out the resource being viewed.
+                - `scheme_id`, `work_order_id`, `operation_id`: Leave out the record being viewed, such as `not(in(scheme_id,<id>))`. Each applies only to the search of its own kind, so a scheme's id does not constrain the work order or operation searches.
+                - `id`: Deprecated, use the filters above. Passed on to every kind's search, such as `not(in(id,<id>))`. A kind that has its own filter in the request uses that one instead.
                 - `organisation`: With `eq` or `in`. On `/v3/search`, limits the results to those organisations. On `/v3/shared-search`, names the organisations the work is shared with, and is required.
 
                 Terms are combined with `and`. A filter with an `or(...)` returns nothing.
@@ -45972,6 +46820,20 @@ components:
                 type: string
                 format: uuid
             example: 8f3b1c6e-2a4d-4f8b-9c1e-7d5a0b2e6f49
+        vehicle_enquiries_filter:
+            name: filter
+            in: query
+            description: |
+                Filters the response data based on the value provided.
+
+                Available filters:
+
+                - `eq(id,xxx)`: Filter enquiries by ID.
+                - `eq(registration,xxx)`: Filter enquiries by the registration number they were made for.
+            required: false
+            schema:
+                type: string
+                default: ""
         vehicle_enquiry_id:
             name: vehicle_enquiry_id
             in: path
@@ -54056,6 +54918,26 @@ components:
                                                 properties:
                                                     data:
                                                         $ref: '#/components/schemas/UserRelationship'
+                                            operation:
+                                                type: object
+                                                description: Optional. The operation the exposure was done on, in the exposure's organisation. Left out, the exposure is not linked to a job. Send null data to leave it unlinked. Naming both operation and work_order with data is refused with a 400 (CH.015.158), as is an operation that does not exist or is in another organisation.
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        oneOf:
+                                                            - $ref: '#/components/schemas/OperationRelationship'
+                                                            - type: "null"
+                                            work_order:
+                                                type: object
+                                                description: Optional. The work order the exposure was done on, in the exposure's organisation. Left out, the exposure is not linked to a job. Send null data to leave it unlinked. Naming both operation and work_order with data is refused with a 400 (CH.015.158), as is a work order that does not exist or is in another organisation.
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        oneOf:
+                                                            - $ref: '#/components/schemas/WorkOrderRelationship'
+                                                            - type: "null"
         UpdateHavsExposure:
             required: true
             description: The HAVS exposure to correct.
@@ -54106,7 +54988,7 @@ components:
                                                     - type: "null"
                                     relationships:
                                         type: object
-                                        description: Optional. A different havs_equipment moves the record to that category. The subject is fixed, so any value sent must match the stored one.
+                                        description: Optional. A different havs_equipment moves the record to that category. The subject is fixed, so any value sent must match the stored one. Leaving out operation and work_order keeps the stored job link.
                                         properties:
                                             havs_equipment:
                                                 type: object
@@ -54122,6 +55004,26 @@ components:
                                                 properties:
                                                     data:
                                                         $ref: '#/components/schemas/UserRelationship'
+                                            operation:
+                                                type: object
+                                                description: Optional. The operation the exposure was done on, in the exposure's organisation. Left out, together with work_order, the stored link is kept. Send null data to leave it unlinked. Naming both operation and work_order with data is refused with a 400 (CH.015.158), as is an operation that does not exist or is in another organisation.
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        oneOf:
+                                                            - $ref: '#/components/schemas/OperationRelationship'
+                                                            - type: "null"
+                                            work_order:
+                                                type: object
+                                                description: Optional. The work order the exposure was done on, in the exposure's organisation. Left out, together with operation, the stored link is kept. Send null data to leave it unlinked. Naming both operation and work_order with data is refused with a 400 (CH.015.158), as is a work order that does not exist or is in another organisation.
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        oneOf:
+                                                            - $ref: '#/components/schemas/WorkOrderRelationship'
+                                                            - type: "null"
         CreateImage:
             required: true
             description: The image to create.
@@ -64058,7 +64960,7 @@ components:
                                         type: string
                                         const: vehicle-certificates
                                     attributes:
-                                        $ref: '#/components/schemas/VehicleCertificateAttributes'
+                                        $ref: '#/components/schemas/VehicleCertificateInputAttributes'
                                     relationships:
                                         type: object
                                         required:
@@ -64118,7 +65020,7 @@ components:
                                         type: string
                                         const: vehicle-certificates
                                     attributes:
-                                        $ref: '#/components/schemas/VehicleCertificateAttributes'
+                                        $ref: '#/components/schemas/VehicleCertificateInputAttributes'
         CreateVehicleCertification:
             required: true
             description: The vehicle certification to create.
@@ -64140,7 +65042,7 @@ components:
                                         type: string
                                         const: vehicle-certifications
                                     attributes:
-                                        $ref: '#/components/schemas/VehicleCertificationAttributes'
+                                        $ref: '#/components/schemas/VehicleCertificationInputAttributes'
                                     relationships:
                                         type: object
                                         required:
@@ -64177,7 +65079,7 @@ components:
                                         type: string
                                         const: vehicle-certifications
                                     attributes:
-                                        $ref: '#/components/schemas/VehicleCertificationAttributes'
+                                        $ref: '#/components/schemas/VehicleCertificationInputAttributes'
         CreateVehicleEnquiry:
             required: true
             description: |
@@ -64244,7 +65146,7 @@ components:
                                         type: string
                                         const: vehicle-inspections
                                     attributes:
-                                        $ref: '#/components/schemas/VehicleInspectionAttributes'
+                                        $ref: '#/components/schemas/VehicleInspectionInputAttributes'
                                     relationships:
                                         type: object
                                         required:
@@ -64295,7 +65197,7 @@ components:
                                         type: string
                                         const: vehicle-inspections
                                     attributes:
-                                        $ref: '#/components/schemas/VehicleInspectionAttributes'
+                                        $ref: '#/components/schemas/VehicleInspectionInputAttributes'
         CreateVehicleInventoryCheck:
             required: true
             description: The vehicle inventory check to create.
@@ -64317,7 +65219,7 @@ components:
                                         type: string
                                         const: vehicle-inventory-checks
                                     attributes:
-                                        $ref: '#/components/schemas/VehicleInventoryCheckAttributes'
+                                        $ref: '#/components/schemas/VehicleInventoryCheckInputAttributes'
                                     relationships:
                                         type: object
                                         required:
@@ -64356,7 +65258,8 @@ components:
                                                             $ref: '#/components/schemas/EquipmentItemRelationship'
         UpdateVehicleInventoryCheck:
             required: true
-            description: The vehicle inventory check to update.
+            description: >-
+                The vehicle inventory check to update. Only inspected_at is applied. Items sent with an update are accepted and ignored: an inventory check's items are set when it is created.
             content:
                 application/vnd.api+json:
                     schema:
@@ -64377,7 +65280,7 @@ components:
                                         type: string
                                         const: vehicle-inventory-checks
                                     attributes:
-                                        $ref: '#/components/schemas/VehicleInventoryCheckAttributes'
+                                        $ref: '#/components/schemas/VehicleInventoryCheckInputAttributes'
         CreateVehicleManufacturer:
             required: true
             description: The vehicle manufacturer to create.
@@ -64550,6 +65453,7 @@ components:
                                                 type:
                                                     - "number"
                                                     - "null"
+                                                format: double
                                             documentation:
                                                 type: array
                                                 items:
@@ -64619,6 +65523,7 @@ components:
                                                 type:
                                                     - "number"
                                                     - "null"
+                                                format: double
                                             documentation:
                                                 type: array
                                                 items:
@@ -64842,7 +65747,7 @@ components:
                                         type: string
                                         const: vehicle-pre-allocations
                                     attributes:
-                                        $ref: '#/components/schemas/VehiclePreAllocationAttributes'
+                                        $ref: '#/components/schemas/VehiclePreAllocationInputAttributes'
         VehicleCategoriesRelationship:
             required: true
             description: A to-many relationship body of vehicle category resource identifiers.
@@ -75449,7 +76354,7 @@ paths:
                     title: Get a HAVS equipment
     /v3/havs-exposures:
         get:
-            description: Retrieve a list of hand-arm vibration exposure records. Filter by person with `?filter=eq(subject,xxx)`, and by period with `ge` and `le` on `start_time` and `end_time`.
+            description: Retrieve a list of hand-arm vibration exposure records. Filter by person with `?filter=eq(subject,xxx)`, by period with `ge` and `le` on `start_time` and `end_time`, and by the job they were done on with `?filter=eq(scheme,xxx)`, `eq(work-order,xxx)` or `eq(operation,xxx)`.
             operationId: ListHavsExposures
             parameters:
                 - $ref: '#/components/parameters/havs_exposures_filter'
@@ -79327,7 +80232,7 @@ paths:
             requestBody:
                 $ref: '#/components/requestBodies/CreateCustomerAccount'
             responses:
-                "200":
+                "201":
                     $ref: '#/components/responses/GetCustomerAccount'
                 "400":
                     $ref: '#/components/responses/BadRequest'
@@ -79667,7 +80572,7 @@ paths:
             requestBody:
                 $ref: '#/components/requestBodies/CreateAppointment'
             responses:
-                "200":
+                "201":
                     $ref: '#/components/responses/GetAppointment'
                 "400":
                     $ref: '#/components/responses/BadRequest'
@@ -79926,7 +80831,7 @@ paths:
             requestBody:
                 $ref: '#/components/requestBodies/CreateContact'
             responses:
-                "200":
+                "201":
                     $ref: '#/components/responses/GetContact'
                 "400":
                     $ref: '#/components/responses/BadRequest'
@@ -80037,7 +80942,7 @@ paths:
             requestBody:
                 $ref: '#/components/requestBodies/CreateCustomerInteraction'
             responses:
-                "200":
+                "201":
                     $ref: '#/components/responses/GetCustomerInteraction'
                 "400":
                     $ref: '#/components/responses/BadRequest'
@@ -80350,6 +81255,52 @@ paths:
             x-mint:
                 metadata:
                     title: Get a person's exposure limit
+    /v3/orgs/{org_id}/exposure-rollups:
+        get:
+            description: |
+                The exposure recorded on a scheme, work order or operation, for the exposure panel on each of their pages. A
+                HAVS exposure linked to an operation counts towards that operation, its work order and its scheme, and one
+                linked to a work order towards that work order and its scheme. Each read works the node out afresh, so a new,
+                edited or deleted exposure, a changed link, and an operation moved to another work order show on the next read.
+
+                The response holds one rollup: the total recorded on the node in the window, the people with records on it,
+                the counts of person-days with records on it that reached amber or red against the person's daily or weekly
+                limit, and each person-day with records on it, green ones included. A person's band counts their whole dose, every organisation and job included, and each day carries the node's
+                share. A breach day that mixes several schemes shows on each of them, with each one's share.
+
+                The caller must be able to view the node. The totals and counts then include everyone. The per-person days
+                include only the people the caller holds `exposure-limits:view` on, as `GET /v3/orgs/{org_id}/exposure-days`
+                does. A node that does not exist, or is in another organisation, is a 404 (CH.007.156). To see the records
+                behind the rollup, list `GET /v3/havs-exposures` filtered to the same node.
+            operationId: ListExposureRollups
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+                - $ref: '#/components/parameters/exposure_type'
+                - $ref: '#/components/parameters/exposure_rollups_filter'
+                - $ref: '#/components/parameters/limit'
+                - $ref: '#/components/parameters/offset'
+                - $ref: '#/components/parameters/page'
+            responses:
+                "200":
+                    $ref: '#/components/responses/ListExposureRollups'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: List exposure rollups
+            tags:
+                - Exposure Limits
+            x-mint:
+                metadata:
+                    title: List exposure rollups
     /v3/orgs/{org_id}/exposure-summary:
         get:
             description: |
@@ -88518,8 +89469,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: List vehicle categories
@@ -88546,8 +89495,6 @@ paths:
             summary: Create a new vehicle category
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Create a vehicle category
@@ -88577,8 +89524,6 @@ paths:
             summary: Delete a vehicle category
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Delete a vehicle category
@@ -88603,8 +89548,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Get a vehicle category
@@ -88633,8 +89576,6 @@ paths:
             summary: Update a vehicle category
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Update a vehicle category
@@ -88739,8 +89680,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: List vehicle certificates
@@ -88765,8 +89704,6 @@ paths:
             summary: Create a new vehicle certificate
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Create a vehicle certificate
@@ -88794,8 +89731,6 @@ paths:
             summary: Delete a vehicle certificate
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Delete a vehicle certificate
@@ -88822,8 +89757,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Get a vehicle certificate
@@ -88852,8 +89785,6 @@ paths:
             summary: Update a vehicle certificate
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Update a vehicle certificate
@@ -88882,8 +89813,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: List vehicle certifications
@@ -88908,8 +89837,6 @@ paths:
             summary: Create a new vehicle certification
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Create a vehicle certification
@@ -88937,8 +89864,6 @@ paths:
             summary: Delete a vehicle certification
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Delete a vehicle certification
@@ -88965,8 +89890,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Get a vehicle certification
@@ -88995,8 +89918,6 @@ paths:
             summary: Update a vehicle certification
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Update a vehicle certification
@@ -89005,6 +89926,7 @@ paths:
             description: Retrieve a list of vehicle enquiries previously made.
             operationId: ListVehicleEnquiries
             parameters:
+                - $ref: '#/components/parameters/vehicle_enquiries_filter'
                 - $ref: '#/components/parameters/limit'
                 - $ref: '#/components/parameters/offset'
                 - $ref: '#/components/parameters/page'
@@ -89023,8 +89945,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: List vehicle enquiries
@@ -89051,8 +89971,6 @@ paths:
             summary: Perform a new vehicle enquiry
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Perform a vehicle enquiry
@@ -89079,8 +89997,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Get a vehicle enquiry
@@ -89110,8 +90026,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: List vehicle inspections
@@ -89136,8 +90050,6 @@ paths:
             summary: Create a new vehicle inspection
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Create a vehicle inspection
@@ -89165,8 +90077,6 @@ paths:
             summary: Delete a vehicle inspection
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Delete a vehicle inspection
@@ -89193,8 +90103,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Get a vehicle inspection
@@ -89223,8 +90131,6 @@ paths:
             summary: Update a vehicle inspection
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Update a vehicle inspection
@@ -89254,8 +90160,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: List vehicle inventory checks
@@ -89280,8 +90184,6 @@ paths:
             summary: Create a new vehicle inventory check
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Create a vehicle inventory check
@@ -89309,8 +90211,6 @@ paths:
             summary: Delete a vehicle inventory check
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Delete a vehicle inventory check
@@ -89337,8 +90237,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Get a vehicle inventory check
@@ -89367,8 +90265,6 @@ paths:
             summary: Update a vehicle inventory check
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Update a vehicle inventory check
@@ -89396,8 +90292,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: List vehicle manufacturers
@@ -89424,8 +90318,6 @@ paths:
             summary: Create a new vehicle manufacturer
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Create a vehicle manufacturer
@@ -89455,8 +90347,6 @@ paths:
             summary: Delete a vehicle manufacturer
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Delete a vehicle manufacturer
@@ -89482,8 +90372,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Get a vehicle manufacturer
@@ -89512,8 +90400,6 @@ paths:
             summary: Update a vehicle manufacturer
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Update a vehicle manufacturer
@@ -89542,8 +90428,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: List vehicle models
@@ -89570,8 +90454,6 @@ paths:
             summary: Create a new vehicle model
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Create a vehicle model
@@ -89601,8 +90483,6 @@ paths:
             summary: Delete a vehicle model
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Delete a vehicle model
@@ -89629,8 +90509,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Get a vehicle model
@@ -89659,8 +90537,6 @@ paths:
             summary: Update a vehicle model
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Update a vehicle model
@@ -89693,8 +90569,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: List MOT records
@@ -89722,8 +90596,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Get an MOT record
@@ -89752,8 +90624,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: List vehicle specifications
@@ -89780,8 +90650,6 @@ paths:
             summary: Create a new vehicle specification
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Create a vehicle specification
@@ -89811,8 +90679,6 @@ paths:
             summary: Delete a vehicle specification
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Delete a vehicle specification
@@ -89839,8 +90705,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Get a vehicle specification
@@ -89869,8 +90733,6 @@ paths:
             summary: Update a vehicle specification
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Update a vehicle specification
@@ -89900,8 +90762,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: List vehicles
@@ -89928,8 +90788,6 @@ paths:
             summary: Create a new vehicle
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Create a vehicle
@@ -89957,8 +90815,6 @@ paths:
             summary: Delete a vehicle
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Delete a vehicle
@@ -89983,8 +90839,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Get a vehicle
@@ -90015,8 +90869,6 @@ paths:
             summary: Update a vehicle
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Update a vehicle
@@ -90044,8 +90896,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
             x-mint:
                 metadata:
                     title: Get a vehicle's compliance
@@ -90075,8 +90925,6 @@ paths:
                 - OAuth2: []
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
         post:
             description: Create a pre-allocation (planned reservation) for a vehicle. Pre-allocations retain no history and can be listed, deleted, or converted into an allocation.
             operationId: CreateVehiclePreAllocation
@@ -90102,8 +90950,6 @@ paths:
             summary: Create a vehicle pre-allocation
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
     /v3/vehicles/{vehicle_id}/pre-allocations/{pre_allocation_id}:
         delete:
             description: Delete (cancel) a vehicle pre-allocation.
@@ -90129,8 +90975,6 @@ paths:
             summary: Cancel a vehicle pre-allocation
             tags:
                 - Vehicles
-            x-ctrl-hub:
-                domain: vehicles
     /v3/vehicles/{vehicle_id}/relationships/allocated_location:
         patch:
             description: |
