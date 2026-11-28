@@ -15936,6 +15936,8 @@ components:
                 - subject
                 - recorded_by
                 - havs_equipment
+                - operation
+                - work_order
             properties:
                 organisation:
                     type: object
@@ -15969,6 +15971,26 @@ components:
                     properties:
                         data:
                             $ref: '#/components/schemas/HavsEquipmentRelationship'
+                operation:
+                    type: object
+                    description: The operation the exposure was done on, or null. An exposure is linked to an operation or a work order, never both.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            oneOf:
+                                - $ref: '#/components/schemas/OperationRelationship'
+                                - type: "null"
+                work_order:
+                    type: object
+                    description: The work order the exposure was done on, or null. An exposure is linked to an operation or a work order, never both.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            oneOf:
+                                - $ref: '#/components/schemas/WorkOrderRelationship'
+                                - type: "null"
         HavsExposurePPE:
             type: object
             description: The safety equipment worn during the exposure. mask and ear_defenders are required. anti_vibration_gloves and eye_protection are optional. A create stores one left out as false, and an update keeps the stored answer. Every read returns all four. A record stored before anti_vibration_gloves and eye_protection were added also reads false for both, because those questions were never asked.
@@ -19399,6 +19421,204 @@ components:
                     properties:
                         data:
                             $ref: '#/components/schemas/UserRelationship'
+        ExposureRollup:
+            type: object
+            description: |
+                The exposure recorded on one scheme, work order or operation, and everything beneath it, over a window of
+                Europe/London days, computed when asked for. An exposure counts towards the job it is linked to and every node
+                above it. A work order or operation that has been deleted is left out.
+            required:
+                - id
+                - type
+                - attributes
+                - relationships
+            properties:
+                id:
+                    type: string
+                    description: |
+                        The node's type and id, the exposure type and the window's first and last days, joined by colons. Clients
+                        should read the attributes and `node` rather than parse the id.
+                    example: schemes:3d4e5f6a-7b8c-4d9e-8f0a-1b2c3d4e5f6a:havs:2026-11-01:2026-11-30
+                type:
+                    type: string
+                    const: exposure-rollups
+                attributes:
+                    $ref: '#/components/schemas/ExposureRollupAttributes'
+                relationships:
+                    $ref: '#/components/schemas/ExposureRollupRelationships'
+        ExposureRollupAttributes:
+            type: object
+            description: Attributes of an exposure rollup
+            required:
+                - exposure_type
+                - unit
+                - first
+                - last
+                - total
+                - people
+                - breaches
+                - near_limits
+                - weekly_breaches
+                - weekly_near_limits
+                - days
+            properties:
+                exposure_type:
+                    $ref: '#/components/schemas/ExposureType'
+                unit:
+                    type: string
+                    description: The unit the totals and limits are in, such as `points` for HAVS.
+                    examples:
+                        - points
+                first:
+                    type: string
+                    format: date
+                    description: The window's first Europe/London day.
+                last:
+                    type: string
+                    format: date
+                    description: The window's last Europe/London day.
+                total:
+                    type: number
+                    format: double
+                    description: The total recorded on the node in the window, from everyone's records.
+                    examples:
+                        - 1830
+                people:
+                    type: integer
+                    description: The number of people with records on the node in the window, everyone included.
+                    examples:
+                        - 12
+                breaches:
+                    type: integer
+                    description: |
+                        The number of person-days with records on the node whose day reached the person's daily red, everyone
+                        included. A person-day counts only when the person recorded exposure on the node that day, so a person over
+                        their limit on three days adds three.
+                    examples:
+                        - 1
+                near_limits:
+                    type: integer
+                    description: The number of person-days with records on the node whose day reached the person's daily amber but not red, everyone included.
+                    examples:
+                        - 3
+                weekly_breaches:
+                    type: integer
+                    description: |
+                        The number of person-days with records on the node whose rolling 7 days reached the person's weekly red,
+                        everyone included. A week that stays red adds a breach only on a day the person records more exposure on the
+                        node, not on the days between.
+                    examples:
+                        - 0
+                weekly_near_limits:
+                    type: integer
+                    description: The number of person-days with records on the node whose rolling 7 days reached the person's weekly amber but not red, everyone included.
+                    examples:
+                        - 2
+                days:
+                    type: array
+                    description: |
+                        Each day with records on the node of each person the caller holds `exposure-limits:view` on, newest first,
+                        then by person. A person the caller's grants do not reach counts in the totals above but has no row here.
+                        A day's band counts the person's records in every organisation and job, and `job_total` is the node's share.
+                    items:
+                        $ref: '#/components/schemas/ExposureRollupDay'
+        ExposureRollupRelationships:
+            type: object
+            description: Relationships for an exposure rollup
+            required:
+                - node
+            properties:
+                node:
+                    type: object
+                    description: The scheme, work order or operation the rollup is for.
+                    required:
+                        - data
+                    properties:
+                        data:
+                            type: object
+                            required:
+                                - type
+                                - id
+                            properties:
+                                type:
+                                    type: string
+                                    enum:
+                                        - schemes
+                                        - work-orders
+                                        - operations
+                                id:
+                                    type: string
+                                    format: uuid
+        ExposureRollupDay:
+            description: One person's day on an exposure rollup's node.
+            type: object
+            required:
+                - subject
+                - date
+                - total
+                - job_total
+                - band
+                - weekly_total
+                - weekly_band
+                - amber
+                - red
+                - weekly_amber
+                - weekly_red
+            properties:
+                subject:
+                    type: string
+                    format: uuid
+                    description: The person's user id.
+                date:
+                    type: string
+                    format: date
+                    description: The Europe/London calendar day. A record counts towards the day it starts on.
+                total:
+                    type: number
+                    format: double
+                    description: The person's total that day, from their records in every organisation.
+                    examples:
+                        - 450
+                job_total:
+                    type: number
+                    format: double
+                    description: The part of `total` recorded on the node or beneath it.
+                    examples:
+                        - 300
+                band:
+                    $ref: '#/components/schemas/ExposureBand'
+                weekly_total:
+                    type: number
+                    format: double
+                    description: The person's total over the rolling 7 days ending on `date`, from their records in every organisation.
+                    examples:
+                        - 1240
+                weekly_band:
+                    $ref: '#/components/schemas/ExposureBand'
+                amber:
+                    type: number
+                    format: double
+                    description: The daily action value in force that day.
+                    examples:
+                        - 100
+                red:
+                    type: number
+                    format: double
+                    description: The daily limit value in force that day.
+                    examples:
+                        - 400
+                weekly_amber:
+                    type: number
+                    format: double
+                    description: The action value over the rolling 7 days ending on `date`.
+                    examples:
+                        - 500
+                weekly_red:
+                    type: number
+                    format: double
+                    description: The limit value over the rolling 7 days ending on `date`.
+                    examples:
+                        - 2000
         ExposureSummary:
             type: object
             description: |
@@ -34761,6 +34981,30 @@ components:
                                 data:
                                     $ref: '#/components/schemas/ExposureLimit'
                             - $ref: '#/components/schemas/JSONAPI'
+        ListExposureRollups:
+            description: List the exposure rollup of one job node. The list always holds one rollup.
+            headers:
+                Content-Type:
+                    $ref: '#/components/headers/content-type'
+                Content-Length:
+                    $ref: '#/components/headers/content-length'
+                X-Request-ID:
+                    $ref: '#/components/headers/x-request-id'
+            content:
+                application/vnd.api+json:
+                    schema:
+                        allOf:
+                            - type: object
+                              required:
+                                - data
+                              properties:
+                                data:
+                                    title: The exposure rollup of the node
+                                    type: array
+                                    items:
+                                        $ref: '#/components/schemas/ExposureRollup'
+                            - $ref: '#/components/schemas/DocumentMeta'
+                            - $ref: '#/components/schemas/JSONAPI'
         GetExposureSummary:
             description: Get an exposure summary, one entry per day.
             headers:
@@ -42313,6 +42557,7 @@ components:
                 - `eq(subject,xxx)`: Filter HAVS exposures by the person exposed.
                 - `eq(recorded_by,xxx)`: Filter HAVS exposures by the person who recorded them.
                 - `eq(havs_equipment,xxx)`: Filter HAVS exposures by HSE Table 1 category.
+                - `eq(scheme,xxx)`, `eq(work-order,xxx)` or `eq(operation,xxx)`: Filter HAVS exposures by the job they were done on. A scheme matches exposures linked to any of its work orders or operations, and a work order those linked to it or any of its operations. Deleted work orders and operations are left out. Name one of the three, with `eq`, outside `or(...)`, or the request is refused with a 400 (CH.015.159). A scheme, work order or operation that does not exist, or is in an organisation you cannot act in, is refused with a 400 (CH.015.160).
                 - `start_time`: `ge(start_time,…)` and `le(start_time,…)` bound when exposures started.
                 - `end_time`: `ge(end_time,…)` and `le(end_time,…)` bound when exposures ended.
 
@@ -43537,6 +43782,25 @@ components:
                 type: string
                 format: date-time
             example: "2026-11-10T09:00:00Z"
+        exposure_rollups_filter:
+            name: filter
+            in: query
+            description: |
+                Names the node and the window. Required.
+
+                - `eq(scheme,xxx)`, `eq(work-order,xxx)` or `eq(operation,xxx)`: **Required.** The node, one of the three.
+                - `ge(date,YYYY-MM-DD)`: **Required.** The window's first Europe/London day.
+                - `le(date,YYYY-MM-DD)`: **Required.** The window's last day. A window spans at most 93 days.
+
+                Terms are comma separated, or wrapped in `and(...)`. An `or(...)`, a second node, text after a term, any other
+                term and a term that does not parse are refused with a 400 rather than ignored.
+
+                For more information on using named filters, see [the docs](https://docs.ctrl-hub.com/api-reference/features#filtering)
+            required: true
+            schema:
+                type: string
+                minLength: 1
+                example: eq(scheme,3d4e5f6a-7b8c-4d9e-8f0a-1b2c3d4e5f6a),ge(date,2026-11-01),le(date,2026-11-30)
         exposure_summary_filter:
             name: filter
             in: query
@@ -54056,6 +54320,26 @@ components:
                                                 properties:
                                                     data:
                                                         $ref: '#/components/schemas/UserRelationship'
+                                            operation:
+                                                type: object
+                                                description: Optional. The operation the exposure was done on, in the exposure's organisation. Left out, the exposure is not linked to a job. Send null data to leave it unlinked. Naming both operation and work_order with data is refused with a 400 (CH.015.158), as is an operation that does not exist or is in another organisation.
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        oneOf:
+                                                            - $ref: '#/components/schemas/OperationRelationship'
+                                                            - type: "null"
+                                            work_order:
+                                                type: object
+                                                description: Optional. The work order the exposure was done on, in the exposure's organisation. Left out, the exposure is not linked to a job. Send null data to leave it unlinked. Naming both operation and work_order with data is refused with a 400 (CH.015.158), as is a work order that does not exist or is in another organisation.
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        oneOf:
+                                                            - $ref: '#/components/schemas/WorkOrderRelationship'
+                                                            - type: "null"
         UpdateHavsExposure:
             required: true
             description: The HAVS exposure to correct.
@@ -54106,7 +54390,7 @@ components:
                                                     - type: "null"
                                     relationships:
                                         type: object
-                                        description: Optional. A different havs_equipment moves the record to that category. The subject is fixed, so any value sent must match the stored one.
+                                        description: Optional. A different havs_equipment moves the record to that category. The subject is fixed, so any value sent must match the stored one. Leaving out operation and work_order keeps the stored job link.
                                         properties:
                                             havs_equipment:
                                                 type: object
@@ -54122,6 +54406,26 @@ components:
                                                 properties:
                                                     data:
                                                         $ref: '#/components/schemas/UserRelationship'
+                                            operation:
+                                                type: object
+                                                description: Optional. The operation the exposure was done on, in the exposure's organisation. Left out, together with work_order, the stored link is kept. Send null data to leave it unlinked. Naming both operation and work_order with data is refused with a 400 (CH.015.158), as is an operation that does not exist or is in another organisation.
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        oneOf:
+                                                            - $ref: '#/components/schemas/OperationRelationship'
+                                                            - type: "null"
+                                            work_order:
+                                                type: object
+                                                description: Optional. The work order the exposure was done on, in the exposure's organisation. Left out, together with operation, the stored link is kept. Send null data to leave it unlinked. Naming both operation and work_order with data is refused with a 400 (CH.015.158), as is a work order that does not exist or is in another organisation.
+                                                required:
+                                                    - data
+                                                properties:
+                                                    data:
+                                                        oneOf:
+                                                            - $ref: '#/components/schemas/WorkOrderRelationship'
+                                                            - type: "null"
         CreateImage:
             required: true
             description: The image to create.
@@ -75449,7 +75753,7 @@ paths:
                     title: Get a HAVS equipment
     /v3/havs-exposures:
         get:
-            description: Retrieve a list of hand-arm vibration exposure records. Filter by person with `?filter=eq(subject,xxx)`, and by period with `ge` and `le` on `start_time` and `end_time`.
+            description: Retrieve a list of hand-arm vibration exposure records. Filter by person with `?filter=eq(subject,xxx)`, by period with `ge` and `le` on `start_time` and `end_time`, and by the job they were done on with `?filter=eq(scheme,xxx)`, `eq(work-order,xxx)` or `eq(operation,xxx)`.
             operationId: ListHavsExposures
             parameters:
                 - $ref: '#/components/parameters/havs_exposures_filter'
@@ -80350,6 +80654,52 @@ paths:
             x-mint:
                 metadata:
                     title: Get a person's exposure limit
+    /v3/orgs/{org_id}/exposure-rollups:
+        get:
+            description: |
+                The exposure recorded on a scheme, work order or operation, for the exposure panel on each of their pages. A
+                HAVS exposure linked to an operation counts towards that operation, its work order and its scheme, and one
+                linked to a work order towards that work order and its scheme. Each read works the node out afresh, so a new,
+                edited or deleted exposure, a changed link, and an operation moved to another work order show on the next read.
+
+                The response holds one rollup: the total recorded on the node in the window, the people with records on it,
+                the counts of person-days with records on it that reached amber or red against the person's daily or weekly
+                limit, and each person-day with records on it, green ones included. A person's band counts their whole dose, every organisation and job included, and each day carries the node's
+                share. A breach day that mixes several schemes shows on each of them, with each one's share.
+
+                The caller must be able to view the node. The totals and counts then include everyone. The per-person days
+                include only the people the caller holds `exposure-limits:view` on, as `GET /v3/orgs/{org_id}/exposure-days`
+                does. A node that does not exist, or is in another organisation, is a 404 (CH.007.156). To see the records
+                behind the rollup, list `GET /v3/havs-exposures` filtered to the same node.
+            operationId: ListExposureRollups
+            parameters:
+                - $ref: '#/components/parameters/org_id'
+                - $ref: '#/components/parameters/exposure_type'
+                - $ref: '#/components/parameters/exposure_rollups_filter'
+                - $ref: '#/components/parameters/limit'
+                - $ref: '#/components/parameters/offset'
+                - $ref: '#/components/parameters/page'
+            responses:
+                "200":
+                    $ref: '#/components/responses/ListExposureRollups'
+                "400":
+                    $ref: '#/components/responses/BadRequest'
+                "401":
+                    $ref: '#/components/responses/Unauthorised'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "500":
+                    $ref: '#/components/responses/InternalServerError'
+            security:
+                - Session: []
+                - OAuth2: []
+                - Cookie: []
+            summary: List exposure rollups
+            tags:
+                - Exposure Limits
+            x-mint:
+                metadata:
+                    title: List exposure rollups
     /v3/orgs/{org_id}/exposure-summary:
         get:
             description: |
